@@ -1,26 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300">
   <rect width="1200" height="300" fill="#FAF8F5"/>
 
-  <!-- network field: left + right margins only (centre 400-800 empty) -->
+  <!-- network field: left + right margins only (centre 400-800 empty); two distinct graphs -->
   <g stroke="#E4E0DA" stroke-width="1" fill="none">
-    <path d="M60 62 L148 118 L92 196 L60 62 M148 118 L246 84 L318 152 L246 226 L148 118 M92 196 L188 244 L246 226 M318 152 L370 96 M246 84 L300 40 M188 244 L268 268 M60 62 L34 148 L92 196 M370 96 L352 220 L268 268 M34 148 L118 172 L188 244 M300 40 L370 96 M352 220 L318 152"/>
-    <path d="M1140 74 L1052 126 L1108 202 L1140 74 M1052 126 L954 90 L882 158 L954 232 L1052 126 M1108 202 L1012 250 L954 232 M882 158 L830 102 M954 90 L900 46 M1012 250 L932 272 M1140 74 L1166 154 L1108 202 M830 102 L848 226 L932 272 M1166 154 L1082 176 L1012 250 M900 46 L830 102 M848 226 L882 158"/>
+    <path d="M30 96 L96 44 M30 96 L148 132 M30 96 L74 190 M96 44 L148 132 M96 44 L196 86 M148 132 L74 190 M148 132 L214 178 M74 190 L34 252 M74 190 L140 248 M34 252 L140 248 M196 86 L214 178 M196 86 L346 64 M214 178 L286 124 M214 178 L140 248 M140 248 L258 232 M286 124 L258 232 M286 124 L346 64 M286 124 L370 192 M258 232 L370 192"/>
+    <path d="M828 208 L902 150 M828 208 L884 262 M884 262 L966 214 M902 150 L966 214 M902 150 L1002 74 M966 214 L1048 168 M1002 74 L1048 168 M1002 74 L1162 42 M1048 168 L1130 110 M1048 168 L1096 246 M1096 246 L1176 196 M1130 110 L1176 196 M1130 110 L1162 42 M966 214 L1096 246 M1002 74 L1130 110"/>
   </g>
   <g fill="#C6C0B7">
-    <circle cx="60" cy="62" r="3"/><circle cx="148" cy="118" r="3.5"/><circle cx="92" cy="196" r="3"/>
-    <circle cx="246" cy="84" r="3"/><circle cx="318" cy="152" r="3.5"/><circle cx="246" cy="226" r="3"/>
-    <circle cx="188" cy="244" r="2.5"/><circle cx="370" cy="96" r="2.5"/><circle cx="34" cy="148" r="2.5"/>
-    <circle cx="300" cy="40" r="2.5"/><circle cx="352" cy="220" r="3"/><circle cx="118" cy="172" r="2.5"/>
-    <circle cx="268" cy="268" r="2.5"/>
-    <circle cx="1140" cy="74" r="3"/><circle cx="1052" cy="126" r="3.5"/><circle cx="1108" cy="202" r="3"/>
-    <circle cx="954" cy="90" r="3"/><circle cx="882" cy="158" r="3.5"/><circle cx="954" cy="232" r="3"/>
-    <circle cx="1012" cy="250" r="2.5"/><circle cx="830" cy="102" r="2.5"/><circle cx="1166" cy="154" r="2.5"/>
-    <circle cx="900" cy="46" r="3"/><circle cx="848" cy="226" r="3"/><circle cx="1082" cy="176" r="2.5"/>
-    <circle cx="932" cy="272" r="2.5"/>
+    <circle cx="30" cy="96" r="3"/><circle cx="96" cy="44" r="3"/><circle cx="148" cy="132" r="3.5"/>
+    <circle cx="74" cy="190" r="3"/><circle cx="34" cy="252" r="2.5"/><circle cx="196" cy="86" r="2.5"/>
+    <circle cx="214" cy="178" r="3.5"/><circle cx="140" cy="248" r="3"/><circle cx="286" cy="124" r="3"/>
+    <circle cx="258" cy="232" r="2.5"/><circle cx="346" cy="64" r="2.5"/><circle cx="370" cy="192" r="2.5"/>
+    <circle cx="828" cy="208" r="2.5"/><circle cx="884" cy="262" r="2.5"/><circle cx="902" cy="150" r="3"/>
+    <circle cx="966" cy="214" r="3.5"/><circle cx="1002" cy="74" r="3"/><circle cx="1048" cy="168" r="3.5"/>
+    <circle cx="1096" cy="246" r="2.5"/><circle cx="1130" cy="110" r="3"/><circle cx="1176" cy="196" r="2.5"/>
+    <circle cx="1162" cy="42" r="2.5"/>
   </g>
   <g fill="#C4682B">
-    <circle cx="92" cy="196" r="3.5"/><circle cx="300" cy="40" r="3"/>
-    <circle cx="1108" cy="202" r="3.5"/><circle cx="900" cy="46" r="3"/>
+    <circle cx="96" cy="44" r="3"/><circle cx="140" cy="248" r="3.5"/>
+    <circle cx="1048" cy="168" r="3.5"/><circle cx="1162" cy="42" r="3"/><circle cx="884" cy="262" r="3"/>
   </g>
 
   <!-- mark: a key — hexagonal bow, shaft, two bits -->
