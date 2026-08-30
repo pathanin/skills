@@ -1,7 +1,0 @@
-{
-  "name": "jpeg-concat",
-  "description": "Join JPEG images side-by-side or stacked while matching the source encoding parameters, keeping file sizes close to the sum of the inputs.",
-  "author": {
-    "name": "oat"
-  }
-}

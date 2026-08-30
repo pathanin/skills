@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "bump-homebrew",
-      "description": "Automate releasing a new Homebrew formula version — tags the repo, builds a deterministic tarball, uploads a GitHub Release asset, and updates the formula.",
+      "description": "Automate releasing a new Homebrew formula version \u2014 tags the repo, builds a deterministic tarball, uploads a GitHub Release asset, and updates the formula.",
       "author": {
         "name": "oat"
       },
@@ -24,7 +24,7 @@
     },
     {
       "name": "dashboard-design",
-      "description": "Apply expert dashboard design principles when building, auditing, or critiquing dashboards and data tables — enforces data-driven form, progressive disclosure, and invisible UI.",
+      "description": "Apply expert dashboard design principles when building, auditing, or critiquing dashboards and data tables \u2014 enforces data-driven form, progressive disclosure, and invisible UI.",
       "author": {
         "name": "oat"
       },
@@ -40,19 +40,11 @@
     },
     {
       "name": "extract-dna",
-      "description": "Manual-only design DNA extraction, invoked with /extract-dna. Measures one design system — screenshot, URL, PDF, video/GIF, code/CSS, or design file, one sample or several of the same system — into a dna.json record and a dna.md guide, proven complete by rebuilding the reference and diffing it numerically.",
+      "description": "Manual-only design DNA extraction, invoked with /extract-dna. Measures one design system \u2014 screenshot, URL, PDF, video/GIF, code/CSS, or design file, one sample or several of the same system \u2014 into a dna.json record and a dna.md guide, proven complete by rebuilding the reference and diffing it numerically.",
       "author": {
         "name": "oat"
       },
       "source": "./design/extract-dna"
-    },
-    {
-      "name": "jpeg-concat",
-      "description": "Join JPEG images side-by-side or stacked while matching the source encoding parameters, keeping file sizes close to the sum of the inputs.",
-      "author": {
-        "name": "oat"
-      },
-      "source": "./productivity/jpeg-concat"
     },
     {
       "name": "mobile-screen-design",
@@ -72,7 +64,7 @@
     },
     {
       "name": "plan-interview",
-      "description": "Walk through a space of interconnected decisions via structured interview — useful when the path forward is unclear and you need to resolve trade-offs before acting.",
+      "description": "Walk through a space of interconnected decisions via structured interview \u2014 useful when the path forward is unclear and you need to resolve trade-offs before acting.",
       "author": {
         "name": "oat"
       },
@@ -96,7 +88,7 @@
     },
     {
       "name": "tufte-clarity",
-      "description": "Apply Tufte's information design principles to UI layouts, web pages, and presentation slides — reduces chrome, improves signal density.",
+      "description": "Apply Tufte's information design principles to UI layouts, web pages, and presentation slides \u2014 reduces chrome, improves signal density.",
       "author": {
         "name": "oat"
       },

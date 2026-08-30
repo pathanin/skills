@@ -25,7 +25,7 @@ description: >            # the ONLY signal Claude uses to decide when to trigge
 The `description` is load-bearing: it's matched against the user's request to decide whether the skill fires at all, so it must state concrete trigger phrases *and* explicit skip conditions (see any existing `SKILL.md` for the pattern — e.g. `bump-homebrew`'s description lists both trigger phrasings and what to skip). When editing a skill, prefer tightening `description` over adding disclaimers in the body.
 
 Supporting subdirectories, used inconsistently by design (each skill only has what it needs):
-- `scripts/` — standalone Python invoked via `bash`/`python3` from the skill body (e.g. `productivity/jpeg-concat/concat_jpeg.py`). These are stdlib-only or declare their deps in prose inside `SKILL.md`, not in a `requirements.txt`.
+- `scripts/` — standalone Python invoked via `bash`/`python3` from the skill body. These are stdlib-only or declare their deps in prose inside `SKILL.md`, not in a `requirements.txt`.
 - `assets/` — template files a script copies/edits rather than generates from scratch.
 - `references/` — longer reference docs the skill body explicitly tells Claude to load only when needed, to avoid bloating the always-loaded `SKILL.md` (e.g. `design/tufte-viz/references/*.md`, `design/tufte-clarity/references/clarity-principles.md`).
 - `.claude-plugin/plugin.json` — plugin manifest, present only on skills packaged as plugins; not a repo-wide convention.
@@ -34,14 +34,9 @@ Supporting subdirectories, used inconsistently by design (each skill only has wh
 
 - Treat `SKILL.md` as a prompt, not documentation — every sentence is an instruction to a future Claude instance, not an explanation for a human reader. Write imperatively, resolve ambiguity explicitly (numbered steps, exact command blocks, explicit stop/ask conditions), and avoid narrative filler.
 - Several skills are process/interview skills with no code at all (`plan-relax`, `to-prd`, `dashboard-design`, `tufte-clarity`, `tufte-viz`). Changes to these are pure prompt-engineering: reread the whole file for internal consistency (numbered workflows, "when to stop/ask" rules, output contracts) rather than editing a section in isolation.
-- One skill wraps a real script (`jpeg-concat`). When touching it, run it directly to verify:
-  ```bash
-  python3 productivity/jpeg-concat/concat_jpeg.py img1.jpg img2.jpg --output out.jpg
-  ```
-  `jpeg-concat` additionally shells out to `jpegtran` (libjpeg-turbo) when available for a lossless path, and uses `numpy` if present for automatic seam-based ordering — both are optional, soft-detected at runtime, not hard dependencies.
 - `plan-relax` is deliberately low-pressure and hides progress from the user. Keep that tone when editing it — don't make it brisk or numbered, and don't add progress indicators or question counts.
 - `tufte-clarity` and `tufte-viz` are siblings: `tufte-viz` is for actual data visualizations/charts, `tufte-clarity` generalizes the same principles to UI/web/slide design and explicitly cross-references `tufte-viz` for the data-viz-specific case. Keep the "Core Translation" table in `design/tufte-clarity/SKILL.md` in sync if Tufte concepts are added to `tufte-viz`.
 
 ## No build/lint/test commands
 
-There is nothing to compile or lint. The only executable code is the script above — verify changes by running it against sample inputs and inspecting output, not via a test suite.
+There is nothing to compile, lint, or test — skills are prompts, not code. Verify changes by reading the `SKILL.md` end to end for internal consistency.

@@ -18,7 +18,6 @@ Claude Code skills for personal use, grouped by type. Each skill lives at `<cate
 
 | Skill | Description |
 |---|---|
-| **jpeg-concat** | Join JPEG images side-by-side or stacked while matching the source encoding parameters, keeping file sizes close to the sum of the inputs. |
 | **pdf-to-md** | Convert a PDF, a page range, or one section of it to markdown that keeps the merged-cell tables intact, then verify against the source that no text was lost. |
 | **plan-interview** | Walk through a space of interconnected decisions via structured interview — useful when the path forward is unclear and you need to resolve trade-offs before acting. |
 | **plan-relax** | Think through a fuzzy or interconnected decision via a relaxed, low-pressure interview — one easy question at a time, ending in a decision summary with defaults filled in. |
@@ -48,3 +47,7 @@ To pull later updates:
 claude plugin marketplace update local-skills
 claude plugin update <skill-name>@local-skills
 ```
+
+## Moved out
+
+- **jpeg-concat** — now its own repo: https://github.com/pathanin/jpegconcat
