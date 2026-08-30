@@ -1,3 +1,5 @@
+<img src="assets/banner.svg" alt="skills" width="100%">
+
 # skills
 
 Claude Code skills for personal use, grouped by type. Each skill lives at `<category>/<skill-name>/SKILL.md`.
