@@ -1,0 +1,7 @@
+{
+  "name": "dashboard-design",
+  "description": "Apply expert dashboard design principles when building, auditing, or critiquing dashboards and data tables — enforces data-driven form, progressive disclosure, and invisible UI.",
+  "author": {
+    "name": "oat"
+  }
+}

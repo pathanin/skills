@@ -1,0 +1,7 @@
+{
+  "name": "plan-interview",
+  "description": "Use when the user wants to navigate a space of interconnected decisions rather than get a direct answer. Trigger on phrases like \"help me think through\", \"work through this\", \"walk me through the choices/decisions\", \"help me figure out the right approach\", \"help me plan X but I'm not sure how to scope it\", explicit interview requests, or any message describing multiple trade-offs the user hasn't resolved yet.",
+  "author": {
+    "name": "oat"
+  }
+}

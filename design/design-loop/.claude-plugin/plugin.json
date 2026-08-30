@@ -1,0 +1,7 @@
+{
+  "name": "design-loop",
+  "description": "Manual-only design critic loop, invoked with /design-loop. Takes a goal and a real-world reference, tears the reference down into checkable mechanisms, then runs a builder and three fresh-context critics (brief, system, craft) on every piece until all three agree ours wins.",
+  "author": {
+    "name": "oat"
+  }
+}

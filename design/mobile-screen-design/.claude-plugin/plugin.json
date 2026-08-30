@@ -1,0 +1,7 @@
+{
+  "name": "mobile-screen-design",
+  "description": "Manual-only mobile screen design pass, invoked with /mobile-screen-design. Reviews or builds any mobile app screen in two passes: a defect pass (overlay contrast, media style-consistency, icon axes, mutable state in copy, decision order, action grouping, label/accessibility splits) then a flow pass (scroll context, sticky actions, common-case presets). Rules are graded by evidence strength against Apple HIG, Material, WCAG, and NN/g.",
+  "author": {
+    "name": "oat"
+  }
+}

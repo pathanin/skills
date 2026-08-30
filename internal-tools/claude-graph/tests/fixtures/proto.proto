@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package example.forecast.v1;
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_ACTIVE = 1;
+}
+
+message GetForecastRequest {
+  string region = 1;
+}
+
+service ForecastService {
+  rpc GetForecast(GetForecastRequest) returns (Status);
+}

@@ -1,0 +1,7 @@
+{
+  "name": "worktree-swarm",
+  "description": "Split a multi-part fix/feature into worktree-isolated subagents run in parallel, then manually integrate and verify the results.",
+  "author": {
+    "name": "oat"
+  }
+}

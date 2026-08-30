@@ -1,0 +1,7 @@
+{
+  "name": "bump-homebrew",
+  "description": "Automate releasing a new Homebrew formula version — tags the repo, builds a deterministic tarball, uploads a GitHub Release asset, and updates the formula.",
+  "author": {
+    "name": "oat"
+  }
+}

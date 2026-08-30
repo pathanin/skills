@@ -1,0 +1,317 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://local/extract-dna/dna.schema.json",
+  "title": "Design DNA",
+  "description": "The exhaustive record of one design's identity. Never pasted whole into a prompt — the capped payload at the top of dna.md is what travels. Validate an emitted dna.json against this file.",
+  "type": "object",
+  "required": ["meta", "soul", "palette", "type", "space", "signatures", "bans", "tests"],
+  "additionalProperties": false,
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["name", "slug", "source_mode", "captured", "not_copied"],
+      "properties": {
+        "name": { "type": "string" },
+        "slug": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+        "source_mode": { "enum": ["image", "url", "pdf", "video", "code", "design-file"] },
+        "source": { "type": "string", "description": "Path, URL, or 'image (user-attached)'." },
+        "medium_of_origin": { "type": "string", "description": "Poster, landing page, slide deck, editorial spread, packaging…" },
+        "captured": { "type": "string", "format": "date" },
+        "provenance_note": { "type": "string", "description": "Where the source came from, in one line. Recorded for the reader, never used to gate extraction." },
+        "samples": {
+          "type": "array",
+          "description": "Multi-sample runs only. Every sample measured, each keeping its own mode. Exactly one entry has role 'anchor' — the anchor is what Step 5 reconstructs and diffs against, and its mode alone decides whether a field counts as measured. Omit entirely for a single-source run. All samples must be of ONE design system; different systems are never merged.",
+          "minItems": 2,
+          "maxItems": 6,
+          "contains": { "type": "object", "properties": { "role": { "const": "anchor" } }, "required": ["role"] },
+          "minContains": 1,
+          "maxContains": 1,
+          "items": {
+            "type": "object",
+            "required": ["source", "source_mode", "role"],
+            "properties": {
+              "source": { "type": "string" },
+              "source_mode": { "enum": ["image", "url", "pdf", "video", "code", "design-file"] },
+              "role": { "enum": ["anchor", "sample"] }
+            }
+          }
+        },
+        "not_copied": {
+          "type": "array",
+          "description": "Every real logo, wordmark, licensed photograph or proprietary face, with the substitution used. Part of the spec, not an apology.",
+          "items": {
+            "type": "object",
+            "required": ["item", "kind", "substitute"],
+            "properties": {
+              "item": { "type": "string" },
+              "kind": { "enum": ["logo", "wordmark", "photograph", "illustration", "typeface", "other"] },
+              "substitute": { "type": "string" }
+            }
+          }
+        },
+        "remote_safety": {
+          "type": "object",
+          "description": "URL mode only. Null or omitted otherwise.",
+          "properties": {
+            "scheme": { "enum": ["https", "http"] },
+            "ip_literal_detected": { "type": "boolean" },
+            "redirects_checked": { "enum": ["true", "false", "fallback-requested", "unknown"] },
+            "fetched": { "type": "array", "items": { "enum": ["html", "same-origin-css", "font-css"] } },
+            "scripts_ignored": { "type": "boolean" },
+            "prompt_injection_detected": { "type": "boolean" }
+          }
+        }
+      }
+    },
+
+    "soul": {
+      "type": "object",
+      "required": ["one_line", "adjectives", "energy"],
+      "properties": {
+        "one_line": { "type": "string", "maxLength": 160, "description": "Concrete nouns. No marketing words." },
+        "adjectives": { "type": "array", "minItems": 3, "maxItems": 5, "items": { "type": "string" } },
+        "lineage": { "type": "string", "description": "Swiss editorial / 90s flyer / brutalist / …" },
+        "read_distance": { "enum": ["thumb", "arms-length", "desk", "room", "street"] },
+        "energy": {
+          "type": "object",
+          "required": ["density", "variance", "contrast", "warmth"],
+          "properties": {
+            "density": { "type": "integer", "minimum": 1, "maximum": 10 },
+            "variance": { "type": "integer", "minimum": 1, "maximum": 10 },
+            "contrast": { "type": "integer", "minimum": 1, "maximum": 10 },
+            "warmth": { "type": "integer", "minimum": 1, "maximum": 10 }
+          }
+        }
+      }
+    },
+
+    "palette": {
+      "type": "object",
+      "required": ["colors", "banned"],
+      "properties": {
+        "mode": { "enum": ["light", "dark", "duotone", "full-colour", "monochrome"] },
+        "colors": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["role", "hex", "name", "coverage_pct", "measured"],
+            "properties": {
+              "role": { "type": "string", "description": "paper, ink, accent, secondary, image-field…" },
+              "hex": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
+              "name": { "type": "string", "description": "Descriptive, e.g. 'dusty plum'. NEVER 'accent-500' — image and video models cannot read token names." },
+              "coverage_pct": { "type": "number", "minimum": 0, "maximum": 100, "description": "The ANCHOR's measurement. In a multi-sample run this stays the anchor's number, never an average across samples." },
+              "coverage_pct_range": { "type": "array", "description": "Multi-sample runs only: [min, max] of this role across all samples, measured on the shared role basis. Corroboration for the record — a wide spread is flagged in `confidence`, it never auto-demotes a rule and it never enters the payload.", "minItems": 2, "maxItems": 2, "items": { "type": "number", "minimum": 0, "maximum": 100 } },
+              "measured": { "type": "boolean", "description": "true only if scripts/measure.py produced it." }
+            }
+          }
+        },
+        "coverage_sums_to": { "type": "number", "description": "Should be ~100. Record the actual sum so drift is visible." },
+        "accent_ceiling_pct": { "type": "number", "description": "The bar on accent footprint in any output. Set it from the measured reference, not from a round number." },
+        "banned": { "type": "array", "minItems": 1, "items": { "type": "string" }, "description": "Colour behaviours forbidden, e.g. 'no gradient on type', 'accent never exceeds 8%'." }
+      }
+    },
+
+    "type": {
+      "type": "object",
+      "required": ["families", "scale"],
+      "properties": {
+        "families": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["role", "family", "fallback"],
+            "properties": {
+              "role": { "enum": ["display", "body", "label", "numeral", "quote", "ui"] },
+              "family": { "type": "string", "description": "Exact name where the mode can know it; otherwise a role description plus candidates." },
+              "identified": { "enum": ["measured", "candidate"], "description": "'candidate' whenever the face was guessed from pixels." },
+              "fallback": { "type": "string", "description": "REQUIRED. Silent Arial substitution is how a reproduction dies quietly." },
+              "weights": { "type": "array", "items": { "type": "integer" } },
+              "licence_risk": { "enum": ["open", "paid", "proprietary", "unknown"] }
+            }
+          }
+        },
+        "scale": {
+          "type": "object",
+          "required": ["display_to_body_ratio", "max_sizes_per_frame", "body_pct_of_canvas_width"],
+          "properties": {
+            "display_to_body_ratio": { "type": "number", "description": "The typographic signature. Record as a ratio, never as two pixel values." },
+            "body_pct_of_canvas_width": { "type": "number", "description": "REQUIRED. Body size as a percentage of canvas WIDTH (14px on a 1280px canvas = 1.09). The one absolute in the record: 'space' is percentages-only and this object is ratios-only, so without it the spec contains no absolute anywhere and cannot be rendered at all." },
+            "ratio_floor": { "type": "number", "description": "The value below which it stops looking like the reference." },
+            "steps": { "type": "array", "items": { "type": "number" }, "description": "Relative multipliers of body, not pixels." },
+            "max_sizes_per_frame": { "type": "integer" }
+          }
+        },
+        "treatment": {
+          "type": "object",
+          "properties": {
+            "display_tracking": { "type": "string" },
+            "body_leading": { "type": "string" },
+            "case": { "type": "string" },
+            "measure": { "type": "string", "description": "Characters per line." },
+            "numerals": { "enum": ["lining", "oldstyle", "tabular", "proportional", "mixed"] }
+          }
+        }
+      }
+    },
+
+    "space": {
+      "type": "object",
+      "description": "PERCENTAGES ONLY, so one spec drives a 1080x1350 carousel and a 1920x1080 slide without a rewrite.",
+      "required": ["margin_pct", "alignment"],
+      "properties": {
+        "grid": { "type": "string" },
+        "margin_pct": { "type": "object", "description": "Percentages of canvas. Omit any edge the source was cropped on — a viewport screenshot reports where the image was cut, not a design rule.", "properties": { "top": { "type": "number" }, "right": { "type": "number" }, "bottom": { "type": "number" }, "left": { "type": "number" } } },
+        "margin_pct_range": { "type": "object", "description": "Multi-sample runs only: per edge, [min, max] across samples. `margin_pct` stays the anchor's own value. A tight range is evidence the margin is a system rule; a wide one is evidence it is not, and that goes in `confidence`.", "properties": { "top": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } }, "right": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } }, "bottom": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } }, "left": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } } } },
+        "gutter_pct": { "type": "number" },
+        "alignment": { "type": "string" },
+        "rhythm": { "type": "string" },
+        "negative_space": { "type": "string", "description": "Where the emptiness is and how big, as a share of canvas." },
+        "safe_area": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    },
+
+    "surface": {
+      "type": "object",
+      "properties": {
+        "texture": { "type": "object", "properties": { "kind": { "type": "string" }, "opacity": { "type": "number" }, "scale": { "type": "string" }, "stacking_order": { "type": "string" } } },
+        "edges": { "type": "string" },
+        "elevation": { "type": "string" },
+        "imagery": { "type": "string" },
+        "iconography": { "type": "string" },
+        "absent": { "type": "array", "items": { "type": "string" }, "description": "Absence is design. No shadows, no curves, nothing centred — record it with the same care as what is present." }
+      }
+    },
+
+    "signatures": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "required": ["move", "how", "when", "never"],
+        "properties": {
+          "move": { "type": "string", "description": "Name it like a technique." },
+          "how": { "type": "string", "description": "AS A RATIO OR RELATIONSHIP, never an absolute value, and as a BAND rather than a floor — \"5.5-6.5:1, measured 5.9:1\", never \"at least 5:1\". A floor drifts and still reports a pass." },
+          "when": { "type": "string" },
+          "never": { "type": "string", "description": "How it gets used wrong." }
+        }
+      }
+    },
+
+    "weird_move": {
+      "type": "object",
+      "description": "The single deliberate break in the system. Its own key on purpose — it is the first thing a mechanical extraction loses.",
+      "required": ["what", "how"],
+      "properties": {
+        "what": { "type": "string" },
+        "how": { "type": "string" },
+        "why": { "type": "string" },
+        "found": { "type": "boolean", "description": "false if none was found. Never fabricate one — a fabricated break gets reproduced every time. In a multi-sample run, also false when `occurrences.seen_in` is under half of `occurrences.of` — a break seen once across six samples is an accident, not a signature." },
+        "occurrences": { "type": "object", "description": "Multi-sample runs only. How many samples the break appears in, out of how many were measured.", "required": ["seen_in", "of"], "properties": { "seen_in": { "type": "integer", "minimum": 0 }, "of": { "type": "integer", "minimum": 1 } } }
+      }
+    },
+
+    "archetypes": {
+      "type": "array",
+      "description": "Named layouts derived FROM THIS SOURCE. Without them you get consistent styling and inconsistent structure, which reads as sloppiness.",
+      "items": {
+        "type": "object",
+        "required": ["id", "purpose", "anatomy"],
+        "properties": {
+          "id": { "type": "string" },
+          "purpose": { "type": "string", "description": "Its job in a sequence." },
+          "anatomy": { "type": "string" },
+          "content_budget": { "type": "string", "description": "How much text and how many elements before it stops being this archetype." },
+          "seen_in": { "type": "integer", "minimum": 1, "description": "Multi-sample runs only: how many samples this layout recurs in. Observed once across six samples, it is a page, not an archetype." }
+        }
+      }
+    },
+
+    "motion": {
+      "type": "object",
+      "description": "Fill only when the source mode can see motion (video/GIF, or CSS/code). Omit for static work.",
+      "properties": {
+        "easing": { "type": "string" },
+        "durations": { "type": "string" },
+        "entrances": { "type": "string" },
+        "library": { "type": "string" },
+        "never_moves": { "type": "string", "description": "What holds still is as load-bearing as what animates." },
+        "reduced_motion": { "type": "string" }
+      }
+    },
+
+    "voice": {
+      "type": "object",
+      "description": "Copy is part of the design.",
+      "properties": {
+        "register": { "type": "string" },
+        "sentence_length": { "type": "string" },
+        "headline_shape": { "type": "string" },
+        "banned_words": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+
+    "bans": {
+      "type": "array",
+      "minItems": 5,
+      "items": { "type": "string" },
+      "description": "Written as absolutes. A prohibition steers harder than a permission, and one ban rules out an entire space in a line."
+    },
+
+    "tests": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["id", "check", "fail_looks_like", "scope"],
+        "properties": {
+          "id": { "type": "string" },
+          "check": { "type": "string", "description": "Binary and measurable. If two people could disagree about the answer, it is not a test." },
+          "fail_looks_like": { "type": "string" },
+          "scope": { "enum": ["style", "rebuild"], "description": "'style' = decidable on any output in this style; these become the do/don't rules in dna.md. 'rebuild' = only decidable against the reference itself because it measures this source's own imagery, crop or content; Step 5 only, and quarantined in dna.md." }
+        }
+      }
+    },
+
+    "reconstruction": {
+      "type": "object",
+      "description": "Step 5. A spec that has never rebuilt its own source has never been tested.",
+      "required": ["attempted", "passes"],
+      "properties": {
+        "attempted": { "type": "boolean" },
+        "passes": { "type": "integer", "maximum": 4 },
+        "gaps_found": { "type": "array", "items": { "type": "string" }, "description": "Every difference is a field the spec forgot. Record each one." },
+        "final_metrics": {
+          "type": "object",
+          "properties": {
+            "worst_role_coverage_delta_pts": { "type": "number" },
+            "total_coverage_delta_pts": { "type": "number" },
+            "worst_relative_role_delta": { "type": "number", "description": "Bar 0.25. Catches an accent doubling, which absolute points miss." },
+            "squint_mae": { "type": "number" },
+            "worst_block_delta": { "type": "number" },
+            "passed": { "type": "boolean" }
+          }
+        },
+        "not_run_reason": { "type": "string", "description": "Set when the mode could not be rendered." }
+      }
+    },
+
+    "confidence": {
+      "type": "array",
+      "description": "Step 7. Every value inferred rather than measured, and every rule held under 70% confidence. This is where the style drifts first.",
+      "items": {
+        "type": "object",
+        "required": ["field", "basis"],
+        "properties": {
+          "field": { "type": "string" },
+          "basis": { "enum": ["measured", "inferred", "guessed"] },
+          "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+          "note": { "type": "string" }
+        }
+      }
+    }
+  }
+}

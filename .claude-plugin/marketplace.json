@@ -1,0 +1,130 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "local-skills",
+  "owner": {
+    "name": "oat"
+  },
+  "description": "Personal collection of Claude Code skills.",
+  "plugins": [
+    {
+      "name": "bump-homebrew",
+      "description": "Automate releasing a new Homebrew formula version — tags the repo, builds a deterministic tarball, uploads a GitHub Release asset, and updates the formula.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./internal-tools/bump-homebrew"
+    },
+    {
+      "name": "chart-viz",
+      "description": "Manual-only chart decision framework, invoked with /chart-viz. Resolves chart type, color, decluttering, emphasis, and sorting against the question, data shape, medium, and audience rather than applying a fixed checklist.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/chart-viz"
+    },
+    {
+      "name": "claude-graph",
+      "description": "Manual-only, invoked with /claude-graph. `init` sets up a lean CLAUDE.md plus an on-demand .claude/graph.md repo map and a per-repo staleness check; bare /claude-graph refreshes both; `remove` tears them out.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./internal-tools/claude-graph"
+    },
+    {
+      "name": "dashboard-design",
+      "description": "Apply expert dashboard design principles when building, auditing, or critiquing dashboards and data tables — enforces data-driven form, progressive disclosure, and invisible UI.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/dashboard-design"
+    },
+    {
+      "name": "design-loop",
+      "description": "Manual-only design critic loop, invoked with /design-loop. Takes a goal and a real-world reference, tears the reference down into checkable mechanisms, then runs a builder and three fresh-context critics (brief, system, craft) on every piece until all three agree ours wins.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/design-loop"
+    },
+    {
+      "name": "extract-dna",
+      "description": "Manual-only design DNA extraction, invoked with /extract-dna. Measures one design system — screenshot, URL, PDF, video/GIF, code/CSS, or design file, one sample or several of the same system — into a dna.json record and a dna.md guide, proven complete by rebuilding the reference and diffing it numerically.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/extract-dna"
+    },
+    {
+      "name": "jpeg-concat",
+      "description": "Join JPEG images side-by-side or stacked while matching the source encoding parameters, keeping file sizes close to the sum of the inputs.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./productivity/jpeg-concat"
+    },
+    {
+      "name": "mobile-screen-design",
+      "description": "Manual-only mobile screen design pass, invoked with /mobile-screen-design. Reviews or builds any mobile app screen in two passes: a defect pass (overlay contrast, media style-consistency, icon axes, mutable state in copy, decision order, action grouping, label/accessibility splits) then a flow pass (scroll context, sticky actions, common-case presets). Rules are graded by evidence strength against Apple HIG, Material, WCAG, and NN/g.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/mobile-screen-design"
+    },
+    {
+      "name": "pdf-to-md",
+      "description": "Convert a PDF, a page range, or one section of it to markdown that keeps the merged-cell tables intact, then verify against the source that no text was lost.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./productivity/pdf-to-md"
+    },
+    {
+      "name": "plan-interview",
+      "description": "Walk through a space of interconnected decisions via structured interview — useful when the path forward is unclear and you need to resolve trade-offs before acting.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./productivity/plan-interview"
+    },
+    {
+      "name": "plan-relax",
+      "description": "Run a relaxed, low-pressure decision interview to think through interconnected choices with trade-offs.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./productivity/plan-relax"
+    },
+    {
+      "name": "to-prd",
+      "description": "Turn the current conversation context into a PRD grounded in existing decision logs, without re-interviewing the user.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./productivity/to-prd"
+    },
+    {
+      "name": "tufte-clarity",
+      "description": "Apply Tufte's information design principles to UI layouts, web pages, and presentation slides — reduces chrome, improves signal density.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/tufte-clarity"
+    },
+    {
+      "name": "tufte-viz",
+      "description": "Ideate and critique data visualizations using Tufte's principles: data-ink ratio, chartjunk elimination, graphical integrity, and small multiples.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/tufte-viz"
+    },
+    {
+      "name": "worktree-swarm",
+      "description": "Split a multi-part fix/feature into worktree-isolated subagents run in parallel, then manually integrate and verify the results.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./internal-tools/worktree-swarm"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+{
+  "name": "pdf-to-md",
+  "description": "Convert a PDF, a page range, or one section of it to markdown that keeps the merged-cell tables intact, then verify against the source that no text was lost.",
+  "author": {
+    "name": "oat"
+  }
+}

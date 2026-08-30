@@ -1,0 +1,7 @@
+{
+  "name": "tufte-viz",
+  "description": "Ideate and critique data visualizations using Tufte's principles: data-ink ratio, chartjunk elimination, graphical integrity, and small multiples.",
+  "author": {
+    "name": "oat"
+  }
+}

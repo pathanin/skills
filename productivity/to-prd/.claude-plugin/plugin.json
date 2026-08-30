@@ -1,0 +1,7 @@
+{
+  "name": "to-prd",
+  "description": "Turn the current conversation context into a PRD grounded in existing decision logs, without re-interviewing the user.",
+  "author": {
+    "name": "oat"
+  }
+}

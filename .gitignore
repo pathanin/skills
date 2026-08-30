@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+
+# Editor
+*.swp
+*.swo
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Claude Code / agent-local state and scratch output
+.claude/settings.local.json
+CLAUDE.local.md
+*.scratch
+scratch/
+scratchpad/
+.claude-scratch/
+
+# claude-graph benchmark clones
+internal-tools/claude-graph/tests/.bench-cache/

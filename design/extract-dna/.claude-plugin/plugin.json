@@ -1,0 +1,7 @@
+{
+  "name": "extract-dna",
+  "description": "Manual-only design DNA extraction, invoked with /extract-dna. Measures one design system — screenshot, URL, PDF, video/GIF, code/CSS, or design file, one sample or several of the same system — into a dna.json record and a dna.md guide, proven complete by rebuilding the reference and diffing it numerically.",
+  "author": {
+    "name": "oat"
+  }
+}

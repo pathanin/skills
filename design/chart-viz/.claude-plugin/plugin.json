@@ -1,0 +1,7 @@
+{
+  "name": "chart-viz",
+  "description": "Manual-only chart decision framework, invoked with /chart-viz. Resolves chart type, color, decluttering, emphasis, and sorting against the question, data shape, medium, and audience rather than applying a fixed checklist.",
+  "author": {
+    "name": "oat"
+  }
+}
