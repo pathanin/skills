@@ -1,7 +1,0 @@
-{
-  "name": "claude-graph",
-  "description": "Manual-only, invoked with /claude-graph. `init` sets up a lean CLAUDE.md plus an on-demand .claude/graph.md repo map and a per-repo staleness check; bare /claude-graph refreshes both; `remove` tears them out.",
-  "author": {
-    "name": "oat"
-  }
-}

@@ -18,5 +18,3 @@ scratch/
 scratchpad/
 .claude-scratch/
 
-# claude-graph benchmark clones
-internal-tools/claude-graph/tests/.bench-cache/

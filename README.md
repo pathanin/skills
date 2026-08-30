@@ -29,7 +29,6 @@ Claude Code skills for personal use, grouped by type. Each skill lives at `<cate
 | Skill | Description |
 |---|---|
 | **bump-homebrew** | Automate releasing a new Homebrew formula version — tags the repo, builds a deterministic tarball, uploads a GitHub Release asset, and updates the formula. |
-| **claude-graph** | Manual-only `/claude-graph`. Splits project guidance into a lean always-loaded `CLAUDE.md` (behavior only) and an on-demand `.claude/graph.md` repo map, so agents stop re-grepping for the same files; `init` also installs a per-repo staleness check, `remove` tears it all out. |
 | **worktree-swarm** | Split a multi-part fix/feature into worktree-isolated subagents run in parallel, then manually integrate and verify the results. |
 
 ## Installing

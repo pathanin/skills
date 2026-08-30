@@ -23,14 +23,6 @@
       "source": "./design/chart-viz"
     },
     {
-      "name": "claude-graph",
-      "description": "Manual-only, invoked with /claude-graph. `init` sets up a lean CLAUDE.md plus an on-demand .claude/graph.md repo map and a per-repo staleness check; bare /claude-graph refreshes both; `remove` tears them out.",
-      "author": {
-        "name": "oat"
-      },
-      "source": "./internal-tools/claude-graph"
-    },
-    {
       "name": "dashboard-design",
       "description": "Apply expert dashboard design principles when building, auditing, or critiquing dashboards and data tables — enforces data-driven form, progressive disclosure, and invisible UI.",
       "author": {
