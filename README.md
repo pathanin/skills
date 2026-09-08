@@ -24,6 +24,7 @@ Claude Code skills for personal use, grouped by type. Each skill lives at `<cate
 | **plan-interview** | Walk through a space of interconnected decisions via structured interview — useful when the path forward is unclear and you need to resolve trade-offs before acting. |
 | **plan-relax** | Think through a fuzzy or interconnected decision via a relaxed, low-pressure interview — one easy question at a time, ending in a decision summary with defaults filled in. |
 | **to-prd** | Turn the current conversation context into a PRD grounded in existing decision logs, without re-interviewing the user. |
+| **translate-to-thai** | Translate text into natural Thai, keeping technical terms, product names, and specific keywords in English where that reads more naturally to a Thai speaker. |
 
 ## internal-tools/
 

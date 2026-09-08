@@ -87,6 +87,14 @@
       "source": "./productivity/to-prd"
     },
     {
+      "name": "translate-to-thai",
+      "description": "Translate text into natural Thai, keeping technical terms, product names, and specific keywords in English where that reads more naturally to a Thai speaker.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./productivity/translate-to-thai"
+    },
+    {
       "name": "tufte-clarity",
       "description": "Apply Tufte's information design principles to UI layouts, web pages, and presentation slides — reduces chrome, improves signal density.",
       "author": {
