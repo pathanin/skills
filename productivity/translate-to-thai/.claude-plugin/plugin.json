@@ -1,0 +1,7 @@
+{
+  "name": "translate-to-thai",
+  "description": "Translate text into natural Thai, keeping technical terms, product names, and specific keywords in English where that reads more naturally to a Thai speaker. Trigger on \"translate this to Thai\", \"แปลเป็นไทย\", or an explicit /translate-to-thai invocation.",
+  "author": {
+    "name": "oat"
+  }
+}
