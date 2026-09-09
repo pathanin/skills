@@ -1,6 +1,6 @@
 ---
 name: worktree-swarm
-description: Split a multi-part fix/feature into independently-scoped pieces and delegate each to a worktree-isolated subagent in parallel, then manually integrate and verify the results yourself. Use when the user asks to "swarm", "delegate to subagents", or "parallelize" a task that touches shared files, or when a request naturally breaks into 2-4 self-contained pieces worth building concurrently.
+description: Split a multi-part fix/feature into independently-scoped pieces and delegate each to a worktree-isolated subagent in parallel, then manually integrate and verify the results yourself. Use when the user asks to "swarm", "delegate to subagents", or "parallelize" a task that touches shared files, or when a request naturally breaks into 2-4 self-contained pieces worth building concurrently. Also use when the user names a model for the swarm ("swarm this with sonnet", "run the heavy piece on opus").
 ---
 
 # Worktree Swarm
@@ -9,12 +9,20 @@ For a task with 2-4 pieces that could be built concurrently but touch overlappin
 
 1. **Split the work** into pieces scoped so their diffs overlap as little as possible. Prefer splitting by concern (e.g. "validation logic" vs "dropdown component") over splitting by file region. Assign each file to exactly one agent and say so in every prompt ("do NOT touch X, Y — other agents own those concurrently"). Where two pieces must meet (a request param, an error code, a function signature), **pin the contract verbatim in both prompts** — "implement exactly this, do not improvise" — so you aren't reconciling two inventions at merge time.
 2. **Before launching, survey what the worktree won't have** (see *Untracked files* below) and fold the answer into every prompt.
-3. **Launch one `Agent` call per piece, in parallel (one message, multiple tool calls), each with `isolation: "worktree"`.** Fresh agents have zero context — each prompt must be fully self-contained: relevant file paths, exact current code snippets, hard constraints (ids/APIs that must not change), the git hygiene rules below, and what to hand back (a `git diff --stat` + short summary + real test output).
+3. **Launch one `Agent` call per piece, in parallel (one message, multiple tool calls), each with `isolation: "worktree"` and an explicit `model` (see *Choosing the model*).** Fresh agents have zero context — each prompt must be fully self-contained: relevant file paths, exact current code snippets, hard constraints (ids/APIs that must not change), the git hygiene rules below, and what to hand back (a `git diff --stat` + short summary + real test output).
 4. **Do not treat the raw diffs as mergeable patches** (see *Integrating* below).
 5. **Integrate sequentially, verify after each merge** (syntax check, grep for ids/selectors that must survive, a quick functional smoke test). You are the integrator; the agents are not responsible for the merged result.
 6. **Clean up**: `git worktree remove <path> --force`, delete the branch, and delete any rescue tags once a piece is merged.
 
 Keep pieces small enough that a bad one is cheap to redo solo instead of re-merging.
+
+## Choosing the model
+
+`model` is per-`Agent`-call, so pieces in one swarm can run on different models. Valid values: `opus`, `sonnet`, `haiku`, `fable`.
+
+- If the user names a model, use it. A model named without a piece applies to every agent; one named with a piece applies to that agent only, and the rest take the default below.
+- Otherwise default to `sonnet`, and raise a piece to `opus` when it needs real judgment — an unclear root cause, a design decision, or a diff that will be awkward to integrate.
+- State the per-piece model choice when you report the launch, so the user can override before the work lands.
 
 ## Git state is shared across worktrees
 
