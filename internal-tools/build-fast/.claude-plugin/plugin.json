@@ -1,6 +1,6 @@
 {
   "name": "build-fast",
-  "description": "Manual-only disposable build, invoked with /build-fast. Builds a small re-runnable script that does the one or two things asked and nothing else — cutting scaffolding, never correctness.",
+  "description": "Manual-only prototype build, invoked with /build-fast. Builds a small re-runnable first-draft script that does the one or two things asked and produces output that satisfies the need — refine later, not now.",
   "author": {
     "name": "oat"
   }

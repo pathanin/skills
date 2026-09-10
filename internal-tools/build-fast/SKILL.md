@@ -1,26 +1,31 @@
 ---
 name: build-fast
-description: Manual-only disposable build, invoked with /build-fast. Builds a small re-runnable script that does the one or two things asked and nothing else — cutting scaffolding, never correctness.
+description: Manual-only prototype build, invoked with /build-fast. Builds a small re-runnable first-draft script that does the one or two things asked and produces output that satisfies the need — refine later, not now.
 disable-model-invocation: true
 ---
 
 # Build Fast
 
 Build the smallest script that does the one or two things asked, run it on the real
-input, and hand it over ready to run again. The script is the deliverable.
+input, and hand over a working first draft. The script is the deliverable; the output it
+produces has to actually satisfy the need.
 
-Disposable is about scope, not lifespan. It has no architecture, no options nobody asked
-for, and is cheap to delete and rewrite when the need changes — but the user keeps it
-and runs it again, so anything that varies between runs has to be changeable without
-editing the code.
+Think prototype. No architecture, no options nobody asked for, meant to be refined later
+— and later is the point. Refinement is a separate pass the user asks for once they know
+more, not something you fold in now because you can already see where it would go. They
+keep this and re-run it, so anything that varies between runs still has to be changeable
+without editing the code.
+
+The draft is in the code, never in the answer. Rough, narrow and ugly are all fine.
+Wrong is not — a plausible wrong answer is the only real failure mode here, because
+nothing downstream will catch it.
 
 Fast means cutting scaffolding, not correctness. Generality goes: other users, other
-input shapes, config layers, extension points, anything built for a future nobody asked
-for. What stays is whatever makes this script right on every run. A plausible wrong
-answer is the only real failure mode here, because nothing downstream will catch it.
+input shapes, config layers, extension points, anything for a future nobody has asked
+for yet. What stays is whatever makes this script right every time it runs.
 
-Wrong skill if the code will be maintained by a team, extended into a product, or ships
-as part of an application. Say so and build it properly instead.
+Wrong skill if it has to ship as production code now, or if the user wants the refined
+version rather than a first pass. Say so and build it properly instead.
 
 ## 1. Lock the scope
 
@@ -72,8 +77,8 @@ Put this in every agent prompt, verbatim:
 Pass `model` explicitly on every spawn — inheriting is the silent failure. Default
 `sonnet`; `opus` for the piece with real uncertainty; `haiku` for mechanical work.
 
-Skip worktrees. Give each agent its own file path in one scratch directory: disposable
-pieces rarely collide, and git ceremony is the exact overhead this skill exists to
+Skip worktrees. Give each agent its own file path in one scratch directory: pieces in
+separate files rarely collide, and git ceremony is the exact overhead this skill exists to
 avoid. If the work lands in a real repo and touches shared tracked files, this is the
 wrong skill — use `worktree-swarm`.
 
@@ -120,7 +125,7 @@ will rewrite from memory next month.
 Open the file with three comment lines, no more, because they come back to this cold:
 
 ```
-# <what it does>
+# first draft: <what it does>
 # run: python thing.py <input.csv>
 # assumes: <input shape, and anything else baked in>
 ```
@@ -148,7 +153,7 @@ check. That is the only way a test earns its place here.
 If the run itself is destructive — it overwrites, deletes, moves, posts, or sends — do
 not point it at the real thing first. Copy the input aside and run against the copy, or
 add a dry-run that prints what it would do and show that output before the real run.
-Disposable is about the code, never about the user's data.
+The draft is in the code, never in the user's data.
 
 If the check fails, fix it and re-run before reporting. Never hand over a script you have
 not run.
@@ -162,11 +167,12 @@ In this order:
    thing they wanted to see first.
 3. **What you checked and what it said**, one line: "spot-checked order #4417 against the
    source, matches; 1,204 rows in, 1,204 out."
-4. **What is baked in**, two to four bullets: the input shape it assumes, what it does
-   not handle, any rows dropped, and what a later run can safely vary.
+4. **What is baked in and what you skipped**, two to four bullets: the input shape it
+   assumes, what it does not handle, any rows dropped, what a later run can safely vary.
 
-Do not offer to harden it. It is already the shape it was asked for, narrow on purpose.
-If the user later wants it to cover more, that is a new request with a new scope line.
+Say plainly that it is a first draft, and name in one line where a later pass would
+start — the input handling, the edge case you skipped, the slow bit. Then stop. Naming
+the seam is the handoff; working it is the next request, with its own scope line.
 
 ## What breaks this
 
@@ -178,6 +184,8 @@ If the user later wants it to cover more, that is a new request with a new scope
   script the user keeps.
 - **Skipping the one check** because the code obviously works. Obvious is where wrong
   answers live.
+- **Quietly polishing.** Refinement is the next pass, and asking for it is the user's call.
+- **Handing a draft over as finished.** Name what you skipped, or it gets trusted as done.
 - **Spawning for a small build.** Three agents on a 60-line script is slower than typing it.
 - **Handing over an unrun script.** They will trust it on inputs you never saw. Unrun,
   it is a guess with a filename.
