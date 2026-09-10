@@ -30,7 +30,7 @@ Claude Code skills for personal use, grouped by type. Each skill lives at `<cate
 
 | Skill | Description |
 |---|---|
-| [**build-fast**](internal-tools/build-fast/SKILL.md) | Build a deliberately disposable script for the one or two things asked, run it on the real input, and hand back the output — cuts scaffolding (tests, config, recovery, generality), never correctness. Spawns parallel worker agents when the build has a clean seam and is big enough to be worth it. |
+| [**build-fast**](internal-tools/build-fast/SKILL.md) | Manual-only `/build-fast`. Builds the smallest disposable script that produces the asked-for output, runs it on the real input, and hands back the output — cuts scaffolding (tests, config, recovery, generality), never correctness. Fans out to parallel worker agents when the build has a clean seam and is big enough to be worth it. |
 | [**bump-homebrew**](internal-tools/bump-homebrew/SKILL.md) | Automate releasing a new Homebrew formula version — tags the repo, builds a deterministic tarball, uploads a GitHub Release asset, and updates the formula. |
 | [**worktree-swarm**](internal-tools/worktree-swarm/SKILL.md) | Split a multi-part fix/feature into worktree-isolated subagents run in parallel, then manually integrate and verify the results. |
 

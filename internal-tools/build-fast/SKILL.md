@@ -1,17 +1,7 @@
 ---
 name: build-fast
-description: >
-  Build a deliberately disposable program or script that does the one or two things
-  asked and nothing else, run it on the real input, and hand back the output. Use when
-  the user says "quick script", "one-off", "throwaway", "quick and dirty", "hack
-  something together", "don't over-engineer it", "no tests needed", or when they want a
-  specific output — a number, a file, a chart, a converted dataset — and the program is
-  only the means to get it. Splits into parallel worker agents when the build has a
-  clean seam and is big enough to be worth the spawn.
-  Skip when the code will be maintained, extended, reused, or read by other people; when
-  it ships as production code; when the user asks for tests, robustness, or a design;
-  and when a wrong output would be costly and nobody would catch it — verify properly
-  there instead. For multi-file work inside an existing codebase, use worktree-swarm.
+description: Manual-only disposable build, invoked with /build-fast. Builds the smallest script that produces the asked-for output, runs it on the real input, and hands back the output — cutting scaffolding, never correctness.
+disable-model-invocation: true
 ---
 
 # Build Fast
@@ -23,6 +13,9 @@ Fast means cutting scaffolding, not correctness. Everything serving a *future* �
 config, other inputs, other users, a second run — is out. Everything serving *this
 output being right* stays in. A plausible wrong answer delivered fast is the only real
 failure mode here, because nothing downstream will catch it.
+
+Wrong skill if the code will be maintained, extended, or read by other people, or if it
+ships as production code. Say so and build it properly instead.
 
 ## 1. Lock the scope
 

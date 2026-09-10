@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "build-fast",
-      "description": "Build a deliberately disposable script for the one or two things asked, run it on the real input, and hand back the output — cutting scaffolding, never correctness. Spawns parallel worker agents when the build has a clean seam.",
+      "description": "Manual-only disposable build, invoked with /build-fast. Builds the smallest script that produces the asked-for output, runs it on the real input, and hands back the output — cutting scaffolding, never correctness.",
       "author": {
         "name": "oat"
       },
