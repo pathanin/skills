@@ -1,0 +1,7 @@
+{
+  "name": "build-fast",
+  "description": "Manual-only prototype build, invoked with /build-fast. Gets a working first-draft script into the user's hands as fast as possible — the one or two things asked, output that satisfies the need, refine later.",
+  "author": {
+    "name": "oat"
+  }
+}

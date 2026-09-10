@@ -7,6 +7,14 @@
   "description": "Personal collection of Claude Code skills.",
   "plugins": [
     {
+      "name": "build-fast",
+      "description": "Manual-only prototype build, invoked with /build-fast. Gets a working first-draft script into the user's hands as fast as possible — the one or two things asked, output that satisfies the need, refine later.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./internal-tools/build-fast"
+    },
+    {
       "name": "bump-homebrew",
       "description": "Automate releasing a new Homebrew formula version — tags the repo, builds a deterministic tarball, uploads a GitHub Release asset, and updates the formula.",
       "author": {
