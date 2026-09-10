@@ -1,6 +1,6 @@
 {
   "name": "build-fast",
-  "description": "Manual-only disposable build, invoked with /build-fast. Builds the smallest script that produces the asked-for output, runs it on the real input, and hands back the output — cutting scaffolding, never correctness.",
+  "description": "Manual-only disposable build, invoked with /build-fast. Builds a small re-runnable script that does the one or two things asked and nothing else — cutting scaffolding, never correctness.",
   "author": {
     "name": "oat"
   }

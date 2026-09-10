@@ -1,26 +1,31 @@
 ---
 name: build-fast
-description: Manual-only disposable build, invoked with /build-fast. Builds the smallest script that produces the asked-for output, runs it on the real input, and hands back the output — cutting scaffolding, never correctness.
+description: Manual-only disposable build, invoked with /build-fast. Builds a small re-runnable script that does the one or two things asked and nothing else — cutting scaffolding, never correctness.
 disable-model-invocation: true
 ---
 
 # Build Fast
 
-Build the smallest thing that produces the asked-for output, run it, hand back the
-output. The program is a receipt, not a deliverable — it gets thrown away.
+Build the smallest script that does the one or two things asked, run it on the real
+input, and hand it over ready to run again. The script is the deliverable.
 
-Fast means cutting scaffolding, not correctness. Everything serving a *future* — reuse,
-config, other inputs, other users, a second run — is out. Everything serving *this
-output being right* stays in. A plausible wrong answer delivered fast is the only real
-failure mode here, because nothing downstream will catch it.
+Disposable is about scope, not lifespan. It has no architecture, no options nobody asked
+for, and is cheap to delete and rewrite when the need changes — but the user keeps it
+and runs it again, so anything that varies between runs has to be changeable without
+editing the code.
 
-Wrong skill if the code will be maintained, extended, or read by other people, or if it
-ships as production code. Say so and build it properly instead.
+Fast means cutting scaffolding, not correctness. Generality goes: other users, other
+input shapes, config layers, extension points, anything built for a future nobody asked
+for. What stays is whatever makes this script right on every run. A plausible wrong
+answer is the only real failure mode here, because nothing downstream will catch it.
+
+Wrong skill if the code will be maintained by a team, extended into a product, or ships
+as part of an application. Say so and build it properly instead.
 
 ## 1. Lock the scope
 
-No interview. Write one line: the deliverable and the shape it lands in. "A CSV of every
-order over $500 in orders.json, plus the total."
+No interview. Write one line: what the script does and what it produces. "Reads
+orders.json, writes a CSV of every order over $500, prints the total."
 
 - One or two things. A third want that appears mid-build waits until the first two are
   built and running.
@@ -59,7 +64,8 @@ Put this in every agent prompt, verbatim:
 
 - absolute paths in and out, the real input format, one real sample row
 - the exact output contract, and "do not touch `<other files>` — another agent owns them"
-- "hardcode paths and constants, do not generalize, let it crash on bad input"
+- "no generality and no config layers; put whatever changes between runs in a CONFIG
+  block at the top; let it crash on bad input"
 - "run it on the real input before handing back; return the output file path, the actual
   output, and one line on anything you had to guess"
 
@@ -80,13 +86,14 @@ write in three minutes, write it and drop the agent's version.
 Cut, always:
 
 - tests as a suite, mocks, fixtures, CI
-- config, flags, CLI args, env layers — hardcode paths and constants in one block at the
-  top where they are easy to find and change
+- config files, env layers, a flag for every behaviour. One `CONFIG` block at the top or
+  a single positional argument covers the one or two things that actually vary. Constants
+  the task defines — the endpoint, the column names, the threshold — stay hardcoded.
 - error handling that recovers. A `try/except` returning a default is the most dangerous
-  line in a throwaway: it converts a visible crash into a plausible wrong answer. Let it
-  crash.
+  line in a script like this: it converts a visible crash into a plausible wrong answer.
+  Let it crash.
 - packaging, README, docstrings, type ceremony, logging frameworks — `print` is the logger
-- generality: one input shape, one output shape, one run
+- generality: one input shape, one output shape
 - performance work, unless the thing will not finish otherwise
 - refactor passes. Ugly and correct ships.
 
@@ -100,12 +107,23 @@ Never cut:
   the task. Approximating it is not fast, it is not doing the job.
 - **the user's stated constraints.**
 - **arithmetic and units.** Nothing downstream catches a wrong number.
+- **whatever changes between runs.** The input path, the date range, the output name.
+  Bury those in the source and re-running means editing code, which is what turns a
+  working script into one the user rewrites from scratch instead.
+- **a crash that names what to fix.** Still let it crash — but `no such input: data.csv`
+  beats a bare `KeyError` on line 40. They run this without you there.
 
-Write it outside the project tree — a scratch or temp directory — unless the user asked
-for it in the repo. A throwaway committed to a repo stops being a throwaway.
+Put it where the user will find it again — beside the data it works on, or wherever they
+keep scripts. Ask if that is not obvious. A script left in a temp directory is one they
+will rewrite from memory next month.
 
-Give the file one comment on its first line, no more:
-`# throwaway: <task>. hardcoded for <input>. not for reuse.`
+Open the file with three comment lines, no more, because they come back to this cold:
+
+```
+# <what it does>
+# run: python thing.py <input.csv>
+# assumes: <input shape, and anything else baked in>
+```
 
 ## 4. Run it, check the output once
 
@@ -119,9 +137,9 @@ own word for it.** Take the cheapest that fits:
   to the whole
 - **look at it** — for a chart, page, or image, actually open it
 
-That check is non-negotiable, and it is not a test suite. It exists because a plausible
-wrong answer is invisible downstream, and being right is the entire point of the
-deliverable.
+That check is non-negotiable, and it is not a test suite. A plausible wrong answer is
+invisible downstream, and the user will trust this script again on data you never see —
+so one honest check now is what makes every later run worth anything.
 
 Write a real assert only when it makes the build *faster* — when the tricky bit needs
 iterating, and re-running the whole pipeline each time costs more than a five-line
@@ -139,17 +157,16 @@ not run.
 
 In this order:
 
-1. **The output.** The number, the file, the chart — that is what was asked for. Lead
-   with it; do not bury it under the implementation.
-2. **What you checked and what it said**, one line: "spot-checked order #4417 against the
+1. **The script and the exact command to run it.** That is the deliverable.
+2. **The output from your run**, or where it landed — proof it works, and usually the
+   thing they wanted to see first.
+3. **What you checked and what it said**, one line: "spot-checked order #4417 against the
    source, matches; 1,204 rows in, 1,204 out."
-3. **What is baked in**, two to four bullets: hardcoded paths, assumptions, what it does
-   not handle, any rows dropped.
-4. The script path, marked disposable.
+4. **What is baked in**, two to four bullets: the input shape it assumes, what it does
+   not handle, any rows dropped, and what a later run can safely vary.
 
-If the user wants to keep or extend it, that is the moment it stops being disposable.
-Name what would have to change — the hardcoded paths, the absent error handling, the
-untested edges — and harden it if they say go. Never harden preemptively.
+Do not offer to harden it. It is already the shape it was asked for, narrow on purpose.
+If the user later wants it to cover more, that is a new request with a new scope line.
 
 ## What breaks this
 
@@ -157,8 +174,10 @@ untested edges — and harden it if they say go. Never harden preemptively.
 - **`try/except` with a fallback value.** Turns a crash nobody could miss into a wrong
   answer nobody sees.
 - **A toy input.** Passing on invented data says nothing about the real file.
+- **Hardcoding what varies.** If re-running it means editing the source, it is not a
+  script the user keeps.
 - **Skipping the one check** because the code obviously works. Obvious is where wrong
   answers live.
 - **Spawning for a small build.** Three agents on a 60-line script is slower than typing it.
-- **Handing over an unrun script.** The output is the deliverable; with no run there is
-  no deliverable.
+- **Handing over an unrun script.** They will trust it on inputs you never saw. Unrun,
+  it is a guess with a filename.
