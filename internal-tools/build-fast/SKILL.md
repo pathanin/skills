@@ -1,14 +1,24 @@
 ---
 name: build-fast
-description: Manual-only prototype build, invoked with /build-fast. Builds a small re-runnable first-draft script that does the one or two things asked and produces output that satisfies the need — refine later, not now.
+description: Manual-only prototype build, invoked with /build-fast. Gets a working first-draft script into the user's hands as fast as possible — the one or two things asked, output that satisfies the need, refine later.
 disable-model-invocation: true
 ---
 
 # Build Fast
 
-Build the smallest script that does the one or two things asked, run it on the real
-input, and hand over a working first draft. The script is the deliverable; the output it
-produces has to actually satisfy the need.
+**The point is speed: a working script in the user's hands as fast as possible.**
+Everything else here — the narrow scope, the missing scaffolding, the single check, the
+deferred polish — is there to serve that. Anything off the fastest path to a correct
+working script is waste, and making it nice is waste.
+
+Correct is not the exception to that. A wrong script is the slowest outcome available:
+the user acts on bad output, finds out days later, and the whole thing gets rebuilt with
+trust spent. The draft is in the code, never in the answer — rough, narrow and ugly are
+all fine, wrong is not, because nothing downstream will catch it.
+
+So: the smallest script that does the one or two things asked, run on the real input,
+handed over as a working first draft. The script is the deliverable, and its output has
+to actually satisfy the need.
 
 Think prototype. No architecture, no options nobody asked for, meant to be refined later
 — and later is the point. Refinement is a separate pass the user asks for once they know
@@ -16,16 +26,32 @@ more, not something you fold in now because you can already see where it would g
 keep this and re-run it, so anything that varies between runs still has to be changeable
 without editing the code.
 
-The draft is in the code, never in the answer. Rough, narrow and ugly are all fine.
-Wrong is not — a plausible wrong answer is the only real failure mode here, because
-nothing downstream will catch it.
-
-Fast means cutting scaffolding, not correctness. Generality goes: other users, other
+Cutting scaffolding is where the time comes from. Generality goes: other users, other
 input shapes, config layers, extension points, anything for a future nobody has asked
 for yet. What stays is whatever makes this script right every time it runs.
 
 Wrong skill if it has to ship as production code now, or if the user wants the refined
 version rather than a first pass. Say so and build it properly instead.
+
+## Where the time actually goes
+
+Not typing. These are what make a fast build slow:
+
+- **Deciding.** Weighing two libraries that both work, naming things well, choosing a
+  structure. Take the one you know best and move — at this size no choice is expensive
+  to undo.
+- **Reading.** Skimming a whole codebase or a full API doc before writing a line. Read
+  the one signature you need.
+- **Building it general, then narrowing.** Write the specific thing. It is shorter, and
+  it is what was asked for.
+- **Polishing mid-build.** Renaming, extracting helpers, tidying as you go. Ugly and
+  correct ships.
+- **Asking.** Every question is a round trip through the user. One question, only when a
+  wrong guess wastes the build (step 1).
+- **Going sequentially through pieces that had a clean seam** (step 2).
+- **Debugging through the whole pipeline.** When testing the tricky bit means re-running
+  everything, cut a fast inner loop first — a cached intermediate, a five-line assert.
+  That is the one test that pays for itself (step 4).
 
 ## 1. Lock the scope
 
@@ -41,7 +67,8 @@ orders.json, writes a CSV of every order over $500, prints the total."
 
 ## 2. Solo or parallel
 
-Spawn workers only when all three hold:
+Parallel work is a speed bet, and it loses more often than it looks. Spawn only when
+all three hold:
 
 - the build is 2+ pieces, each a real chunk of work — or one piece is slow waiting on a
   download, a scrape, a render
@@ -100,7 +127,7 @@ Cut, always:
 - packaging, README, docstrings, type ceremony, logging frameworks — `print` is the logger
 - generality: one input shape, one output shape
 - performance work, unless the thing will not finish otherwise
-- refactor passes. Ugly and correct ships.
+- refactor passes. The first version that works is the version you hand over.
 
 Never cut:
 
@@ -142,9 +169,11 @@ own word for it.** Take the cheapest that fits:
   to the whole
 - **look at it** — for a chart, page, or image, actually open it
 
-That check is non-negotiable, and it is not a test suite. A plausible wrong answer is
-invisible downstream, and the user will trust this script again on data you never see —
-so one honest check now is what makes every later run worth anything.
+That check is non-negotiable, and it is not a test suite. It costs a minute. Skipping it
+risks the rebuild, which costs the entire build again plus whatever the user did with
+the bad output in between — so the check is the fast move, not the careful one. A
+plausible wrong answer is invisible downstream, and they will run this again on data you
+never see.
 
 Write a real assert only when it makes the build *faster* — when the tricky bit needs
 iterating, and re-running the whole pipeline each time costs more than a five-line

@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "build-fast",
-      "description": "Manual-only prototype build, invoked with /build-fast. Builds a small re-runnable first-draft script that does the one or two things asked and produces output that satisfies the need — refine later, not now.",
+      "description": "Manual-only prototype build, invoked with /build-fast. Gets a working first-draft script into the user's hands as fast as possible — the one or two things asked, output that satisfies the need, refine later.",
       "author": {
         "name": "oat"
       },
