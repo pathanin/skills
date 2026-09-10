@@ -7,6 +7,14 @@
   "description": "Personal collection of Claude Code skills.",
   "plugins": [
     {
+      "name": "build-fast",
+      "description": "Build a deliberately disposable script for the one or two things asked, run it on the real input, and hand back the output — cutting scaffolding, never correctness. Spawns parallel worker agents when the build has a clean seam.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./internal-tools/build-fast"
+    },
+    {
       "name": "bump-homebrew",
       "description": "Automate releasing a new Homebrew formula version — tags the repo, builds a deterministic tarball, uploads a GitHub Release asset, and updates the formula.",
       "author": {

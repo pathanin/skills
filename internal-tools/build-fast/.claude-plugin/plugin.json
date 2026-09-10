@@ -1,0 +1,7 @@
+{
+  "name": "build-fast",
+  "description": "Build a deliberately disposable script for the one or two things asked, run it on the real input, and hand back the output — cutting scaffolding, never correctness.",
+  "author": {
+    "name": "oat"
+  }
+}
