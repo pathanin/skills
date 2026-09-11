@@ -94,9 +94,16 @@ Build the part that could sink it first — the merged cell, the pagination, the
 encoding. If it turns out impossible you want that at minute two, not after the CSV writer
 is finished and the shape of everything else depends on it.
 
-Python unless the task says otherwise. Try stdlib first, and if a package would clearly
-save real work, install it into whatever environment the user already has and say which
-one you added. Never build a venv, a lockfile, or a requirements file for one script.
+The deliverable picks the language, and an existing codebase picks it outright. Data in,
+file out is Python. Anything that has to run in a browser is one HTML file with the CSS and
+JS inline, opened with a double-click — no server, no npm, no bundler, no framework. If it
+needs a server because it touches a database or a key, one file of whatever the repo
+already uses.
+
+What stays cut in every language is the build step. No venv, no lockfile, no
+`requirements.txt`, no `package.json`, no `create-*` scaffold. Reach for the standard
+library first, and pull in a dependency only when it saves real work — a package already
+installed, or a single `<script src>` from a CDN. Say which one you added and why.
 
 Cut, always:
 
@@ -134,16 +141,17 @@ Never cut:
 - **a crash that names what to fix.** Still let it crash — but `no such input: data.csv`
   beats a bare `KeyError` on line 40. They run this without you there.
 
-Put it beside the data it works on, unless the user named somewhere else or the repo
-obviously keeps scripts in one place. Don't ask — step 1 already spent the one question. A
+Put it beside the data it works on, or in the repo it belongs to, unless the user named
+somewhere else. Don't ask — step 1 already spent the one question. A
 script left in a temp directory is one they will rewrite from memory next month.
 
-Open the file with three comment lines, no more, because they come back to this cold:
+Open the file with three comment lines, no more, in whatever comment syntax the language
+uses, because they come back to this cold:
 
 ```
 # first draft: <what it does>
-# run: python thing.py <input.csv>
-# assumes: <input shape, and anything else baked in>
+# run: <the exact command, or "open in a browser">
+# assumes: <input shape, env vars, and anything else baked in>
 ```
 
 ## 4. Run it, check the output once
