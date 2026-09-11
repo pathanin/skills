@@ -71,51 +71,22 @@ orders.json, writes a CSV of every order over $500, prints the total."
 
 ## 2. Solo or parallel
 
-Parallel work is a speed bet, and it loses more often than it looks. Spawn only when
-all three hold:
+**Default solo. For one script under a couple hundred lines, spawning is slower than
+writing it** — the prompt and the integration cost more than the build, and that covers
+most of what this skill gets asked for. Two asked-for things is not a reason to spawn.
 
-- the build is 2+ pieces, each a real chunk of work — or one piece is slow waiting on a
-  download, a scrape, a render
+Parallel work is a speed bet, and it loses more often than it looks. Spawn only when all
+three hold:
+
+- the build splits into 2+ pieces, each one substantial enough that you would not write it
+  in a single sitting — or one piece is slow waiting on a download, a scrape, a render
 - each piece owns its own file, and the seam between them is something you can pin
   verbatim: an exact JSON shape with a real sample row, a function signature, a file
   path plus format
 - you can write each prompt self-contained without re-deriving the whole task
 
-Otherwise build it solo. **For one script under a couple hundred lines, spawning is
-slower than writing it** — the prompt and the integration cost more than the build.
-
-Four patterns worth spawning for:
-
-| Pattern | Split | Use when |
-| --- | --- | --- |
-| **Pipeline** | fetch/parse │ compute │ render | each stage is chunky; pin the intermediate format verbatim in both prompts |
-| **Deliverable** | one agent per asked-for thing (the script │ the chart) | the user asked for two things; cleanest seam there is, they share only the input file |
-| **Race** | same brief, two approaches (library A │ library B, API │ scrape) | you genuinely don't know which will work; keep whichever runs on the real input first, drop the other |
-| **Prep** | one agent readies the real input while you build against its shape | the input needs downloading, extracting, or credentials; pin the shape up front |
-
-Race only on real uncertainty. Racing two variants of something you already know how to
-write is pure waste.
-
-Put this in every agent prompt, verbatim:
-
-- absolute paths in and out, the real input format, one real sample row
-- the exact output contract, and "do not touch `<other files>` — another agent owns them"
-- "no generality and no config layers; put whatever changes between runs in a CONFIG
-  block at the top; let it crash on bad input"
-- "run it on the real input before handing back; return the output file path, the actual
-  output, and one line on anything you had to guess"
-
-Pass `model` explicitly on every spawn — inheriting is the silent failure. Default
-`sonnet`; `opus` for the piece with real uncertainty; `haiku` for mechanical work.
-
-Skip worktrees. Give each agent its own file path in one scratch directory: pieces in
-separate files rarely collide, and git ceremony is the exact overhead this skill exists to
-avoid. If the work lands in a real repo and touches shared tracked files, this is the
-wrong skill — use `worktree-swarm`.
-
-You integrate. Each agent ran only its own half, so run the pieces together on the real
-input yourself before believing any of it. And if you are blocked on a piece you could
-write in three minutes, write it and drop the agent's version.
+If all three hold, read `references/parallel.md` for the split patterns, the agent prompt
+contract, and the model rule. Otherwise build it solo and skip that file.
 
 ## 3. Build
 
@@ -123,15 +94,24 @@ Build the part that could sink it first — the merged cell, the pagination, the
 encoding. If it turns out impossible you want that at minute two, not after the CSV writer
 is finished and the shape of everything else depends on it.
 
+Python unless the task says otherwise. Try stdlib first, and if a package would clearly
+save real work, install it into whatever environment the user already has and say which
+one you added. Never build a venv, a lockfile, or a requirements file for one script.
+
 Cut, always:
 
 - tests as a suite, mocks, fixtures, CI
 - config files, env layers, a flag for every behaviour. One `CONFIG` block at the top or
   a single positional argument covers the one or two things that actually vary. Constants
-  the task defines — the endpoint, the column names, the threshold — stay hardcoded.
+  the task defines — the endpoint, the column names, the threshold — stay hardcoded. Keys
+  and tokens are the exception and never go in the block; read them from the environment,
+  and name the variable in the `assumes:` header line.
 - error handling that recovers. A `try/except` returning a default is the most dangerous
-  line in a script like this: it converts a visible crash into a plausible wrong answer.
-  Let it crash.
+  line in a script like this, because it turns a visible crash into a plausible wrong
+  answer. Let it crash. Exactly two catches are allowed, and nothing else: a check at the
+  top that exits with a message naming the missing or unreadable input, and a per-record
+  catch that counts the failures and reports the count at the end. Neither one may
+  substitute a value for the thing that failed.
 - packaging, README, docstrings, type ceremony, logging frameworks — `print` is the logger
 - generality: one input shape, one output shape
 - performance work, unless the thing will not finish otherwise
@@ -141,8 +121,9 @@ Never cut:
 
 - **the real input.** A toy sample proves nothing about the actual file. If the real data
   is not available yet, say so and build against a real sample of it, never an invented one.
-- **all of the data.** No silent truncation, no dropped tail, no skipping rows that fail
-  to parse — if rows get dropped, count them and report the count.
+- **all of the data.** No silent truncation, no dropped tail, no rows quietly skipped. If
+  records can fail to parse, use the per-record catch above, count them, and print the
+  count beside the output — a run that drops 40 of 1,200 rows has to say so.
 - **the actual hard part.** A merged cell, a timezone, pagination, an encoding: that *is*
   the task. Approximating it is not fast, it is not doing the job.
 - **the user's stated constraints.**
@@ -153,9 +134,9 @@ Never cut:
 - **a crash that names what to fix.** Still let it crash — but `no such input: data.csv`
   beats a bare `KeyError` on line 40. They run this without you there.
 
-Put it where the user will find it again — beside the data it works on, or wherever they
-keep scripts. Ask if that is not obvious. A script left in a temp directory is one they
-will rewrite from memory next month.
+Put it beside the data it works on, unless the user named somewhere else or the repo
+obviously keeps scripts in one place. Don't ask — step 1 already spent the one question. A
+script left in a temp directory is one they will rewrite from memory next month.
 
 Open the file with three comment lines, no more, because they come back to this cold:
 
@@ -167,21 +148,24 @@ Open the file with three comment lines, no more, because they come back to this 
 
 ## 4. Run it, check the output once
 
-Minimal test means one real run plus **one correctness check that is not the program's
-own word for it.** Take the cheapest that fits:
+Minimal test means one real run plus the check you named in step 1. That commitment is
+binding — you do not re-pick here, because the check that looks cheapest now is the one
+this output happens to pass.
+
+Whatever the check is, it has to come from outside the program. The script's own printout
+is not evidence about itself:
 
 - **spot-check** — open the source, find one record by hand, compare it against the output
-- **count** — rows in versus rows out, expected number of files, a total that must match
-  a known figure
+- **count** — compare against something the script did not produce, like `wc -l` on the
+  input, a figure the user gave you, or your own count of the source rows. Printing rows-in
+  and rows-out and seeing them match is the script agreeing with itself, which proves
+  nothing.
 - **invariant** — no nulls in the key column, dates inside the expected range, parts sum
-  to the whole
+  to a total you got independently
 - **look at it** — for a chart, page, or image, actually open it
 
-That check is non-negotiable, and it is not a test suite. It costs a minute. Skipping it
-risks the rebuild, which costs the entire build again plus whatever the user did with
-the bad output in between — so the check is the fast move, not the careful one. A
-plausible wrong answer is invisible downstream, and they will run this again on data you
-never see.
+That check is non-negotiable, and it is not a test suite. It costs a minute, and skipping
+it risks the whole rebuild.
 
 Write a real assert only when it makes the build *faster* — when the tricky bit needs
 iterating, and re-running the whole pipeline each time costs more than a five-line
@@ -203,7 +187,7 @@ In this order:
 2. **The output from your run**, or where it landed — proof it works, and usually the
    thing they wanted to see first.
 3. **What you checked and what it said**, one line: "spot-checked order #4417 against the
-   source, matches; 1,204 rows in, 1,204 out."
+   source, matches; `wc -l` says 1,204 input rows, output has 1,204."
 4. **What is baked in and what you skipped**, two to four bullets: the input shape it
    assumes, what it does not handle, any rows dropped, what a later run can safely vary.
 
