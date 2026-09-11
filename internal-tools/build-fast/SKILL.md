@@ -96,14 +96,27 @@ is finished and the shape of everything else depends on it.
 
 The deliverable picks the language, and an existing codebase picks it outright. Data in,
 file out is Python. Anything that has to run in a browser is one HTML file with the CSS and
-JS inline, opened with a double-click — no server, no npm, no bundler, no framework. If it
-needs a server because it touches a database or a key, one file of whatever the repo
-already uses.
+JS inline, opened with a double-click. If it needs a server because it touches a database
+or a key, one file of whatever the repo already uses.
 
-What stays cut in every language is the build step. No venv, no lockfile, no
-`requirements.txt`, no `package.json`, no `create-*` scaffold. Reach for the standard
-library first, and pull in a dependency only when it saves real work — a package already
-installed, or a single `<script src>` from a CDN. Say which one you added and why.
+Before reaching for any library, walk down this list and stop at the first rung that
+holds. Most fast builds never get past the third.
+
+1. **Skip it.** The script does not need the capability — a progress bar, a retry layer, a
+   cache. Leave it out and say so in one line.
+2. **Already here.** The repo has the helper, the client, the parser. Look before you
+   write, because re-implementing what sits two files over is the commonest waste.
+3. **Stdlib, or the platform.** `csv`, `json`, `sqlite3`, `argparse` on the Python side. In
+   a browser the platform is the bigger half — `<input type="date">` over a picker library,
+   `<details>` over an accordion, a plain `<table>` over a grid, CSS grid over a layout
+   engine, `fetch` over a request library.
+4. **Already installed.** A package in the environment, or one the repo already imports.
+5. **A new dependency, last.** Only when it saves real work that the rungs above cannot —
+   a parser for a genuinely hard format, a charting library. One `pip install` or one
+   `<script src>` from a CDN. Name what you added and why.
+
+The build step stays cut at every rung. No venv, no lockfile, no `requirements.txt`, no
+`package.json`, no bundler, no `create-*` scaffold.
 
 Cut, always:
 
