@@ -31,7 +31,9 @@ input shapes, config layers, extension points, anything for a future nobody has 
 for yet. What stays is whatever makes this script right every time it runs.
 
 Wrong skill if it has to ship as production code now, or if the user wants the refined
-version rather than a first pass. Say so and build it properly instead.
+version rather than a first pass. Say so and build it properly instead. Wrong skill too if
+it is a one-off you could just do by hand in ten minutes — do that and hand back the
+answer, because a script nobody re-runs is pure overhead.
 
 ## Where the time actually goes
 
@@ -64,6 +66,8 @@ orders.json, writes a CSV of every order over $500, prints the total."
   real input file, or which of two incompatible output formats. Otherwise take the
   obvious default, say so in one line, and build.
 - Everything outside that line is out, including things that would obviously be nice.
+- Name the check now, in the same line — how you will know the output is right (step 4).
+  Choosing it after you see the output means choosing the one the output already passes.
 
 ## 2. Solo or parallel
 
@@ -114,6 +118,10 @@ input yourself before believing any of it. And if you are blocked on a piece you
 write in three minutes, write it and drop the agent's version.
 
 ## 3. Build
+
+Build the part that could sink it first — the merged cell, the pagination, the auth, the
+encoding. If it turns out impossible you want that at minute two, not after the CSV writer
+is finished and the shape of everything else depends on it.
 
 Cut, always:
 
