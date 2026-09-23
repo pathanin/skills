@@ -69,6 +69,10 @@ Run both versions against the same inputs:
 3. A differential check: feed identical inputs to old and new and diff the outputs. Use
    real inputs where you can get them. For pure functions, add a quick loop over generated
    inputs.
+4. Cases for the requested change itself. New behavior has no old version to diff
+   against, so write expected outputs for it by hand, including its boundaries (exactly at
+   a limit, just over it, the input where it should do nothing), and run the chosen
+   version against them.
 
 Classify every difference as one of:
 
