@@ -1,7 +1,6 @@
 # Parallel builds
 
-Load this only after the gate in step 2 passes. If you are here without checking the gate,
-go back — most builds are solo.
+Read this only after all three conditions in step 2 hold.
 
 ## Four patterns worth spawning for
 
@@ -30,8 +29,9 @@ write is pure waste.
 
 ## Models
 
-Pass `model` explicitly on every spawn — inheriting is the silent failure. Default
-`sonnet`; `opus` for the piece with real uncertainty; `haiku` for mechanical work.
+Pass `model` on every spawn, so each piece runs on the model it needs instead of silently
+inheriting whatever the session uses. Default `sonnet`; `opus` for the piece with real
+uncertainty; `haiku` for mechanical work.
 
 ## No worktrees
 
