@@ -1,5 +1,5 @@
 ---
 type: tool_used
 tool: Bash
-input_match: 'unittest|pytest|test_text'
+input_match: 'unittest|pytest|python3? +test_text\.py'
 ---

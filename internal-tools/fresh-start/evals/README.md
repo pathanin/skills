@@ -29,9 +29,9 @@ The two traps in `tangled`:
      ```json
      { "sandbox": { "enableWeakerNestedSandbox": true } }
      ```
-3. **You're on the right branch.**
+3. **You have the latest main.**
    ```bash
-   git pull
+   git checkout main && git pull
    ```
 
 To confirm the sandbox before spending money on a full run:

@@ -53,8 +53,9 @@ implementation didn't exist. Don't copy its structure, its helper names, or its 
 flow. If you catch yourself reproducing its shape, stop and ask whether the contract
 actually needs that shape.
 
-Aim for the most direct code that satisfies the contract: fewer branches, fewer layers,
-and no indirection that the contract does not require. Keep the boundary from step 1.
+Include the change the user asked for. Aim for the most direct code that satisfies the
+contract plus that change: fewer branches, fewer layers, and no indirection that the
+contract does not require. Keep the boundary from step 1.
 
 Scale the effort to the unit. For one function, do this inline in a few minutes. For a
 module, write the new version alongside the old one (e.g. `foo_new.py`, or a second
@@ -71,12 +72,12 @@ Run both versions against the same inputs:
    inputs.
 4. Cases for the requested change itself. New behavior has no old version to diff
    against, so write expected outputs for it by hand, including its boundaries (exactly at
-   a limit, just over it, the input where it should do nothing), and run the chosen
-   version against them.
+   a limit, just over it, the input where it should do nothing), and run every version
+   you might keep against them.
 
 Classify every difference as one of:
 
-- **Old bug**: the new version is right. List it for the user; don't quietly ship the change.
+- **Old bug**: the new version is right. Report it in step 6; never change it silently.
 - **New bug**: fix the fresh version, or count it against it.
 - **Unexplained**: the contract can't tell you which version is right. Ask the user.
 
