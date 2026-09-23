@@ -1,17 +1,8 @@
 ---
 name: fresh-start
-description: >
-  Treat existing code as a spec, not a foundation: pull out the behavior it has to keep,
-  write an independent implementation from that behavior, compare the two, and keep
-  whichever is simpler and correct. Trigger on "start fresh", "rewrite this from scratch",
-  "clean-slate this", "should I just rewrite this", "this code is a mess, can you fix/change
-  it", "every fix breaks something else", or when the user is changing a function, module,
-  or small codebase they call awkward, brittle, tangled, or hard to modify. Also trigger when
-  two patches to the same code have already failed in this conversation, or when the user asks
-  to /fresh-start. Works at any size, from one function to a small codebase. Skip when the code
-  is clean and the change is local, for one-line or config fixes, for style-only complaints
-  ("rename this", "reformat this"), for large codebases where the user asked for an
-  incremental migration, and when the user has said to keep the existing structure.
+description: Manual-only clean-slate pass, invoked with /fresh-start. Treats existing code as a spec, not a foundation — extracts the behavior it must keep, writes an independent implementation, compares both on correctness, edge cases, and simplicity, and keeps whichever wins. Works at any size, from one function to a small codebase.
+argument-hint: "[function, file, or module to reconsider]"
+disable-model-invocation: true
 ---
 
 # Fresh Start
@@ -25,6 +16,9 @@ step 4. If it only ties, keep the old code, because a tie still costs review tim
 and risk.
 
 ## 1. Pick the unit
+
+Start from the target passed with the command. With no target, use the code the
+conversation is currently about. Ask only if neither points at specific code.
 
 Choose the smallest unit whose outside boundary you can hold fixed: one function, one
 class, one module, or one script. Callers, the public signature, file formats, and side

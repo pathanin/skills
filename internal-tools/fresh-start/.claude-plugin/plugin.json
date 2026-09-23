@@ -1,6 +1,6 @@
 {
   "name": "fresh-start",
-  "description": "Treat existing code as a spec, not a foundation — extract the behavior it must keep, write an independent implementation, compare both on correctness, edge cases, and simplicity, and keep whichever wins.",
+  "description": "Manual-only clean-slate pass, invoked with /fresh-start. Treats existing code as a spec, not a foundation — extracts the behavior it must keep, writes an independent implementation, compares both, and keeps whichever is simpler and correct.",
   "author": {
     "name": "oat"
   }
