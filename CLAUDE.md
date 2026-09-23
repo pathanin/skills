@@ -40,3 +40,5 @@ Supporting subdirectories, used inconsistently by design (each skill only has wh
 ## No build/lint/test commands
 
 There is nothing to compile, lint, or test — skills are prompts, not code. Verify changes by reading the `SKILL.md` end to end for internal consistency.
+
+Exception: a skill with an `evals/` directory has a `claude plugin eval` suite. Manual-only skills can't be reached by the no-plugin baseline, so run with `--ablation none` and compare against the previous version instead, e.g. `claude plugin eval . --runs 3 --ablation none --scaffold --trust-plugin --allow-tools Write Edit Bash` from the skill directory. Results land in `evals/results/`, which is gitignored.
