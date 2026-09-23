@@ -55,6 +55,14 @@
       "source": "./design/extract-dna"
     },
     {
+      "name": "fresh-start",
+      "description": "Treat existing code as a spec, not a foundation — extract the behavior it must keep, write an independent implementation, compare both on correctness, edge cases, and simplicity, and keep whichever wins.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./internal-tools/fresh-start"
+    },
+    {
       "name": "mobile-screen-design",
       "description": "Manual-only mobile screen design pass, invoked with /mobile-screen-design. Reviews or builds any mobile app screen in two passes: a defect pass (overlay contrast, media style-consistency, icon axes, mutable state in copy, decision order, action grouping, label/accessibility splits) then a flow pass (scroll context, sticky actions, common-case presets). Rules are graded by evidence strength against Apple HIG, Material, WCAG, and NN/g.",
       "author": {

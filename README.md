@@ -32,6 +32,7 @@ Claude Code skills for personal use, grouped by type. Each skill lives at `<cate
 |---|---|
 | [**build-fast**](internal-tools/build-fast/SKILL.md) | Manual-only `/build-fast`. Gets a working first-draft script into the user's hands as fast as possible — the one or two things asked, run on the real input, output that satisfies the need. Everything else serves that: scaffolding cut (tests, config layers, recovery, generality), correctness never; refinement named at handoff but deferred; worker agents only when parallel actually finishes sooner. |
 | [**bump-homebrew**](internal-tools/bump-homebrew/SKILL.md) | Automate releasing a new Homebrew formula version — tags the repo, builds a deterministic tarball, uploads a GitHub Release asset, and updates the formula. |
+| [**fresh-start**](internal-tools/fresh-start/SKILL.md) | Treat existing code as a spec, not a foundation — extract the behavior contract, write an independent implementation, diff both against the same inputs, and keep whichever is simpler and correct (keeping the old code when the rewrite only ties). |
 | [**worktree-swarm**](internal-tools/worktree-swarm/SKILL.md) | Split a multi-part fix/feature into worktree-isolated subagents run in parallel, then manually integrate and verify the results. |
 
 ## Installing

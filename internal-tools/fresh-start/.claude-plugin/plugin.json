@@ -1,0 +1,7 @@
+{
+  "name": "fresh-start",
+  "description": "Treat existing code as a spec, not a foundation — extract the behavior it must keep, write an independent implementation, compare both on correctness, edge cases, and simplicity, and keep whichever wins.",
+  "author": {
+    "name": "oat"
+  }
+}
