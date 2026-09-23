@@ -2,6 +2,7 @@
 name: build-fast
 description: Manual-only prototype build, invoked with /build-fast. Gets a working first-draft script into the user's hands as fast as possible — the one or two things asked, output that satisfies the need, refine later.
 argument-hint: "[what to build]"
+effort: medium
 disable-model-invocation: true
 ---
 
@@ -109,11 +110,15 @@ holds. Most fast builds never get past the third.
    engine, `fetch` over a request library.
 4. **Already installed.** A package in the environment, or one the repo already imports.
 5. **A new dependency, last.** Only when it saves real work that the rungs above cannot —
-   a parser for a genuinely hard format, a charting library. One `pip install` or one
-   `<script src>` from a CDN. Name what you added and why.
+   a parser for a genuinely hard format, a charting library. One `<script src>` from a
+   CDN, or one `pip install` into whatever Python environment is already active. If pip
+   refuses with `externally-managed-environment`, don't pass `--break-system-packages`,
+   because that writes into the system Python. Use `uv run --with <pkg>` if `uv` is on
+   PATH, otherwise one `.venv` beside the script, and put the exact command in the `run:`
+   header line. Name what you added and why.
 
-The build step stays cut at every rung. No venv, no lockfile, no `requirements.txt`, no
-`package.json`, no bundler, no `create-*` scaffold.
+The build step stays cut at every rung. No venv beyond that fallback, no lockfile, no
+`requirements.txt`, no `package.json`, no bundler, no `create-*` scaffold.
 
 Cut:
 
