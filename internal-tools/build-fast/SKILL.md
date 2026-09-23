@@ -29,7 +29,7 @@ because a script nobody re-runs is pure overhead.
 
 ## Where the time actually goes
 
-Not typing. These make a fast build slow before any code exists:
+Not typing. These are what make a fast build slow:
 
 - **Deciding.** Weighing two libraries that both work, naming things well, choosing a
   structure. Take the one you know best and move — at this size no choice is expensive
@@ -189,8 +189,8 @@ In this order:
 1. **The script and the exact command to run it.** That is the deliverable.
 2. **The output from your run**, or where it landed — proof it works, and usually the
    thing they wanted to see first.
-3. **What you checked and what it said**, one line: "spot-checked order #4417 against the
-   source, matches; `wc -l` says 1,204 input rows, output has 1,204."
+3. **What you checked and what it said**, one line: "spot-checked order #4417 against
+   orders.json: amount and date match its CSV row."
 4. **What is baked in and what you skipped**, two to four bullets: the input shape it
    assumes, what it does not handle, any rows dropped, what a later run can safely vary.
    Anything skipped and left unnamed gets trusted as done.
