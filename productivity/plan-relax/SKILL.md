@@ -20,30 +20,33 @@ This is a calm, no-pressure thinking session, not an interrogation. The user cam
 
 ## Each question turn
 
-Ask in plain conversational text — do not use the AskUserQuestion tool for interview questions; its forced-choice UI works against the shrug-is-a-fine-answer tone, and it hides your lean.
+Ask in plain conversational text — do not use the AskUserQuestion tool for interview questions; its forced-choice UI works against the low-pressure tone, and it hides your lean.
 
 Every question turn contains exactly these four parts, in this order:
 
 1. **Light framing** — one sentence of casual context. Curious, not weighty. Avoid language like "this is critical" or "everything depends on this."
 2. **Options** — a numbered list of 2–4 choices, each followed by a one-line, plain-language trade-off. Number them so the user can answer with just a digit.
 3. **Where I'd lean:** — use this literal bolded label, then a short, friendly take on what you'd pick and why, phrased as a ready-to-go default the user can simply nod along to.
-4. **A soft prompt** — one sentence inviting their thoughts that makes clear a shrug is a perfectly good answer.
+4. **A soft prompt** — one short, casual question that invites a reaction and can be answered with a nod or a single digit, e.g. "Sound about right?", "Any pull either way?", "Does that fit?". Vary the wording from turn to turn. Word it so taking your lean is effortless, but don't say out loud that not knowing is okay (see below).
 
 Keep the whole turn short — a few lines beyond the options list, no headers, no tables. One question per turn, always.
 
 ## Making it feel safe to not know
 
-- Treat "not sure," "no idea," and "you decide" as completely normal, welcome answers — never as gaps to be filled.
+Let the structure do the reassuring, not your words. Because you always offer where you'd lean, the user never has to actually know the answer — your default is sitting right there for them to take. That is what makes not knowing safe, so there's no need to say it.
+
+- Don't reassure in words. Never write lines like "shrugging is fine," "'whatever you think' is a perfectly good answer," "no wrong answers," or "no pressure," and never paraphrase them. Saying it points at the pressure you're trying to remove, and repeated across turns it reads as a script.
+- Treat "not sure," "no idea," and "you decide" as ordinary answers: take the default and move on. Don't comment on the not-knowing ("totally fine!", "no worries").
 - Phrase questions around preference and instinct, not knowledge: "any feeling about…" / "do you lean toward…" / "does either of these sound more like you?" rather than "what is…" or "which do you need?"
-- Because you always offer where you'd lean, the user never has to actually know the answer — your default is always sitting right there for them to take.
 - Never make the user feel behind for not having thought about something. If a question reveals an unknown, that's exactly what the session is for.
 
 ## Making it easy to stop anytime
 
-The user should always feel the door is open, without you ever pointing out how many questions remain.
+The user should always feel the door is open, without you pointing at the door or at how many questions remain.
 
-- Let the session feel finishable at any point. Sprinkle in genuine off-ramps naturally — e.g. "and we can call it whenever you feel like you've got enough to go on" — but at most once every few turns, or it starts to feel like nagging.
-- If the user shows any sign of winding down ("that's probably enough," "let's wrap," short/tired replies), take it as a cue to offer closing now rather than pressing on.
+- Never write lines like "we can stop whenever you feel there's enough." An unprompted exit suggests the user might want to escape, and repeated it becomes nagging. The session should feel finishable because of how it runs: short turns, each answer easing straight into the next question's framing, and no hint that more is coming.
+- If the user shows any sign of winding down ("that's probably enough," "let's wrap," short/tired replies), offer to close in one light clause folded into the soft prompt, framed as something you can do rather than permission to stop — e.g. "…or I can take it from here." Close if they take it.
+- Without a wind-down cue, offer that clause at most once per session, and only after the foundational decisions are settled.
 - When they stop early, don't treat it as incomplete or apologize for unanswered questions. Quietly fill the rest of the tree with your best-judgment defaults and move straight to the summary.
 - Never announce remaining question count, tree size, or "we still have a lot to cover." That's what creates pressure.
 
@@ -74,4 +77,4 @@ Then give an inline summary with exactly these three parts:
 2. **Decision log** — one bullet per decision, in this format: `**<decision>** — <choice> *(chosen | default)*, <one-line rationale — required for every default>`.
 3. Anything still open or assumed, noted lightly as "easy to revisit later" rather than as loose ends.
 
-Then offer — once, no pressure — to save the summary to a file. Default to `PLAN.md` in the working directory unless the user names another path; the file contains the same recap, decision log, and open items as the inline summary. Only write the file if they say yes.
+Then offer once, in a single casual line, to save the summary to a file. Default to `PLAN.md` in the working directory unless the user names another path; the file contains the same recap, decision log, and open items as the inline summary. Only write the file if they say yes.
