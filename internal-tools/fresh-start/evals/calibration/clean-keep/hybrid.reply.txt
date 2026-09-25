@@ -1,0 +1,14 @@
+All tests pass. Here's the summary:
+
+**Choice: hybrid.** The old core algorithm (NFKD normalize → ASCII-fold → collapse non-alphanumerics to hyphens → strip → lowercase) was already correct and minimal — a full rewrite of it wouldn't beat it on correctness or simplicity. I kept that logic (renamed the intermediate variable for clarity and made the ASCII decode explicit) and added the `max_length` truncation as a small extension.
+
+**Truncation semantics** (new behavior, no old version to diff against, so I picked these boundary rules and tested them):
+- `max_length=None` (default): unchanged, no truncation.
+- Slug already `<= max_length`: returned as-is.
+- Otherwise, slice to `max_length`, then look for the rightmost hyphen inside that slice and cut there — this naturally also removes any trailing hyphen left exactly at the boundary, so no separate `.rstrip("-")` step was needed.
+- No hyphen available in the window (single long word): falls back to a hard cut at `max_length`.
+- `max_length <= 0`: clamped to `0`, returning `""`.
+
+**Verification:** ran the full test suite (4 original + 7 new tests covering: under-limit, cut-at-hyphen, exact-boundary, no-hyphen-available, zero, negative, and default-None) — all pass. Couldn't run `git log` to check prior history (sandbox blocked git's xcrun cache write), but per the provided git status there's only a single commit for this file, so there was no hidden history to mine.
+
+**Size change:** 10 → 15 lines, same number of branches in the core slug logic, one new early-return branch for the truncation feature.

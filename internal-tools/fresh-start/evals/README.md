@@ -85,10 +85,17 @@ To run one case only, add `--case <name>`, e.g. `--case stored-format`.
 
 Several graders changed after the last run and haven't been checked in the harness yet (see "Uncalibrated graders" below). Before a full run:
 
-1. **Calibrate the changed LLM graders.** Make a throwaway eval dir, e.g. `evals-calib/`, with one case per known version of the target file. Its `fixture.sh` writes that version, and its prompt asks for a fixed reply. Run it with `--eval-dir evals-calib --runs 2`. Each grader should pass the good versions and fail the bad ones unanimously. Delete the directory afterwards.
-   - Use as known versions code whose behavior you've confirmed by running it: a hand-written reference, plus real agent outputs rebuilt from `out/trace.jsonl`.
-   - `--keep-temp` seals the working directory, but `out/trace.jsonl` has every Write, Edit and Bash call. Agents often write code through a Bash heredoc into `$TMPDIR` and then `cp` it.
-   - Sonnet refuses to recite an unverified claim, even when told it's a calibration. A reply check therefore needs a few runs before you get one reply that actually says it.
+1. **Calibrate the graders.** `calibration/` holds known versions of each target file, and real or hand-written replies. Every version's correct verdicts were confirmed by running it, and they are listed in `calibration/calibrate.py`:
+   - the three Opus rewrites that judges wrongly failed
+   - the Sonnet outputs that were really wrong
+   - hand-written good and naive versions
+   ```bash
+   python3 evals/calibration/calibrate.py build     # writes evals-calib/ (gitignored)
+   claude plugin eval . --eval-dir evals-calib --runs 2 --ablation none --scaffold \
+     --trust-plugin --judge-model sonnet -j 3 --no-publish --json evals-calib/result.json
+   python3 evals/calibration/calibrate.py check evals-calib/result.json
+   ```
+   `check` prints every wrong verdict and exits 1 if there are any. Reply checks read the saved reply from a file instead of the agent's message, because Sonnet refuses to recite a claim it hasn't verified. To add a version, confirm its verdicts by running the code, save it next to the others, and add a row to `EXPECTED`. When a real run's red turns out to be a judge error, save that output as a new version. `--keep-temp` seals the working directory, but `out/trace.jsonl` has every Write, Edit and Bash call. Agents often write code through a Bash heredoc into `$TMPDIR` and then `cp` it.
 2. **Measure the `SKILL.md` fix.** `SKILL.md` changed in `a42fe06`, separately from the graders. Run the current suite twice, once with the skill as it was before that commit and once at HEAD. Both runs use the same graders, so the difference is the skill's effect:
    ```bash
    git show a42fe06~1:internal-tools/fresh-start/SKILL.md > SKILL.md   # before

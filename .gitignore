@@ -21,3 +21,4 @@ scratchpad/
 
 # plugin eval output
 **/evals/results/
+**/evals-calib/

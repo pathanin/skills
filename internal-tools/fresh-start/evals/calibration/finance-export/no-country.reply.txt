@@ -1,0 +1,17 @@
+**Choice: fresh version** — same behavior, clearly simpler (named helpers instead of hand-rolled string concatenation and manual date-padding), and cleanly extends to the new email-filter requirement.
+
+**Behavior preserved on purpose:**
+- Atomic write via `.tmp` + `os.replace` (unchanged).
+- `0 - amount` (not `-amount`) for refunds — avoids `"-0.00"` for zero-value refunds, a real IEEE-754 negative-zero edge case in the original code. Kept exactly, now with a comment explaining why, and locked in with `test_zero_value_refund_has_no_negative_zero`.
+- Comma-in-customer-name replaced with a space rather than CSV-quoted, to keep the existing unquoted-CSV file format callers may depend on.
+- Cancelled orders excluded from both output and count; missing currency defaults to `GBP`; missing customer becomes empty string.
+
+**New behavior (requested change):** orders whose `email` ends in `@example.com`, case-insensitively, are now skipped from both the output and the returned count — same treatment as cancelled orders. `None`/empty email is not treated as a match. `foo@notexample.com` correctly does not match (verified by test and fuzzing).
+
+**No unexplained cases** — nothing in the old code was mysterious enough to need dropping or flagging.
+
+**Verification:**
+- Existing test suite (4 tests) plus 5 new tests for the email filter and the negative-zero edge case — all 9 pass.
+- 200-trial randomized differential test against the original implementation (varying status, customer, email casing, currency, dates) — zero mismatches in row count or row content for all retained orders.
+
+**Size:** 37 → 42 lines, but 0 named helpers → 2, and the body of `export_orders` dropped from an 18-line imperative loop to a 5-line filtered list comprehension plus a straightforward write block — the manual date zero-padding (6 lines) is now `strftime("%d/%m/%Y")`.

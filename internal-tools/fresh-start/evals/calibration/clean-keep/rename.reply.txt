@@ -1,0 +1,9 @@
+All 9 tests pass.
+
+**Result: light rewrite, kept in place** (no separate scaffold file needed — the unit was 3 lines, too small to warrant parallel implementations).
+
+- The old algorithm was already correct and minimal; the "clunkiness" was mostly that the variable `text` got reused for two different meanings (ascii-decoded string, then regex-substituted string) and the strip/lowercase were split across a return statement. Renamed to `ascii_text` → `slug` and chained `.strip("-").lower()` for clarity — no behavior change, no old bugs found.
+- Added `max_length=None`: when set, truncates to that length, then backs up to the last hyphen within the truncated window (falling back to a hard mid-word cut if no hyphen exists). Negative values are clamped to 0 rather than producing Python's negative-slice surprise (e.g. `slugify("x", -1)` would otherwise silently drop the last character instead of returning `""`).
+- Verified against the existing 4-test suite (unchanged, all pass) plus 5 new tests covering: cutting at a hyphen, falling back mid-word, `max_length` longer than the slug (no-op), `max_length=0`, and `max_length=None` (unlimited).
+
+No callers elsewhere in the repo, so the signature change (`title` → `title, max_length=None`) is safe.

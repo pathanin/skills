@@ -1,0 +1,11 @@
+**Choice: fresh version.** Same output bytes for every existing order, in about half the lines.
+
+**New:**
+- Test orders (email ending `@example.com`, any case) are skipped and not counted.
+- A `country_code` column goes last. `vendor/finance/importer.py` and `docs/finance-export.md` require that exact name, the code in capitals, and `ZZ` when the country is unknown.
+
+**Kept on purpose:**
+- Plain `\n` line endings, no quoting, and commas in names replaced with spaces. Finance's importer splits on commas and newlines and rejects quotes and `\r`.
+- Writing to `<name>.tmp` and renaming it into place, per the incident in `docs/runbook.md`.
+
+**Verified:** updated the header and row tests for the new column, all pass. I ran the real dump through `vendor/finance/importer.parse`, which accepts it.

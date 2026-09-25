@@ -1,0 +1,7 @@
+All 9 tests pass.
+
+**Choice: old version.** The fresh draft was the same three steps (NFKD fold, collapse non-alphanumerics to hyphens, lowercase) with no fewer branches, so it only tied, and a tie keeps the old code.
+
+**Change:** added `max_length=None`. The existing lines are untouched except that the final `return text.lower()` became `text = text.lower()` so the truncation can run before returning. When the slug is longer than `max_length`, it cuts at the last hyphen at or before the limit, or mid-word if there is none.
+
+**Verified:** the 4 existing tests, plus expected outputs I worked out from the request before running: `("hello world foo", 11)` → `hello-world`, `("hello world foo", 8)` → `hello`, `("helloworld", 5)` → `hello`, and `max_length=None` changes nothing.
