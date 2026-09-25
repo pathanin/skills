@@ -31,6 +31,14 @@
       "source": "./design/chart-viz"
     },
     {
+      "name": "code-wallpaper",
+      "description": "Manual-only code-drawn wallpaper render, invoked with /code-wallpaper. Paints a landscape entirely in code, as oil on linen or as layered paper cut, and exports a PNG at any resolution — 4K, ultrawide, or phone.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/code-wallpaper"
+    },
+    {
       "name": "dashboard-design",
       "description": "Apply expert dashboard design principles when building, auditing, or critiquing dashboards and data tables — enforces data-driven form, progressive disclosure, and invisible UI.",
       "author": {

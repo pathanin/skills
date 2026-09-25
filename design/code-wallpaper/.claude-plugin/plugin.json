@@ -1,0 +1,7 @@
+{
+  "name": "code-wallpaper",
+  "description": "Manual-only code-drawn wallpaper render, invoked with /code-wallpaper. Paints a landscape entirely in code, as oil on linen or as layered paper cut, and exports a PNG at any resolution — 4K, ultrawide, or phone.",
+  "author": {
+    "name": "oat"
+  }
+}
