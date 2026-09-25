@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Draw a landscape entirely in code and export it as a PNG at the size the user asks for, in one of two styles:
 
-- **Oil** (default): a stroke engine paints over the scene with thousands of directional, multi-bristle brush strokes on a woven linen ground.
+- **Oil** (default): a stroke engine paints over the scene with thousands of directional, multi-bristle brush strokes on a woven linen ground, then lights the paint's relief (bristle grooves, impasto ridges, gloss) as if photographing a real canvas.
 - **Paper cut**: every region becomes a sheet of cut paper with a rough edge and a soft drop shadow, stacked back to front.
 
 Both styles use the same scene, a list of flat-coloured polygons, rendered in headless Chromium through Playwright.
@@ -28,7 +28,8 @@ Take these from the text after `/code-wallpaper`. Ask only when the scene is mis
 - The logical canvas height is always H = 400. The logical width is W = round(400 x width / height), so W is 711 for 16:9, 948 for 21:9 and 225 for 9:16.
 - **Compose the scene for the actual W.** A scene built for 711 does not reflow into portrait. For a new aspect ratio, place every element again (horizon, focal point, trees) relative to W.
 - Stroke sizes are in logical units, so the texture looks the same at every resolution. Stroke counts scale with the area W x H.
-- The image depends only on the scene, `seed`, `tseed` and W, not on the pixel size. Any resolution with the same W paints the same image, so a small render is an exact preview of the final one.
+- The composition and colours depend only on the scene, `seed`, `tseed` and W, not on the pixel size. Any resolution with the same W places the same strokes in the same colours, so a small render is a faithful preview of the final one.
+- Fine oil texture does depend on the pixel size: canvas threads and bristle grooves never get finer than 3 px, so a preview shows them coarser than the final render does. Judge brushwork, relief and weave only from a 1:1 crop of the final resolution.
 
 ## Seeds
 
@@ -70,17 +71,17 @@ node src/render.js <scene_index> <width> <height> <out.png|out.jpg> [seed] [crop
 
 ## What the engine does
 
-**Oil** (the default) paints in these passes:
+**Oil** (the default) paints every stroke pixel by pixel into a colour buffer and a paint-height buffer, in these passes:
 
-1. A linen ground with a woven grid.
-2. A broad underpainting pass.
+1. A linen ground: an irregular plain weave (uneven threads, slubs, wavy paths), stained with a thin wash of the scene's colour so gaps between strokes read as canvas, not specks.
+2. A broad underpainting pass: thin, opaque lay-in.
 3. A mid pass.
 4. A fine detail pass.
 5. Edge strokes placed on region borders.
 6. Extra strokes inside small regions such as windows and stars.
-7. A multiply grain layer at full resolution.
+7. Lighting: raking light from the upper left over the height buffer. It gives diffuse shading of the relief, darker cavities in grooves, and specular highlights only where the paint is thick. The weave shows through thin paint, and a faint falloff runs across the whole canvas as in a photograph.
 
-The per-bristle lines, the highlight bristle and the shadow bristle are what make the strokes read as oil paint.
+Each stroke is a row of bristles, each with its own paint load, tone, share of a second nearby pigment, and lift-off point. Together they give streaky, imperfect mixing and ragged tails, some trailing past the end. Paint runs out along the stroke, so starved bristles skip and break up, catching the weave's high points first (dry brush). Toward the tail the brush drags the wet paint beneath it along. Lights are laid on thicker than darks, paint piles up along the stroke edges, and a blob marks where the brush touched down. A new stroke mostly flattens the texture under it. All of this is drawn from the texture seed, so `--tseed` changes the brushwork and never the composition.
 
 **Paper cut** (`style:'papercut'`) lays each region down as one sheet of cut paper, back to front. The first region fills the whole canvas. Every later piece gets:
 
@@ -195,11 +196,11 @@ Recompose for W instead of stretching: a 4:3 photo becomes a 16:9 wallpaper by w
 
 1. Settle the style, the scene, the resolution and the number of variations, then compute W. Set up `src/` and `output/` (see **Project layout and setup**).
 2. Write `src/scene.js`, one entry per wallpaper.
-3. Render a preview of each wallpaper at (s x W) by (s x 400) px, with s = 2 for landscape and s = 3 for portrait (for example 1422 x 800 for W = 711), into your scratchpad or temp directory. This keeps the same W, so the preview shows exactly the image the final render will produce. A paper-cut render takes under a second up to 4K and about 2 seconds at 8K. An oil render takes about 6 seconds up to 4K.
+3. Render a preview of each wallpaper at (s x W) by (s x 400) px, with s = 2 for landscape and s = 3 for portrait (for example 1422 x 800 for W = 711), into your scratchpad or temp directory. This keeps the same W, so the preview shows the composition and colours of the final render exactly; oil texture looks coarser in it (see **Coordinate system**). A paper-cut render takes under a second up to 4K and about 2 seconds at 8K. An oil render takes about 6 seconds at 4K and about 20 seconds at 8K.
 4. **Review each preview visually** with the Read tool. Fix what you see, re-render only the changed scenes, and review again. Repeat until clean.
    - When the scene has pieces under about 3 units wide, render a 1:1 crop during this loop, not only at the end. Thin pieces look fine in the preview even when their cut edges pinch at full size. For example, `node src/render.js 0 3840 2160 <scratch>/full.png '' 150,170,240,135`, then Read the crop path it prints.
    - These are the problems found in earlier runs:
-     - **(Oil) Linen showing through as brown flecks**: coverage is too thin. Raise the underpainting count (2400 x A) and the mid count (5200 x A). Do not lower them.
+     - **(Oil) Linen showing through**: weave inside thin paint and small stained-canvas gaps between strokes are intended; they are part of the real-paint look. Only contrasting flecks spread across a whole region at wallpaper scale are a problem: coverage is too thin there. Raise the underpainting count (2400 x A) and the mid count (5200 x A). Do not lower them.
      - **Glow halos around small objects** (for example, glows behind houses looked like snowballs): drop the glow or make it much weaker. Only large light sources should get `glowCF` halos.
      - **Stripes that look like stairs**: evenly spaced, full-width ledges or strata look artificial. Use 3 or 4 short strata at irregular spacing, in a colour close to the base.
      - **Unreadable blobs**, such as a dark polygon on a cliff face, debris-like slivers on water, or a tiny mast that reads as a cross: remove them or make their meaning clear.
@@ -232,6 +233,6 @@ Recompose for W instead of stretching: a 4:3 photo becomes a 16:9 wallpaper by w
 
 ## Notes
 
-- An oil PNG is about 19 MB at 4K and 70 MB at 8K; a paper-cut PNG is about 10 to 13 MB at 4K. If the user wants something smaller, give the output a `.jpg` name and `render.js` writes a JPEG at quality 92.
+- An oil PNG is about 22 MB at 4K and 75 MB at 8K (an 8K oil JPEG is about 10 MB); a paper-cut PNG is about 10 to 13 MB at 4K. If the user wants something smaller, give the output a `.jpg` name and `render.js` writes a JPEG at quality 92.
 - To reproduce an image exactly, keep the same scene, `seed`, `tseed` and W, and the same browser (the Chrome fallback can differ slightly from bundled Chromium). Seeds do not reproduce images made before the texture seed existed, because the texture used to continue the build's random sequence.
 - `scripts/test.js` checks the shipped assets end to end (`NODE_PATH=<dir with playwright> node scripts/test.js`). Run it after changing anything in `assets/`.
