@@ -12,3 +12,17 @@ function pine(out,x,base,h,w,cols,snow){ out.push({pts:rect(x-3.5,base-h*.14,x+3
 function roundTree(out,C,x,base,r,cols){ out.push({pts:rect(x-2.5,base-r*1.2,x+2.5,base),col:'#4a3526',dir:'vert'});
   const cy=base-r*1.6; out.push({pts:blob(x,cy,r,C.rnd(6),.95,.9).map(([a,b])=>[a,Math.min(b,cy+r*.75)]),col:cols[0],dir:'swirl',cx:x,cy});
   out.push({pts:blob(x-r*.25,cy-r*.3,r*.5,C.rnd(6),.95,.8),col:cols[1],dir:'swirl',cx:x-r*.25,cy:cy-r*.3}); }
+// pointed horizontal sliver: glints, reflection rows, wave caps
+const lens=(cx,cy,w,h)=>[[cx-w/2,cy],[cx-w/4,cy-h/2],[cx+w/4,cy-h/2],[cx+w/2,cy],[cx+w/4,cy+h/2],[cx-w/4,cy+h/2]];
+// ribbon along a polyline [[x,y,width],...]: cables, rivers, rigging
+const strip=P=>{ const L=[],R=[]; P.forEach((p,i)=>{ const a=P[Math.max(0,i-1)], b=P[Math.min(P.length-1,i+1)], d=Math.hypot(b[0]-a[0],b[1]-a[1])||1, nx=-(b[1]-a[1])/d*p[2]/2, ny=(b[0]-a[0])/d*p[2]/2;
+  L.push([p[0]+nx,p[1]+ny]); R.unshift([p[0]-nx,p[1]-ny]); }); return L.concat(R); };
+// flat-bottomed cloud, w wide and h tall above cy
+const cloud=(cx,cy,w,h,ph=0)=>Array.from({length:25},(_,i)=>{ const u=i/12-1; return [cx+u*w/2,cy-h*Math.sqrt(1-u*u)*(1+.25*Math.sin(u*7+ph))]; });
+// smooth bump for terrain profiles: 1 at c, falling off over w
+const hump=(x,c,w)=>Math.exp(-(((x-c)/w)**2));
+// four-point sparkle star
+const star4=(x,y,r,q=r*.28)=>Array.from({length:8},(_,k)=>{ const a=k/8*TAU-Math.PI/2, rr=k%2?q:r; return [x+Math.cos(a)*rr,y+Math.sin(a)*rr]; });
+// receding structure (bridge, road, fence, pier): t=0 at screen x0 at scale 1, t=1 at x1 where depth is Z times greater.
+// x(t) places evenly spaced world points, t(X) inverts it, s(X) is the size scale at screen X, z(t) the depth
+const persp=(x0,x1,Z)=>{ const z=t=>1+t*(Z-1), x=t=>x0+(x1-x0)*t*Z/z(t), t=X=>{ const u=(X-x0)/(x1-x0); return u/(Z-u*(Z-1)); }; return {z,x,t,s:X=>1/z(t(X))}; };

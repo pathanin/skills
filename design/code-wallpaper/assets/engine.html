@@ -1,5 +1,6 @@
 <!doctype html><html><body style="margin:0;background:#000">
 <canvas id="cv"></canvas>
+<script src="helpers.js"></script>
 <script src="scene.js"></script>
 <script>
 'use strict';
@@ -18,12 +19,16 @@ const mixc=(a,b,t)=>a.map((v,i)=>lerp(v,b[i],t));
 const gradAt=(stops,y)=>{ if(y<=stops[0][0]) return hex(stops[0][1]); for(let i=1;i<stops.length;i++) if(y<=stops[i][0]) return mixc(hex(stops[i-1][1]),hex(stops[i][1]),(y-stops[i-1][0])/(stops[i][0]-stops[i-1][0])); return hex(stops[stops.length-1][1]); };
 
 const REG=SC.build({W,H,rnd,hex,mixc,gradAt,lerp,clamp});
+// texture (strokes, cut edges, grain) gets its own seed, so a new tseed keeps the layout the build just drew
+seed=+Q.get('tseed')||SC.tseed||(SC.seed^0x5bd1e995)>>>0;
 REG.forEach(r=>{ const xs=r.pts.map(p=>p[0]), ys=r.pts.map(p=>p[1]); r.box=[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
-  r.area=(r.box[2]-r.box[0])*(r.box[3]-r.box[1]); if(r.col) r.rgb=hex(r.col); });
+  r.area=(r.box[2]-r.box[0])*(r.box[3]-r.box[1]); if(r.col) r.rgb=Array.isArray(r.col)?r.col:hex(r.col);
+  let A=0, P=0; r.pts.forEach(([x0,y0],i)=>{ const [x1,y1]=r.pts[(i+1)%r.pts.length]; A+=x0*y1-x1*y0; P+=Math.hypot(x1-x0,y1-y0); });
+  r.thick=Math.abs(A)/(P||1); }); // 2*area/perimeter: about the width of a strip, the radius of a disc
 function pip(pts,x,y){ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const [xi,yi]=pts[i],[xj,yj]=pts[j]; if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi) c=!c; } return c; }
 const inR=(r,x,y)=>{ const b=REG[r].box; return x>=b[0]&&x<=b[2]&&y>=b[1]&&y<=b[3]&&pip(REG[r].pts,x,y); };
 const GS=.5, GX=W/GS|0, GY=H/GS|0, ID=new Uint16Array(GX*GY);
-for(let gy=0;gy<GY;gy++) for(let gx=0;gx<GX;gx++){ const x=(gx+.5)*GS, y=(gy+.5)*GS; let r=REG.length-1; while(r>0&&!inR(r,x,y)) r--; ID[gy*GX+gx]=r; }
+if(SC.style!=='papercut') for(let gy=0;gy<GY;gy++) for(let gx=0;gx<GX;gx++){ const x=(gx+.5)*GS, y=(gy+.5)*GS; let r=REG.length-1; while(r>0&&!inR(r,x,y)) r--; ID[gy*GX+gx]=r; }
 const idAt=(x,y)=>ID[clamp(Math.floor(y/GS),0,GY-1)*GX+clamp(Math.floor(x/GS),0,GX-1)];
 const colorAt=(x,y)=>{ const r=REG[idAt(x,y)]; return r.cf?r.cf(x,y):r.grad?gradAt(r.grad,y):r.rgb; };
 
@@ -59,8 +64,9 @@ if(SC.style==='papercut'){
   for(let i=0;i<td.data.length;i+=4){ const v=R()*255; td.data[i]=td.data[i+1]=td.data[i+2]=v; td.data[i+3]=255; } tc.putImageData(td,0,0);
   const grain=b.createPattern(t,'repeat');
   const trace=p=>{ b.beginPath(); b.moveTo(p[0][0],p[0][1]); for(let i=1;i<p.length;i++) b.lineTo(p[i][0],p[i][1]); b.closePath(); };
-  // hand-cut edge: a jittered point every 3 units; points on the frame are pushed past it instead, so no cut edge shows there
-  const cut=p=>{ const o=[], jit=(v,M)=>v<=0?-3:v>=M?M+3:v+rnd(-.5,.5);
+  // hand-cut edge: a jittered point every 3 units; points on the frame are pushed past it instead, so no cut edge shows there.
+  // jitter is +-.5 units, scaled down for thin pieces so strips and dots keep their width (override per region with jit)
+  const cut=(p,a)=>{ const o=[], jit=(v,M)=>v<=0?-3:v>=M?M+3:v+rnd(-a,a);
     for(let i=0;i<p.length;i++){ const [x0,y0]=p[i], [x1,y1]=p[(i+1)%p.length], m=Math.max(1,Math.ceil(Math.hypot(x1-x0,y1-y0)/3));
       for(let j=0;j<m;j++) o.push([jit(lerp(x0,x1,j/m),W),jit(lerp(y0,y1,j/m),H)]); } return o; };
   const fillOf=r=>{ if(r.grad){ const s=r.grad, y0=s[0][0], y1=s[s.length-1][0], gr=b.createLinearGradient(0,y0,0,Math.max(y1,y0+1)); s.forEach(([y,c])=>gr.addColorStop(clamp((y-y0)/(y1-y0||1)),c)); return gr; }
@@ -71,7 +77,7 @@ if(SC.style==='papercut'){
     for(let y=0;y<ch;y++) for(let x=0;x<cw;x++){ const v=r.cf(x0+x+.5,y0+y+.5), q=(y*cw+x)*4; id.data[q]=v[0]; id.data[q+1]=v[1]; id.data[q+2]=v[2]; id.data[q+3]=255; }
     cc.putImageData(id,0,0); const pt=b.createPattern(c,'no-repeat'); pt.setTransform(new DOMMatrix().translate(x0,y0)); return pt; };
   b.fillStyle=SC.ground||'#2a2530'; b.fillRect(0,0,W,H);
-  REG.forEach((r,i)=>{ const p=i?cut(r.pts):[[0,0],[W,0],[W,H],[0,H]];
+  REG.forEach((r,i)=>{ const p=i?cut(r.pts,r.jit??Math.min(.5,.12*r.thick)):[[0,0],[W,0],[W,H],[0,H]];
     b.save(); if(i){ b.shadowColor='rgba(20,10,30,.38)'; b.shadowBlur=3*k; b.shadowOffsetX=1.2*k; b.shadowOffsetY=2.4*k; }
     b.fillStyle=fillOf(r); trace(p); b.fill(); b.restore();
     b.save(); b.globalCompositeOperation='multiply'; b.globalAlpha=.13; b.fillStyle=grain; trace(p); b.fill(); b.restore();
