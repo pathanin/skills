@@ -15,17 +15,18 @@ Draw a landscape as an oil painting, entirely in code, and export it as a PNG at
 - **Resolution**: default 3840 x 2160 (4K UHD). Common alternatives: 2560 x 1440, 5120 x 2160 (ultrawide), 1170 x 2532 or 1080 x 1920 (phone), 6016 x 3384 (6K). Stay at or below about 8000 px per side, because Chromium's canvas limit is roughly 16384 px per side and 268M px in total.
 - **How many variations**: each one is a new scene or a new seed.
 
-If any of these is missing and the user is present, ask once. Otherwise use the defaults and state them.
+Take these from the text after `/oil-painting-wallpaper`. If any is missing, ask for all of the missing ones in a single message. If the user says to go ahead without answering, use the defaults and state them.
 
 ## Coordinate system
 
 - The logical canvas height is always H = 400. The logical width is W = round(400 x width / height), so W is 711 for 16:9, 948 for 21:9 and 225 for 9:16.
 - **Compose the scene for the actual W.** A scene built for 711 does not reflow into portrait. For a new aspect ratio, place every element again (horizon, focal point, trees) relative to W.
 - Stroke sizes are in logical units, so the texture looks the same at every resolution. Stroke counts scale with the area W x H.
+- Every stroke depends only on the scene, the seed and W, not on the pixel size. Any resolution with the same W paints the same image, so a small render is an exact preview of the final one.
 
 ## Files (create in a working folder)
 
-### engine.html (use verbatim)
+### engine.html (use verbatim, except the stroke counts the polishing loop tells you to raise)
 
 ```html
 <!doctype html><html><body style="margin:0;background:#000">
@@ -33,6 +34,7 @@ If any of these is missing and the user is present, ask once. Otherwise use the 
 <script src="scene.js"></script>
 <script>
 'use strict';
+{ // block scope, so scene.js can use any top-level names without clashing with the engine's
 const Q=new URLSearchParams(location.search);
 const PX=+Q.get('w')||3840, PY=+Q.get('h')||2160, H=400, W=Math.round(H*PX/PY), k=PX/W;
 const clamp=(v,a=0,b=1)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
@@ -40,7 +42,7 @@ const SC=SCENES[+Q.get('s')||0];
 if(Q.get('seed')) SC.seed=+Q.get('seed');
 let seed=SC.seed; const R=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; };
 const rnd=(a=1,b)=>b===undefined?R()*a:a+R()*(b-a);
-const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const hex=h=>{ if(h.length===4) h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); };
 const rgba=(c,a=1)=>`rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a})`;
 const shade=(c,f)=>c.map(v=>clamp(v*(1+f),0,255));
 const mixc=(a,b,t)=>a.map((v,i)=>lerp(v,b[i],t));
@@ -90,13 +92,14 @@ let n=0; const add=s=>{ paintStroke(b,s); n++; };
 for(let i=0,N=Math.round(2400*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(14,24),rnd(8,11)));
 for(let i=0,N=Math.round(5200*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(7,12),rnd(3.5,5.5)));
 for(let i=0,N=Math.round(3500*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(4,8),rnd(1.8,3)));
-let e=0; const N3=Math.round(1050*A*1.4); while(e<N3){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r!==idAt(x+3,y)||r!==idAt(x,y+3)||r!==idAt(x-3,y)||r!==idAt(x,y-3)){ add(oilStroke(x,y,rnd(4,8),rnd(1.8,3))); e++; } }
+let e=0, tries=0; const N3=Math.round(1050*A*1.4); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r!==idAt(x+3,y)||r!==idAt(x,y+3)||r!==idAt(x-3,y)||r!==idAt(x,y-3)){ add(oilStroke(x,y,rnd(4,8),rnd(1.8,3))); e++; } }
 REG.forEach((r,ri)=>{ if(r.area<900){ const m=r.area<30?12:40; for(let q=0;q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)===ri) add(oilStroke(x,y,rnd(2,6),r.area<30?rnd(.8,1.4):rnd(1.2,2))); } } });
 b.setTransform(1,0,0,1,0,0);
 const g=document.createElement('canvas'); g.width=g.height=256; const gc=g.getContext('2d'), d=gc.createImageData(256,256);
 for(let i=0;i<d.data.length;i+=4){ const v=R()*255; d.data[i]=d.data[i+1]=d.data[i+2]=v; d.data[i+3]=255; } gc.putImageData(d,0,0);
 b.save(); b.globalCompositeOperation='multiply'; b.globalAlpha=.07; b.fillStyle=b.createPattern(g,'repeat'); b.fillRect(0,0,PX,PY); b.restore();
 window.DONE=n;
+}
 </script></body></html>
 ```
 
@@ -115,18 +118,25 @@ The per-bristle lines, the highlight bristle and the shadow bristle are what mak
 ### render.js (use verbatim)
 
 ```js
-// usage: node render.js <scene_index> <width> <height> <out.png> [seed]
-const {chromium}=require('playwright'), fs=require('fs'), path=require('path');
-const [i='0',w='3840',h='2160',out='wallpaper.png',seed='']=process.argv.slice(2);
+// usage: node render.js <scene_index> <width> <height> <out.png|out.jpg> [seed] [crop]
+// a .jpg name writes JPEG at quality .92; crop "x,y,w,h" (logical units) also writes <out>-crop.png at full resolution
+const {chromium}=require('playwright'), fs=require('fs'), path=require('path'), {pathToFileURL}=require('url');
+const [i='0',w='3840',h='2160',out='wallpaper.png',seed='',crop='']=process.argv.slice(2);
+const save=(f,u)=>fs.writeFileSync(f,Buffer.from(u.split(',')[1],'base64'));
 (async()=>{ const br=await chromium.launch(); const p=await br.newPage();
   let err=null; p.on('pageerror',e=>{ err=e.message; console.error('PAGE ERROR:',e.message); });
-  await p.goto(`file://${path.join(__dirname,'engine.html')}?s=${i}&w=${w}&h=${h}${seed?'&seed='+seed:''}`);
-  const t0=Date.now(); while(!(await p.evaluate('window.DONE'))){ if(err) process.exit(1); if(Date.now()-t0>600000) throw 'timeout'; await p.waitForTimeout(500); }
-  const url=await p.evaluate(()=>document.getElementById('cv').toDataURL('image/png'));
-  fs.writeFileSync(out,Buffer.from(url.split(',')[1],'base64')); console.log('wrote',out,w+'x'+h,'strokes',await p.evaluate('window.DONE')); await br.close(); })();
+  // the engine paints synchronously during page load, so the navigation timeout must cover the whole render
+  await p.goto(`${pathToFileURL(path.join(__dirname,'engine.html'))}?s=${i}&w=${w}&h=${h}${seed?'&seed='+seed:''}`,{timeout:600000});
+  const n=await p.evaluate('window.DONE'); if(err||!n){ await br.close(); process.exit(1); }
+  save(out,await p.evaluate(j=>document.getElementById('cv').toDataURL(j?'image/jpeg':'image/png',.92),/\.jpe?g$/i.test(out)));
+  if(crop) save(out.replace(/\.\w+$/,'')+'-crop.png',await p.evaluate(c=>{ const cv=document.getElementById('cv'), k=cv.height/400, [cx,cy,cw,ch]=c.split(',').map(v=>Math.round(+v*k));
+    const o=document.createElement('canvas'); o.width=cw; o.height=ch; o.getContext('2d').drawImage(cv,cx,cy,cw,ch,0,0,cw,ch); return o.toDataURL('image/png'); },crop));
+  console.log('wrote',out,w+'x'+h,'strokes',n); await br.close(); })();
 ```
 
-Run it with `NODE_PATH=$(npm root -g) node render.js 0 3840 2160 out.png`. Playwright and Chromium are preinstalled in the cloud sandbox; do not run `playwright install`. A 4K render takes only a few seconds.
+Run it with `NODE_PATH=$(npm root -g) node render.js 0 3840 2160 out.png`. A 4K render takes under 10 seconds, and an 8K render about 16.
+
+If it fails with `Cannot find module 'playwright'`, run `npm i playwright` in the working folder and retry. If it then reports a missing browser, run `npx playwright install chromium`, but not when `PLAYWRIGHT_BROWSERS_PATH` is set: that means browsers are preinstalled (as in Claude Code on the web) and the error is something else.
 
 ### scene.js (write per request)
 
@@ -155,7 +165,7 @@ Each region is `{pts:[[x,y],...], dir, ...colour}`:
 Start the file with these helpers, and reuse or extend them as needed:
 
 ```js
-const TAU=Math.PI*2;   // the engine does NOT declare TAU; declare it only here
+const TAU=Math.PI*2;
 const circ=(cx,cy,r,n=60,sx=1)=>Array.from({length:n},(_,i)=>{const a=i/n*TAU; return [cx+Math.cos(a)*r*sx,cy+Math.sin(a)*r];});
 const rect=(x0,y0,x1,y1)=>[[x0,y0],[x1,y0],[x1,y1],[x0,y1]];
 const bandF=(W,fn,y1,step=4)=>{ const p=[]; for(let x=-2;x<=W+2;x+=step) p.push([x,fn(x)]); p.push([W+2,y1],[-2,y1]); return p; };
@@ -176,7 +186,7 @@ Here is an example scene entry, a lighthouse cove at sunset for W = 711:
 ```js
 const SCENES=[{ name:'lighthouse-sunset', seed:1101, build(C){ const {W,H}=C, o=[];
   const sky=[[0,'#3b3f7e'],[90,'#7b5c9a'],[170,'#d9728a'],[230,'#f8b56a']];
-  o.push({pts:rect(0,0,W,240),grad:sky,dir:'sky'});
+  o.push({pts:rect(0,0,W,H),grad:sky,dir:'sky'});
   o.push({pts:circ(190,228,120),cf:glowCF(C,sky,190,228,120,'#ffd9a0',.6),dir:'radial',cx:190,cy:228});
   o.push({pts:circ(190,222,30),col:'#ffcf72',dir:'radial',cx:190,cy:222});
   o.push({pts:rect(0,228,W,H),grad:[[228,'#5a5d9a'],[300,'#35507e'],[400,'#1f3558']],dir:'horiz'});
@@ -199,9 +209,8 @@ const SCENES=[{ name:'lighthouse-sunset', seed:1101, build(C){ const {W,H}=C, o=
 
 1. Settle the scene, the resolution and the number of variations, then compute W.
 2. Write `scene.js`, one entry per wallpaper.
-3. Render each wallpaper at the final resolution.
-4. **Review each render visually.** Make a downscaled preview (for example 1280 px wide with PIL) and a 1:1 crop of the focal area, then look at both with the Read tool.
-5. Fix what you see, re-render only the changed scenes, and review again. Repeat until clean. These are the problems found in earlier runs:
+3. Render a preview of each wallpaper at (s x W) by (s x 400) px, with s = 2 for landscape and s = 3 for portrait (for example 1422 x 800 for W = 711). This keeps the same W, so the preview shows exactly the painting the final render will produce, in about 2 seconds.
+4. **Review each preview visually** with the Read tool. Fix what you see, re-render only the changed scenes, and review again. Repeat until clean. These are the problems found in earlier runs:
    - **Linen showing through as brown flecks**: coverage is too thin. Raise the underpainting count (2400 x A) and the mid count (5200 x A). Do not lower them.
    - **Glow halos around small objects** (for example, glows behind houses looked like snowballs): drop the glow or make it much weaker. Only large light sources should get `glowCF` halos.
    - **Stripes that look like stairs**: evenly spaced, full-width ledges or strata look artificial. Use 3 or 4 short strata at irregular spacing, in a colour close to the base.
@@ -210,11 +219,12 @@ const SCENES=[{ name:'lighthouse-sunset', seed:1101, build(C){ const {W,H}=C, o=
    - **Focal element hidden**, such as a sun behind a mesa: check the draw order and the overlap, and move the element into a gap.
    - **Elements lost in the texture**, such as hay bales: add a darker shadow region offset beneath them for contrast.
    - **Regions too thin to paint**: anything under about 1.5 logical units wide gets overpainted. Widen it or add it later in the list.
-   - **JS errors**: `render.js` prints PAGE ERROR. Common causes are a duplicate `const` (such as TAU) and `-x**2`, which must be written `-(x**2)`.
-6. Deliver the PNGs. Name them descriptively (for example `oil-lighthouse-sunset-3840x2160.png`), put them in the outputs folder, and send them together with a one-line caption.
+   - **JS errors**: `render.js` prints PAGE ERROR. Common causes are a duplicate `const` inside `scene.js`, a region with no `col`, `grad` or `cf`, and `-x**2`, which must be written `-(x**2)`.
+5. Render each wallpaper at the final resolution, passing a crop of about 240 x 135 logical units around the focal point, for example `node render.js 0 3840 2160 oil-lighthouse-sunset-3840x2160.png '' 70,150,240,135`. The empty `''` keeps the scene's own seed. Look at the `-crop.png` with the Read tool to check the brushwork at 1:1. Never Read the full-size file, which is tens of MB.
+6. Deliver the finished files. Name them descriptively (for example `oil-lighthouse-sunset-3840x2160.png`) and save them in the working directory or wherever the user asked. Delete the previews and crops. Give the paths with a one-line caption, and if a tool for sending files to the user is available, send the files with it too.
 7. Offer next steps: re-render with a new seed (`node render.js i w h out.png 1234`) for a different stroke layout, try another aspect ratio (which needs the composition redone for the new W), or change the palette.
 
 ## Notes
 
-- File size is about 20 MB per PNG at 4K. If the user wants something smaller, convert to a high-quality JPEG (quality 92) with PIL.
-- To reproduce an image exactly, keep the same scene, seed and resolution. Changing the resolution changes the stroke count, so the texture will differ slightly.
+- A PNG is about 19 MB at 4K and 70 MB at 8K. If the user wants something smaller, give the output a `.jpg` name and `render.js` writes a JPEG at quality 92.
+- To reproduce an image exactly, keep the same scene, seed and W. Any resolution with that W paints the same strokes; only the fine film grain differs.
