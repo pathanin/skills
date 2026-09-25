@@ -1,0 +1,98 @@
+<!doctype html><html><body style="margin:0;background:#000">
+<canvas id="cv"></canvas>
+<script src="scene.js"></script>
+<script>
+'use strict';
+{ // block scope, so scene.js can use any top-level names without clashing with the engine's
+const Q=new URLSearchParams(location.search);
+const PX=+Q.get('w')||3840, PY=+Q.get('h')||2160, H=400, W=Math.round(H*PX/PY), k=PX/W;
+const clamp=(v,a=0,b=1)=>v<a?a:v>b?b:v, lerp=(a,b,t)=>a+(b-a)*t;
+const SC=SCENES[+Q.get('s')||0];
+if(Q.get('seed')) SC.seed=+Q.get('seed');
+let seed=SC.seed; const R=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296; };
+const rnd=(a=1,b)=>b===undefined?R()*a:a+R()*(b-a);
+const hex=h=>{ if(h.length===4) h='#'+h[1]+h[1]+h[2]+h[2]+h[3]+h[3]; return [1,3,5].map(i=>parseInt(h.slice(i,i+2),16)); };
+const rgba=(c,a=1)=>`rgba(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])},${a})`;
+const shade=(c,f)=>c.map(v=>clamp(v*(1+f),0,255));
+const mixc=(a,b,t)=>a.map((v,i)=>lerp(v,b[i],t));
+const gradAt=(stops,y)=>{ if(y<=stops[0][0]) return hex(stops[0][1]); for(let i=1;i<stops.length;i++) if(y<=stops[i][0]) return mixc(hex(stops[i-1][1]),hex(stops[i][1]),(y-stops[i-1][0])/(stops[i][0]-stops[i-1][0])); return hex(stops[stops.length-1][1]); };
+
+const REG=SC.build({W,H,rnd,hex,mixc,gradAt,lerp,clamp});
+REG.forEach(r=>{ const xs=r.pts.map(p=>p[0]), ys=r.pts.map(p=>p[1]); r.box=[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
+  r.area=(r.box[2]-r.box[0])*(r.box[3]-r.box[1]); if(r.col) r.rgb=hex(r.col); });
+function pip(pts,x,y){ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const [xi,yi]=pts[i],[xj,yj]=pts[j]; if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi) c=!c; } return c; }
+const inR=(r,x,y)=>{ const b=REG[r].box; return x>=b[0]&&x<=b[2]&&y>=b[1]&&y<=b[3]&&pip(REG[r].pts,x,y); };
+const GS=.5, GX=W/GS|0, GY=H/GS|0, ID=new Uint16Array(GX*GY);
+for(let gy=0;gy<GY;gy++) for(let gx=0;gx<GX;gx++){ const x=(gx+.5)*GS, y=(gy+.5)*GS; let r=REG.length-1; while(r>0&&!inR(r,x,y)) r--; ID[gy*GX+gx]=r; }
+const idAt=(x,y)=>ID[clamp(Math.floor(y/GS),0,GY-1)*GX+clamp(Math.floor(x/GS),0,GX-1)];
+const colorAt=(x,y)=>{ const r=REG[idAt(x,y)]; return r.cf?r.cf(x,y):r.grad?gradAt(r.grad,y):r.rgb; };
+
+function angleAt(x,y,r){ const g=REG[r], d=g.dir||'horiz';
+  if(d==='sky') return .28*Math.sin(y*.045+x*.012)+.18*Math.sin(x*.03);
+  if(d==='radial') return Math.atan2(y-g.cy,x-g.cx)+Math.PI/2;
+  if(d==='ray') return Math.atan2(y-g.cy,x-g.cx);
+  if(d==='horiz') return rnd(-.08,.08);
+  if(d==='hill') return .15*Math.cos(x*.02);
+  if(d==='mtn') return .55*Math.sin(x*.035);
+  if(d==='vert') return Math.PI/2;
+  if(d==='angle') return g.a;
+  if(d==='roof') return x<g.rx?-.72:.72;
+  if(d==='pine') return x<g.tx?2.2:.95;
+  if(d==='swirl') return Math.atan2(y-g.cy,x-g.cx)+Math.PI/2+.5*Math.sin(x*.3+y*.2);
+  return 0;
+}
+function oilStroke(x,y,L,w){ const r=idAt(x,y), a=angleAt(x,y,r)+rnd(-.3,.3), dx=Math.cos(a), dy=Math.sin(a), st=.5; let l0=0, l1=0;
+  while(l0<L/2&&idAt(x-dx*(l0+st),y-dy*(l0+st))===r) l0+=st; while(l1<L/2&&idAt(x+dx*(l1+st),y+dy*(l1+st))===r) l1+=st;
+  const col=colorAt(x,y).map(v=>clamp(v*rnd(.9,1.1)+rnd(-8,8),0,255));
+  return {p0:[x-dx*l0,y-dy*l0],p1:[x+dx*l1,y+dy*l1],w:Math.min(w,1.2+(l0+l1)*.8),col,dx,dy,bend:rnd(-.3,.3)}; }
+function paintStroke(b,s){ const {p0,p1,w,col,dx,dy}=s; let nx=-dy, ny=dx; if(nx*-.7+ny*-.7<0){ nx=-nx; ny=-ny; }
+  const q=(o,lw,stl)=>{ b.lineWidth=lw; b.strokeStyle=stl; b.beginPath(); b.moveTo(p0[0]+nx*o,p0[1]+ny*o); b.quadraticCurveTo((p0[0]+p1[0])/2+nx*(o+s.bend*w),(p0[1]+p1[1])/2+ny*(o+s.bend*w),p1[0]+nx*o,p1[1]+ny*o); b.stroke(); };
+  b.lineCap='round'; q(0,w,rgba(col));
+  for(const o of [-.32,-.1,.12,.33]) q(o*w,w*.16,rgba(shade(col,rnd(-.16,.16)),.55));
+  q(-.36*w,w*.14,'rgba(255,248,230,.24)'); q(.4*w,w*.14,'rgba(40,24,10,.22)'); }
+
+const cv=document.getElementById('cv'); cv.width=PX; cv.height=PY; const b=cv.getContext('2d');
+b.setTransform(k,0,0,k,0,0);
+let n=0;
+if(SC.style==='papercut'){
+  const t=document.createElement('canvas'); t.width=t.height=256; const tc=t.getContext('2d'), td=tc.createImageData(256,256);
+  for(let i=0;i<td.data.length;i+=4){ const v=R()*255; td.data[i]=td.data[i+1]=td.data[i+2]=v; td.data[i+3]=255; } tc.putImageData(td,0,0);
+  const grain=b.createPattern(t,'repeat');
+  const trace=p=>{ b.beginPath(); b.moveTo(p[0][0],p[0][1]); for(let i=1;i<p.length;i++) b.lineTo(p[i][0],p[i][1]); b.closePath(); };
+  // hand-cut edge: a jittered point every 3 units; points on the frame are pushed past it instead, so no cut edge shows there
+  const cut=p=>{ const o=[], jit=(v,M)=>v<=0?-3:v>=M?M+3:v+rnd(-.5,.5);
+    for(let i=0;i<p.length;i++){ const [x0,y0]=p[i], [x1,y1]=p[(i+1)%p.length], m=Math.max(1,Math.ceil(Math.hypot(x1-x0,y1-y0)/3));
+      for(let j=0;j<m;j++) o.push([jit(lerp(x0,x1,j/m),W),jit(lerp(y0,y1,j/m),H)]); } return o; };
+  const fillOf=r=>{ if(r.grad){ const s=r.grad, y0=s[0][0], y1=s[s.length-1][0], gr=b.createLinearGradient(0,y0,0,Math.max(y1,y0+1)); s.forEach(([y,c])=>gr.addColorStop(clamp((y-y0)/(y1-y0||1)),c)); return gr; }
+    if(!r.cf) return rgba(mixc(r.rgb,[255,255,255],.07));
+    // cf: bake the colour function into a texture (1 texel per unit, padded past the jittered edge), smoothed when scaled up
+    const x0=Math.floor(clamp(r.box[0],-5,W+5))-4, y0=Math.floor(clamp(r.box[1],-5,H+5))-4, cw=Math.ceil(clamp(r.box[2],-5,W+5))-x0+5, ch=Math.ceil(clamp(r.box[3],-5,H+5))-y0+5;
+    const c=document.createElement('canvas'); c.width=cw; c.height=ch; const cc=c.getContext('2d'), id=cc.createImageData(cw,ch);
+    for(let y=0;y<ch;y++) for(let x=0;x<cw;x++){ const v=r.cf(x0+x+.5,y0+y+.5), q=(y*cw+x)*4; id.data[q]=v[0]; id.data[q+1]=v[1]; id.data[q+2]=v[2]; id.data[q+3]=255; }
+    cc.putImageData(id,0,0); const pt=b.createPattern(c,'no-repeat'); pt.setTransform(new DOMMatrix().translate(x0,y0)); return pt; };
+  b.fillStyle=SC.ground||'#2a2530'; b.fillRect(0,0,W,H);
+  REG.forEach((r,i)=>{ const p=i?cut(r.pts):[[0,0],[W,0],[W,H],[0,H]];
+    b.save(); if(i){ b.shadowColor='rgba(20,10,30,.38)'; b.shadowBlur=3*k; b.shadowOffsetX=1.2*k; b.shadowOffsetY=2.4*k; }
+    b.fillStyle=fillOf(r); trace(p); b.fill(); b.restore();
+    b.save(); b.globalCompositeOperation='multiply'; b.globalAlpha=.13; b.fillStyle=grain; trace(p); b.fill(); b.restore();
+    if(i){ b.strokeStyle='rgba(255,255,255,.3)'; b.lineWidth=.6; trace(p); b.stroke(); }
+    n++; });
+} else {
+b.fillStyle=SC.ground||'#b98d63'; b.fillRect(0,0,W,H);
+b.save(); b.globalAlpha=.08; b.strokeStyle='#3b2a1a'; b.lineWidth=.3;
+for(let i=0;i<Math.max(W,H);i+=1){ b.beginPath(); b.moveTo(0,i); b.lineTo(W,i); b.stroke(); b.beginPath(); b.moveTo(i,0); b.lineTo(i,H); b.stroke(); } b.restore();
+const A=W*H/(400*400);
+const add=s=>{ paintStroke(b,s); n++; };
+for(let i=0,N=Math.round(2400*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(14,24),rnd(8,11)));
+for(let i=0,N=Math.round(5200*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(7,12),rnd(3.5,5.5)));
+for(let i=0,N=Math.round(3500*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(4,8),rnd(1.8,3)));
+let e=0, tries=0; const N3=Math.round(1050*A*1.4); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r!==idAt(x+3,y)||r!==idAt(x,y+3)||r!==idAt(x-3,y)||r!==idAt(x,y-3)){ add(oilStroke(x,y,rnd(4,8),rnd(1.8,3))); e++; } }
+REG.forEach((r,ri)=>{ if(r.area<900){ const m=r.area<30?12:40; for(let q=0;q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)===ri) add(oilStroke(x,y,rnd(2,6),r.area<30?rnd(.8,1.4):rnd(1.2,2))); } } });
+b.setTransform(1,0,0,1,0,0);
+const g=document.createElement('canvas'); g.width=g.height=256; const gc=g.getContext('2d'), d=gc.createImageData(256,256);
+for(let i=0;i<d.data.length;i+=4){ const v=R()*255; d.data[i]=d.data[i+1]=d.data[i+2]=v; d.data[i+3]=255; } gc.putImageData(d,0,0);
+b.save(); b.globalCompositeOperation='multiply'; b.globalAlpha=.07; b.fillStyle=b.createPattern(g,'repeat'); b.fillRect(0,0,PX,PY); b.restore();
+}
+window.DONE=n;
+}
+</script></body></html>
