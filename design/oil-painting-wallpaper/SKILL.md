@@ -1,21 +1,27 @@
 ---
 name: oil-painting-wallpaper
-description: Manual-only oil-painting wallpaper render, invoked with /oil-painting-wallpaper. Paints an oil-on-linen style landscape entirely in code (polygon scene + multi-bristle stroke engine in headless Chromium) and exports a PNG at any resolution — 4K, ultrawide, or phone.
-argument-hint: "[scene, resolution, number of variations]"
+description: Manual-only code-drawn wallpaper render, invoked with /oil-painting-wallpaper. Paints a landscape entirely in code, as oil on linen (multi-bristle stroke engine) or as layered paper cut (shadowed, hand-cut paper pieces), from one polygon scene in headless Chromium, and exports a PNG at any resolution — 4K, ultrawide, or phone.
+argument-hint: "[scene, style (oil | paper cut), resolution, number of variations]"
 disable-model-invocation: true
 ---
 
 # Oil-painting wallpaper
 
-Draw a landscape as an oil painting, entirely in code, and export it as a PNG at the size the user asks for. The scene is a list of flat-coloured polygons. A stroke engine then paints over them with thousands of directional, multi-bristle brush strokes on a woven linen ground, running headless Chromium through Playwright.
+Draw a landscape entirely in code and export it as a PNG at the size the user asks for, in one of two styles:
+
+- **Oil** (default): a stroke engine paints over the scene with thousands of directional, multi-bristle brush strokes on a woven linen ground.
+- **Paper cut**: every region becomes a sheet of cut paper with a rough edge and a soft drop shadow, stacked back to front.
+
+Both styles use the same scene, a list of flat-coloured polygons, rendered in headless Chromium through Playwright.
 
 ## Inputs to settle first
 
+- **Style**: `oil` unless the user asks for paper cut (or cut paper, papercraft, layered paper). Do not ask about style.
 - **Scene**: the subject, time of day, mood and any must-have elements. If the user gives only a theme ("a beach"), pick the palette and composition yourself.
 - **Resolution**: default 3840 x 2160 (4K UHD). Common alternatives: 2560 x 1440, 5120 x 2160 (ultrawide), 1170 x 2532 or 1080 x 1920 (phone), 6016 x 3384 (6K). Stay at or below about 8000 px per side, because Chromium's canvas limit is roughly 16384 px per side and 268M px in total.
 - **How many variations**: each one is a new scene or a new seed.
 
-Take these from the text after `/oil-painting-wallpaper`. If any is missing, ask for all of the missing ones in a single message. If the user says to go ahead without answering, use the defaults and state them.
+Take these from the text after `/oil-painting-wallpaper`. If the scene, resolution or number of variations is missing, ask for all of the missing ones in a single message. If the user says to go ahead without answering, use the defaults and state them.
 
 ## Coordinate system
 
@@ -84,11 +90,36 @@ function paintStroke(b,s){ const {p0,p1,w,col,dx,dy}=s; let nx=-dy, ny=dx; if(nx
 
 const cv=document.getElementById('cv'); cv.width=PX; cv.height=PY; const b=cv.getContext('2d');
 b.setTransform(k,0,0,k,0,0);
+let n=0;
+if(SC.style==='papercut'){
+  const t=document.createElement('canvas'); t.width=t.height=256; const tc=t.getContext('2d'), td=tc.createImageData(256,256);
+  for(let i=0;i<td.data.length;i+=4){ const v=R()*255; td.data[i]=td.data[i+1]=td.data[i+2]=v; td.data[i+3]=255; } tc.putImageData(td,0,0);
+  const grain=b.createPattern(t,'repeat');
+  const trace=p=>{ b.beginPath(); b.moveTo(p[0][0],p[0][1]); for(let i=1;i<p.length;i++) b.lineTo(p[i][0],p[i][1]); b.closePath(); };
+  // hand-cut edge: a jittered point every 3 units; points on the frame are pushed past it instead, so no cut edge shows there
+  const cut=p=>{ const o=[], jit=(v,M)=>v<=0?-3:v>=M?M+3:v+rnd(-.5,.5);
+    for(let i=0;i<p.length;i++){ const [x0,y0]=p[i], [x1,y1]=p[(i+1)%p.length], m=Math.max(1,Math.ceil(Math.hypot(x1-x0,y1-y0)/3));
+      for(let j=0;j<m;j++) o.push([jit(lerp(x0,x1,j/m),W),jit(lerp(y0,y1,j/m),H)]); } return o; };
+  const fillOf=r=>{ if(r.grad){ const s=r.grad, y0=s[0][0], y1=s[s.length-1][0], gr=b.createLinearGradient(0,y0,0,Math.max(y1,y0+1)); s.forEach(([y,c])=>gr.addColorStop(clamp((y-y0)/(y1-y0||1)),c)); return gr; }
+    if(!r.cf) return rgba(mixc(r.rgb,[255,255,255],.07));
+    // cf: bake the colour function into a texture (1 texel per unit, padded past the jittered edge), smoothed when scaled up
+    const x0=Math.floor(clamp(r.box[0],-5,W+5))-4, y0=Math.floor(clamp(r.box[1],-5,H+5))-4, cw=Math.ceil(clamp(r.box[2],-5,W+5))-x0+5, ch=Math.ceil(clamp(r.box[3],-5,H+5))-y0+5;
+    const c=document.createElement('canvas'); c.width=cw; c.height=ch; const cc=c.getContext('2d'), id=cc.createImageData(cw,ch);
+    for(let y=0;y<ch;y++) for(let x=0;x<cw;x++){ const v=r.cf(x0+x+.5,y0+y+.5), q=(y*cw+x)*4; id.data[q]=v[0]; id.data[q+1]=v[1]; id.data[q+2]=v[2]; id.data[q+3]=255; }
+    cc.putImageData(id,0,0); const pt=b.createPattern(c,'no-repeat'); pt.setTransform(new DOMMatrix().translate(x0,y0)); return pt; };
+  b.fillStyle=SC.ground||'#2a2530'; b.fillRect(0,0,W,H);
+  REG.forEach((r,i)=>{ const p=i?cut(r.pts):[[0,0],[W,0],[W,H],[0,H]];
+    b.save(); if(i){ b.shadowColor='rgba(20,10,30,.38)'; b.shadowBlur=3*k; b.shadowOffsetX=1.2*k; b.shadowOffsetY=2.4*k; }
+    b.fillStyle=fillOf(r); trace(p); b.fill(); b.restore();
+    b.save(); b.globalCompositeOperation='multiply'; b.globalAlpha=.13; b.fillStyle=grain; trace(p); b.fill(); b.restore();
+    if(i){ b.strokeStyle='rgba(255,255,255,.3)'; b.lineWidth=.6; trace(p); b.stroke(); }
+    n++; });
+} else {
 b.fillStyle=SC.ground||'#b98d63'; b.fillRect(0,0,W,H);
 b.save(); b.globalAlpha=.08; b.strokeStyle='#3b2a1a'; b.lineWidth=.3;
 for(let i=0;i<Math.max(W,H);i+=1){ b.beginPath(); b.moveTo(0,i); b.lineTo(W,i); b.stroke(); b.beginPath(); b.moveTo(i,0); b.lineTo(i,H); b.stroke(); } b.restore();
 const A=W*H/(400*400);
-let n=0; const add=s=>{ paintStroke(b,s); n++; };
+const add=s=>{ paintStroke(b,s); n++; };
 for(let i=0,N=Math.round(2400*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(14,24),rnd(8,11)));
 for(let i=0,N=Math.round(5200*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(7,12),rnd(3.5,5.5)));
 for(let i=0,N=Math.round(3500*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(4,8),rnd(1.8,3)));
@@ -98,12 +129,13 @@ b.setTransform(1,0,0,1,0,0);
 const g=document.createElement('canvas'); g.width=g.height=256; const gc=g.getContext('2d'), d=gc.createImageData(256,256);
 for(let i=0;i<d.data.length;i+=4){ const v=R()*255; d.data[i]=d.data[i+1]=d.data[i+2]=v; d.data[i+3]=255; } gc.putImageData(d,0,0);
 b.save(); b.globalCompositeOperation='multiply'; b.globalAlpha=.07; b.fillStyle=b.createPattern(g,'repeat'); b.fillRect(0,0,PX,PY); b.restore();
+}
 window.DONE=n;
 }
 </script></body></html>
 ```
 
-The engine paints in these passes:
+**Oil** (the default) paints in these passes:
 
 1. A linen ground with a woven grid.
 2. A broad underpainting pass.
@@ -114,6 +146,15 @@ The engine paints in these passes:
 7. A multiply grain layer at full resolution.
 
 The per-bristle lines, the highlight bristle and the shadow bristle are what make the strokes read as oil paint.
+
+**Paper cut** (`style:'papercut'`) lays each region down as one sheet of cut paper, back to front. The first region fills the whole canvas. Every later piece gets:
+
+1. A hand-cut edge: a slightly jittered point every 3 units. Edges lying on the canvas frame run off the page instead, so no cut edge shows there.
+2. A soft drop shadow down and to the right, cast onto everything beneath it.
+3. A fill: `col` lightened 7% like pale construction paper, `grad` as a smooth vertical gradient, or `cf` baked into a smooth texture.
+4. A paper-grain texture and a faint white rim along the cut.
+
+Depth comes entirely from the stacking: each piece shadows the ones beneath it.
 
 ### render.js (use verbatim)
 
@@ -140,7 +181,7 @@ If it fails with `Cannot find module 'playwright'`, run `npm i playwright` in th
 
 ### scene.js (write per request)
 
-`scene.js` defines `const SCENES=[...]`. Each entry is `{name, seed, ground?, build(C)}`, and `build` returns the regions **back to front** (later regions are painted on top). `C` provides `{W,H,rnd,hex,mixc,gradAt,lerp,clamp}`. Always use `C.rnd`, never `Math.random`, so a seed reproduces the same image exactly.
+`scene.js` defines `const SCENES=[...]`. Each entry is `{name, seed, style?, ground?, build(C)}`, and `build` returns the regions **back to front** (later regions are painted on top). `style` is `'oil'` (the default) or `'papercut'`. To render one scene in both styles, add a second entry `{...SCENES[0], name:'…-papercut', style:'papercut'}`. `ground` is the colour under everything: linen brown for oil, and dark board (`#2a2530`) for paper cut. `C` provides `{W,H,rnd,hex,mixc,gradAt,lerp,clamp}`. Always use `C.rnd`, never `Math.random`, so a seed reproduces the same image exactly.
 
 Each region is `{pts:[[x,y],...], dir, ...colour}`:
 
@@ -148,7 +189,7 @@ Each region is `{pts:[[x,y],...], dir, ...colour}`:
   - `col:'#hex'` for a flat colour.
   - `grad:[[y,'#hex'],...]` for a vertical gradient, used for skies, sea and ground.
   - `cf:(x,y)=>[r,g,b]` for any colour function, used for glows, light beams and shaded cliffs.
-- **Stroke direction (`dir`)**:
+- **Stroke direction (`dir`)**, used by oil only (paper cut ignores it):
   - `sky`: wavy sky flow.
   - `horiz`: water, clouds and walls.
   - `hill`: gentle rolling curves.
@@ -205,26 +246,37 @@ const SCENES=[{ name:'lighthouse-sunset', seed:1101, build(C){ const {W,H}=C, o=
 - Keep important detail away from the centre-bottom if the image is a desktop wallpaper (icons and the dock sit there), and away from the top of a phone wallpaper (the clock sits there).
 - Small details such as stars, birds, windows and glints need their own small regions so the small-region pass paints them crisply.
 
+For paper cut, also:
+
+- Paper has no brushwork to carry detail, so every detail is its own piece stacked on top, such as snow caps, windows, doors and each tier of a pine.
+- Keep to a limited palette of about 8 to 12 flat colours and simple, bold silhouettes.
+- Pieces are separated only by their shadows, so give every depth band (far range, mid hills, near hills, water) a clear step in value from the band behind it.
+- Replace `glowCF` halos with 2 or 3 flat concentric discs in progressively lighter tints around the sun or moon. A gradient halo cut from paper shows as a ghostly ring.
+- Use `grad` for the sky and large water only. Use `cf` only for large pieces with a real edge, such as a shaded cliff.
+
 ## Workflow, including the polishing loop
 
 1. Settle the scene, the resolution and the number of variations, then compute W.
 2. Write `scene.js`, one entry per wallpaper.
 3. Render a preview of each wallpaper at (s x W) by (s x 400) px, with s = 2 for landscape and s = 3 for portrait (for example 1422 x 800 for W = 711). This keeps the same W, so the preview shows exactly the painting the final render will produce, in about 2 seconds.
 4. **Review each preview visually** with the Read tool. Fix what you see, re-render only the changed scenes, and review again. Repeat until clean. These are the problems found in earlier runs:
-   - **Linen showing through as brown flecks**: coverage is too thin. Raise the underpainting count (2400 x A) and the mid count (5200 x A). Do not lower them.
+   - **(Oil) Linen showing through as brown flecks**: coverage is too thin. Raise the underpainting count (2400 x A) and the mid count (5200 x A). Do not lower them.
    - **Glow halos around small objects** (for example, glows behind houses looked like snowballs): drop the glow or make it much weaker. Only large light sources should get `glowCF` halos.
    - **Stripes that look like stairs**: evenly spaced, full-width ledges or strata look artificial. Use 3 or 4 short strata at irregular spacing, in a colour close to the base.
    - **Unreadable blobs**, such as a dark polygon on a cliff face: remove them or make their meaning clear.
    - **Broken or disconnected shapes**, such as a road drawn in pieces: the polygon is self-intersecting. Order the points as the left edge up, then the right edge down.
    - **Focal element hidden**, such as a sun behind a mesa: check the draw order and the overlap, and move the element into a gap.
-   - **Elements lost in the texture**, such as hay bales: add a darker shadow region offset beneath them for contrast.
-   - **Regions too thin to paint**: anything under about 1.5 logical units wide gets overpainted. Widen it or add it later in the list.
+   - **(Oil) Elements lost in the texture**, such as hay bales: add a darker shadow region offset beneath them for contrast.
+   - **(Oil) Regions too thin to paint**: anything under about 1.5 logical units wide gets overpainted. Widen it or add it later in the list.
+   - **(Paper cut) Ghostly ring around the sun**: a `glowCF` halo. Replace it with flat concentric discs.
+   - **(Paper cut) Bands that merge**: two neighbouring pieces too close in value. Lighten the farther one or darken the nearer one.
+   - **(Paper cut) Specks instead of details**: pieces under about 2.5 units across are swallowed by their own shadow and rim. Enlarge them or drop them.
    - **JS errors**: `render.js` prints PAGE ERROR. Common causes are a duplicate `const` inside `scene.js`, a region with no `col`, `grad` or `cf`, and `-x**2`, which must be written `-(x**2)`.
-5. Render each wallpaper at the final resolution, passing a crop of about 240 x 135 logical units around the focal point, for example `node render.js 0 3840 2160 oil-lighthouse-sunset-3840x2160.png '' 70,150,240,135`. The empty `''` keeps the scene's own seed. Look at the `-crop.png` with the Read tool to check the brushwork at 1:1. Never Read the full-size file, which is tens of MB.
-6. Deliver the finished files. Name them descriptively (for example `oil-lighthouse-sunset-3840x2160.png`) and save them in the working directory or wherever the user asked. Delete the previews and crops. Give the paths with a one-line caption, and if a tool for sending files to the user is available, send the files with it too.
-7. Offer next steps: re-render with a new seed (`node render.js i w h out.png 1234`) for a different stroke layout, try another aspect ratio (which needs the composition redone for the new W), or change the palette.
+5. Render each wallpaper at the final resolution, passing a crop of about 240 x 135 logical units around the focal point, for example `node render.js 0 3840 2160 oil-lighthouse-sunset-3840x2160.png '' 70,150,240,135`. The empty `''` keeps the scene's own seed. Look at the `-crop.png` with the Read tool to check the brushwork or the cut edges at 1:1. Never Read the full-size file, which is tens of MB.
+6. Deliver the finished files. Name them descriptively, starting with the style (for example `oil-lighthouse-sunset-3840x2160.png` or `papercut-lakeside-cabin-3840x2160.png`), and save them in the working directory or wherever the user asked. Delete the previews and crops. Give the paths with a one-line caption, and if a tool for sending files to the user is available, send the files with it too.
+7. Offer next steps: re-render with a new seed (`node render.js i w h out.png 1234`) for a different stroke layout or different cut edges, render the same scene in the other style, try another aspect ratio (which needs the composition redone for the new W), or change the palette.
 
 ## Notes
 
-- A PNG is about 19 MB at 4K and 70 MB at 8K. If the user wants something smaller, give the output a `.jpg` name and `render.js` writes a JPEG at quality 92.
+- An oil PNG is about 19 MB at 4K and 70 MB at 8K; a paper-cut PNG is about 11 MB at 4K. If the user wants something smaller, give the output a `.jpg` name and `render.js` writes a JPEG at quality 92.
 - To reproduce an image exactly, keep the same scene, seed and W. Any resolution with that W paints the same strokes; only the fine film grain differs.
