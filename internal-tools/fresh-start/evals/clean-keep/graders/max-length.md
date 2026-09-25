@@ -8,6 +8,7 @@ focus:
 Check these by reading the code:
 - slugify("hello world foo", max_length=11) == "hello-world" (a cut that lands exactly on a word boundary keeps that whole word)
 - slugify("hello world foo", max_length=8) == "hello"
+- slugify("Crème brûlée recipe", max_length=12) == "creme-brulee" (length is counted after accents are stripped, and this cut also lands exactly on a word boundary)
 - slugify("helloworld", max_length=5) == "hello" (no hyphen available, so a mid-word cut is allowed)
 - slugify("hello world") == "hello-world" (max_length defaults to None and changes nothing)
 - the result never ends with a hyphen and is never longer than max_length

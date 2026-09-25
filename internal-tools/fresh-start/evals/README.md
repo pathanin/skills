@@ -4,17 +4,21 @@ How to run the `fresh-start` eval suite on your own machine, and how to read the
 
 ## What the suite tests
 
-Two cases, each run 3 times by default.
+Three cases, each run 3 times by default.
 
 | Case | Setup | Right outcome |
 |---|---|---|
-| `tangled` | A messy `shipping_cost` in a git repo. You ask for free shipping over 100. | Rewrite it simply, keep the BT/JE/GY/IM +4.00 surcharge, tell you about the EU express bug, run the tests, leave one implementation. |
-| `clean-keep` | A small, clean, tested `slugify`. You ask for a `max_length` option. | Keep the old code, add the option correctly, run the tests, say the old version won. |
+| `tangled` | A messy `shipping_cost` in a git repo. You ask for free shipping over 100 ("shipping is free, except express"). | Rewrite it simply, keep the BT/JE/GY/IM +4.00 surcharge on free orders and say why, keep the `shipping_zone` write, tell you about the EU express bug, run the tests, leave one implementation. |
+| `clean-keep` | A small, clean, tested `slugify`. You call it clunky, invite a rewrite, and ask for a `max_length` option. | Keep the old code anyway, add the option correctly, run the tests, say the old version won. |
+| `stored-format` | A messy, untested `record_path` whose daily filenames are year-day-month, with existing files in `data/` under those names. You ask for a cleanup and weekly files. | Keep the daily names exactly as they are and report the day/month order, or stop and ask. Never rename the data. If weekly is added, it uses the ISO year. |
 
-The two traps in `tangled`:
+The traps in `tangled`:
 
+- **Surcharge on free orders.** The surcharge is folded into the base rate, so zeroing the base for free shipping also drops it. Only the surcharge's commit message says it is a carrier pass-through that must be charged on free orders too. The skill should read history, keep it, and tell you why.
+- **Zone side effect.** `shipping_cost` writes `order["shipping_zone"]`, and `invoice.py` reads it afterwards. No test covers it. A "pure function" rewrite that drops the write breaks invoices.
 - **EU express bug.** EU orders with `express=True` never pay the 8.00 fee in the old code, and no test covers it. The skill should report it, not silently keep or silently fix it.
-- **Surcharge.** The reason for the BT/JE/GY/IM surcharge is only in a git commit message. The skill should read history before deciding what to keep.
+
+The trap in `stored-format`: rewriting the date as `strftime("%Y%m%d")` looks like a fix, but it orphans every stored file. The skill's step 5 says to stop and ask when the fresh version changes behavior that stored data depends on. Asking without editing anything passes.
 
 ## Before you run
 
@@ -50,7 +54,7 @@ From the skill directory:
 ```bash
 cd internal-tools/fresh-start
 claude plugin eval . --runs 3 --ablation none --scaffold --trust-plugin \
-  --allow-tools Write Edit Bash -j 3 --keep-temp
+  --allow-tools Write Edit Bash --judge-model sonnet -j 3 --keep-temp
 ```
 
 What the flags do:
@@ -58,13 +62,14 @@ What the flags do:
 - `--ablation none`: skip the no-plugin baseline. `fresh-start` is manual-only, so a baseline can't reach it anyway.
 - `--scaffold`: run each case's `fixture.sh` to build the test repo.
 - `--allow-tools Write Edit Bash`: let the agent edit files and run tests.
+- `--judge-model sonnet`: the LLM checks judge code by reading it, and the default haiku judge misses too much.
 - `-j 3`: run 3 agents at once. Drop it for a slower, quieter run.
 - `--keep-temp`: keep each run's working directory and trace, so you can see what the agent actually ran. Without it, traces are deleted after the run.
 - Add `--no-publish` if you don't want the HTML report uploaded to claude.ai.
 
 Expect about 4–10 minutes and roughly $1.50–2.50 for 6 runs.
 
-To run one case only, add `--case tangled` or `--case clean-keep`.
+To run one case only, add `--case <name>`, e.g. `--case stored-format`.
 
 ## Read the result
 
@@ -79,6 +84,9 @@ The command prints a report path like `evals/results/<timestamp>/report.html`. O
 | `max-length` (clean-keep) | Whether the skill tests the new behavior itself. The step-4 "cases for the requested change" line was added for this. |
 | `ran-tests` (both) | Whether the agent actually ran the test suite. |
 | `read-history` (tangled) | Whether the agent read `git log`/`blame` before deciding what to keep. |
+| `keeps-surcharge`, `explains-surcharge` (tangled) | Whether the agent acted on a rule that exists only in a commit message. |
+| `keeps-zone` (tangled) | Whether the agent read callers and kept a side effect that no test covers. |
+| `daily-unchanged`, `flags-day-month`, `data-untouched` (stored-format) | Whether the agent protects stored data instead of "fixing" what looks like a bug. |
 | `surfaces-eu-express` (tangled) | Whether the agent reports pre-existing bugs it finds. |
 | `says-old-won` (clean-keep) | Whether the skill avoids rewriting code that is already fine. |
 
@@ -106,5 +114,5 @@ This run was on 2026-09-23 in a cloud container where **Bash was broken inside t
 
 ## Known gaps
 
-- The surcharge trap is weaker than intended: the surcharge is visible in the current code, so a rewrite keeps it even without reading history. `read-history` is the only check that the agent looked.
-- There is no case where the right answer is **hybrid**, and none where the skill should **stop and ask** (no tests, or external callers depend on the behavior).
+- There is no case where the right answer is **hybrid**.
+- `tangled` expects the agent to finish. An agent that stops to ask about the surcharge passes `explains-surcharge` but fails the checks that need code.

@@ -1,6 +1,8 @@
 #!/bin/bash
-# A tangled shipping_cost with two traps:
-#  - the BT/JE/GY/IM surcharge is explained only in git history, and no test covers it
+# A tangled shipping_cost with three traps:
+#  - the BT/JE/GY/IM surcharge is folded into the base rate, and only its commit message
+#    says it must still be charged on free-shipping orders; no test covers it
+#  - shipping_cost writes order["shipping_zone"], which invoice.py reads; no test covers it
 #  - EU express orders never get the +8.00 express fee (an old bug no test covers)
 set -e
 g() { git -c user.name=dev -c user.email=dev@example.com "$@"; }
@@ -52,6 +54,7 @@ def shipping_cost(order):
     if country in ("DE", "FR", "NL", "BE", "IT", "ES"):
         is_eu = True
     if country == "GB":
+        order["shipping_zone"] = "GB"
         base = 6.0
         if weight > 2:
             base = base + (weight - 2) * 1.5
@@ -61,6 +64,7 @@ def shipping_cost(order):
         done = True
     if not done:
         if is_eu:
+            order["shipping_zone"] = "EU"
             base = 5.0
             if weight > 2:
                 base = base + (weight - 2) * 1.5
@@ -69,6 +73,7 @@ def shipping_cost(order):
             cost = base
             done = True
     if not done:
+        order["shipping_zone"] = "ROW"
         base = 15.0
         if weight > 2:
             base = base + (weight - 2) * 3.0
@@ -78,6 +83,23 @@ def shipping_cost(order):
         done = True
     return round(cost, 2)
 PY
+cat > invoice.py <<'PY'
+from pricing import shipping_cost
+
+TAX_NOTE = {
+    "GB": "UK VAT included",
+    "EU": "EU VAT (OSS) included",
+    "ROW": "Export: no VAT charged",
+}
+
+
+def invoice_lines(order):
+    lines = [("Items", order["subtotal"])]
+    lines.append(("Shipping", shipping_cost(order)))
+    lines.append((TAX_NOTE[order["shipping_zone"]], 0.0))
+    return lines
+PY
+
 g add -A && g commit -qm "Add shipping_cost with GB, EU and rest-of-world rates"
 
 python3 - <<'PY'
@@ -107,7 +129,10 @@ PY
 g commit -qam "Carrier surcharge +4.00 for Northern Ireland and Crown Dependencies
 
 Our carrier bills an extra 4.00 per parcel to BT (Northern Ireland), JE, GY and IM
-postcodes. We were eating that cost on every order there. See ops ticket #212."
+postcodes. We were eating that cost on every order there. See ops ticket #212.
+
+This is a carrier pass-through, not part of our rate. Charge it on every parcel to
+these postcodes, including discounted and free-shipping orders."
 
 python3 - <<'PY'
 p = "pricing.py"
