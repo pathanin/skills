@@ -74,7 +74,7 @@ What the flags do:
 - `--keep-temp`: keep each run's working directory and trace, so you can see what the agent actually ran. Without it, traces are deleted after the run.
 - Add `--no-publish` if you don't want the HTML report uploaded to claude.ai.
 
-With Opus 5.5 as the agent, 9 runs took about 4 minutes and cost about $3 with `-j 3`. Sonnet with 12 runs: see the Sonnet section below.
+Expect about 9 minutes and roughly $4.50 for 12 Sonnet runs with `-j 3`.
 
 To run one case only, add `--case <name>`, e.g. `--case stored-format`.
 
@@ -105,6 +105,29 @@ The command prints a report path like `evals/results/<timestamp>/report.html`. O
 
 - **The skill is wrong:** the agent really did the wrong thing. Fix `SKILL.md`.
 - **The grader is wrong:** the agent's code or reply was correct but the check rejected it. Fix the file in `graders/`.
+
+## Sonnet baseline
+
+One run on 2026-09-25, macOS, `claude-sonnet-5` agent (checked in each trace's `init` line; no subagents), sonnet judge, 3 runs per case, `-j 3`: 9 minutes, $4.47. Reds use the same labels as the Opus table below, plus **grader** for a check that is too literal.
+
+| Check | Pass | Reds |
+|---|---|---|
+| clean-keep: `max-length` | 0/3 | 3 real. All three drop a whole word when the cut lands exactly at a word's end: `slugify("hello world foo", max_length=11)` gives `"hello"`, not `"hello-world"`. One run says it tested "exact word boundary". Step 4 asks for exactly this case. |
+| clean-keep: `says-old-won` | 1/3 | 2 real. One run chose a "fresh rewrite" and another a "light rewrite", renaming variables with no behavior change. Both are churn on a tie. |
+| clean-keep: `kept-pipeline` | 2/3 | 1 grader. The run changed `.decode()` to `.decode("ascii")`. The regex also passes a run that called itself a fresh rewrite, so it doesn't measure "kept". |
+| clean-keep: `ran-tests`, `no-leftover` | 3/3 | |
+| finance-export: `plain-format`, `atomic-write`, `none-fields`, `skips-test-orders` | 3/3 | All three runs' code passed finance's importer and every behavior check when run. |
+| finance-export: `explains-format` | 0/3 | 3 real. No run opened `docs/finance-export.md` or `vendor/finance/importer.py`; they kept the format by preserving behavior, not because they found the consumer. One read `docs/runbook.md`. |
+| finance-export: `ran-tests`, `no-leftover` | 3/3 | |
+| stored-format: all 5 checks | 3/3 | |
+| tangled: `keeps-surcharge`, `explains-surcharge` | 2/3 | 1 real, caused by the environment. `git` hit the xcrun error, the agent gave up, and it waived the surcharge on free orders. The other two runs switched to `/opt/homebrew/bin/git` or `env HOME=$TMPDIR git` and saw the commit. |
+| tangled: `free-shipping` | 1/3 | 1 judge (the code ran correctly). 1 judge on the surcharge-miss run: its free-shipping rule is right apart from the surcharge, which the rubric says to ignore. |
+| tangled: other 8 checks | 3/3 | |
+
+What caught Sonnet, and what didn't:
+
+- **Caught:** the exact-boundary case for new behavior (3/3), rewriting on a tie when the user invites it (2/3), and not looking for a file format's consumer (3/3).
+- **Didn't catch:** the `finance-export` code traps. Sonnet didn't reach for `csv.writer` or `.get(key, default)`, so preserving the old behavior line by line kept every byte. Only `explains-format` tells an agent that understood the format from one that got lucky.
 
 ## Previous runs: Opus 5.5 (for comparison)
 
@@ -145,4 +168,6 @@ The one ask-path run stopped over the EU express fee: "Unexplained, ask" and "Ol
 - `tangled` expects the agent to finish. An agent that stops to ask about the surcharge passes `explains-surcharge` but fails the checks that need code.
 - No case covers step 5's third stop condition: the user asks for a minimal change and the rewrite touches far more lines.
 - There is no case where the right answer is **hybrid**.
+- `clean-keep`'s `kept-pipeline` regex matches one literal line. It fails a cosmetic `.decode("ascii")` and passes a self-described fresh rewrite that kept that line. `says-old-won` is the real check.
+- `finance-export`'s code traps only bite an agent that reaches for `csv.writer` or `.get(key, default)`. An agent that copies the old behavior passes them without ever finding the consumer.
 - `max-length` and `daily-unchanged` also ask the judge to work out outputs by reading the code. They have been 6/6 so far, but they are the same kind of check that made `weekly` fail. If one fails, run the agent's code before trusting the verdict. `--keep-temp` seals the working directory, but `out/trace.jsonl` has every Write, Edit and Bash call. Agents often write code through a Bash heredoc into `$TMPDIR` and then `cp` it.
