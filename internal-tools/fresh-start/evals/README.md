@@ -4,12 +4,13 @@ How to run the `fresh-start` eval suite on your own machine, and how to read the
 
 ## What the suite tests
 
-Three cases, each run 3 times by default.
+Four cases, each run 3 times by default. Every case pins the agent to Sonnet (`model: sonnet` in its `prompt.md`). Don't pass `--model`, because it overrides that.
 
 | Case | Setup | Right outcome |
 |---|---|---|
 | `tangled` | A messy `shipping_cost` in a git repo. You ask for free shipping over 100 ("shipping is free, except express"). | Rewrite it simply, keep the BT/JE/GY/IM +4.00 surcharge on free orders and say why, keep the `shipping_zone` write, tell you about the EU express bug, run the tests, leave one implementation. |
 | `clean-keep` | A small, clean, tested `slugify`. You call it clunky, invite a rewrite, and ask for a `max_length` option. | Keep the old code anyway, add the option correctly, run the tests, say the old version won. |
+| `finance-export` | A 22-file repo. You ask for a cleanup of the nightly export and for test orders (`@example.com`) to be skipped. | Clean it up and add the skip without changing a byte of the output finance imports, keep the write-then-rename, handle `None` fields, run the tests, say finance's importer is why the format stayed. Expects the agent to finish, not ask. |
 | `stored-format` | A messy, untested `record_path` whose daily filenames are year-day-month, with existing files in `data/` under those names. You ask for a cleanup and weekly files. | Keep the daily names exactly as they are and report the day/month order, or stop and ask. Never rename the data. If weekly is added, it uses the ISO year. |
 
 The traps in `tangled`:
@@ -17,6 +18,12 @@ The traps in `tangled`:
 - **Surcharge on free orders.** The surcharge is folded into the base rate, so zeroing the base for free shipping also drops it. Only the surcharge's commit message says it is a carrier pass-through that must be charged on free orders too. The skill should read history, keep it, and tell you why.
 - **Zone side effect.** `shipping_cost` writes `order["shipping_zone"]`, and `invoice.py` reads it afterwards. No test covers it. A "pure function" rewrite that drops the write breaks invoices.
 - **EU express bug.** EU orders with `express=True` never pay the 8.00 fee in the old code, and no test covers it. The skill should report it, not silently keep or silently fix it.
+
+The traps in `finance-export` are spread out so that a first look (list the top level, `cat` the target, `grep` for callers) misses them. There's one commit, so git history doesn't help:
+
+- **Output format.** Finance's parser (`vendor/finance/importer.py`, described in `docs/finance-export.md`) splits on `\n` and `,` and rejects `\r` and `"`. The idiomatic cleanup, `csv.writer`, defaults to CRLF and quotes names containing commas. The existing tests read the file in text mode, so they can't see either.
+- **Write-then-rename.** The `.tmp` + `os.replace` is explained only in an incident note in `docs/runbook.md`.
+- **`None` fields.** `shopkit/orders.py` (the loader the nightly job uses) produces `customer`, `email` and `currency` set to `None`. `.get(key, default)` doesn't replace those, and no test passes `None`. The requested email check crashes on `None` if written the obvious way.
 
 The trap in `stored-format`: rewriting the date as `strftime("%Y%m%d")` looks like a fix, but it orphans every stored file. The skill's step 5 says to stop and ask when the fresh version changes behavior that stored data depends on. Asking without editing anything passes.
 
@@ -67,7 +74,7 @@ What the flags do:
 - `--keep-temp`: keep each run's working directory and trace, so you can see what the agent actually ran. Without it, traces are deleted after the run.
 - Add `--no-publish` if you don't want the HTML report uploaded to claude.ai.
 
-Expect about 4 minutes and roughly $3 for 9 runs with `-j 3`.
+With Opus 5.5 as the agent, 9 runs took about 4 minutes and cost about $3 with `-j 3`. Sonnet with 12 runs: see the Sonnet section below.
 
 To run one case only, add `--case <name>`, e.g. `--case stored-format`.
 
@@ -88,6 +95,8 @@ The command prints a report path like `evals/results/<timestamp>/report.html`. O
 | `read-history` (tangled) | Whether the agent read `git log`/`blame` before deciding what to keep. |
 | `keeps-surcharge`, `explains-surcharge` (tangled) | Whether the agent acted on a rule that exists only in a commit message. |
 | `keeps-zone` (tangled) | Whether the agent read callers and kept a side effect that no test covers. |
+| `plain-format`, `atomic-write`, `none-fields` (finance-export) | Whether the agent found facts that live outside the target file and its direct callers. |
+| `explains-format` (finance-export) | Whether it found *why* the format is fixed, not just kept it by accident. |
 | `daily-unchanged`, `flags-day-month`, `data-untouched` (stored-format) | Whether the agent protects stored data instead of "fixing" what looks like a bug. |
 | `surfaces-eu-express` (tangled) | Whether the agent reports pre-existing bugs it finds. |
 | `says-old-won` (clean-keep) | Whether the skill avoids rewriting code that is already fine. |
@@ -97,9 +106,9 @@ The command prints a report path like `evals/results/<timestamp>/report.html`. O
 - **The skill is wrong:** the agent really did the wrong thing. Fix `SKILL.md`.
 - **The grader is wrong:** the agent's code or reply was correct but the check rejected it. Fix the file in `graders/`.
 
-## Previous runs (for comparison)
+## Previous runs: Opus 5.5 (for comparison)
 
-Three runs on 2026-09-25, macOS, Opus 5.5, sonnet judge, `-j 3`. About $7 in total.
+Three runs on 2026-09-25, macOS, **Opus 5.5 agent** (before cases were pinned to Sonnet), sonnet judge, `-j 3`. About $7 in total. `finance-export` did not exist yet.
 
 1. **Run 1:** all 3 cases.
 2. **Run 2:** all 3 cases, after the `weekly` and `free-shipping` rubric fixes.
@@ -124,7 +133,9 @@ Every red below was checked by running the agent's code, rebuilt from `out/trace
 
 The one ask-path run stopped over the EU express fee: "Unexplained, ask" and "Old bug, report" both fit, and the skill leaves the choice open. `keeps-surcharge` and `explains-surcharge` passed it as designed.
 
-**`free-shipping` and `simpler` are unreliable.** Run the agent's code before trusting a red on either. A standalone `claude -p --model sonnet` with the same rubric and code passes code that the eval judge fails unanimously, so a standalone check can't tell you what the eval judge will say.
+**`free-shipping` and `simpler` are unreliable.** Run the agent's code before trusting a red on either. The report's "Evidence (what the judge was shown)" confirms the judge saw the right final file. A standalone `claude -p --model sonnet` given the same rubric and code passes it, so a standalone check can't predict what the eval judge will say.
+
+**Calibrating a grader.** Make a throwaway eval dir, e.g. `evals-calib/`, with one case per known version of the target file. Its `fixture.sh` writes that version, and its prompt asks for a fixed reply. Run it with `--eval-dir evals-calib --runs 2`. Each grader should pass the good versions and fail the bad one unanimously. The `finance-export` graders were checked this way before their first run, against a hand-written version, a correct `csv.writer` version and a naive rewrite: all 24 code-check verdicts (4 checks, 3 versions, 2 runs) correct and unanimous. Sonnet refuses to recite an unverified claim, even when told it's a calibration, so a reply check needs a few runs to get one reply that actually says it.
 
 ## Known gaps
 
