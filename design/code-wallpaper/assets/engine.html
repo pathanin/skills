@@ -21,7 +21,8 @@ const gradAt=(stops,y)=>{ if(y<=stops[0][0]) return hex(stops[0][1]); for(let i=
 const REG=SC.build({W,H,rnd,hex,mixc,gradAt,lerp,clamp});
 // texture (strokes, cut edges, grain) gets its own seed, so a new tseed keeps the layout the build just drew
 seed=+Q.get('tseed')||SC.tseed||(SC.seed^0x5bd1e995)>>>0;
-REG.forEach(r=>{ const xs=r.pts.map(p=>p[0]), ys=r.pts.map(p=>p[1]); r.box=[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
+REG.forEach((r,i)=>{ if(!r.pts.every(p=>isFinite(p[0])&&isFinite(p[1]))) throw new Error(`region ${i} has a non-finite point`);
+  const xs=r.pts.map(p=>p[0]), ys=r.pts.map(p=>p[1]); r.box=[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
   r.area=(r.box[2]-r.box[0])*(r.box[3]-r.box[1]); if(r.col) r.rgb=Array.isArray(r.col)?r.col:hex(r.col);
   let A=0, P=0; r.pts.forEach(([x0,y0],i)=>{ const [x1,y1]=r.pts[(i+1)%r.pts.length]; A+=x0*y1-x1*y0; P+=Math.hypot(x1-x0,y1-y0); });
   r.thick=Math.abs(A)/(P||1); }); // 2*area/perimeter: about the width of a strip, the radius of a disc

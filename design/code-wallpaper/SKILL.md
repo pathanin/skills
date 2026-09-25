@@ -195,27 +195,28 @@ Recompose for W instead of stretching: a 4:3 photo becomes a 16:9 wallpaper by w
 
 1. Settle the style, the scene, the resolution and the number of variations, then compute W. Set up `src/` and `output/` (see **Project layout and setup**).
 2. Write `src/scene.js`, one entry per wallpaper.
-3. Render a preview of each wallpaper at (s x W) by (s x 400) px, with s = 2 for landscape and s = 3 for portrait (for example 1422 x 800 for W = 711), into your scratchpad or temp directory. This keeps the same W, so the preview shows exactly the image the final render will produce. A paper-cut render takes under a second at any size. An oil render takes about 6 seconds, and 4K adds under a second to that.
+3. Render a preview of each wallpaper at (s x W) by (s x 400) px, with s = 2 for landscape and s = 3 for portrait (for example 1422 x 800 for W = 711), into your scratchpad or temp directory. This keeps the same W, so the preview shows exactly the image the final render will produce. A paper-cut render takes under a second up to 4K and about 2 seconds at 8K. An oil render takes about 6 seconds up to 4K.
 4. **Review each preview visually** with the Read tool. Fix what you see, re-render only the changed scenes, and review again. Repeat until clean.
    - When the scene has pieces under about 3 units wide, render a 1:1 crop during this loop, not only at the end. Thin pieces look fine in the preview even when their cut edges pinch at full size. For example, `node src/render.js 0 3840 2160 <scratch>/full.png '' 150,170,240,135`, then Read the crop path it prints.
    - These are the problems found in earlier runs:
-   - **(Oil) Linen showing through as brown flecks**: coverage is too thin. Raise the underpainting count (2400 x A) and the mid count (5200 x A). Do not lower them.
-   - **Glow halos around small objects** (for example, glows behind houses looked like snowballs): drop the glow or make it much weaker. Only large light sources should get `glowCF` halos.
-   - **Stripes that look like stairs**: evenly spaced, full-width ledges or strata look artificial. Use 3 or 4 short strata at irregular spacing, in a colour close to the base.
-   - **Unreadable blobs**, such as a dark polygon on a cliff face, debris-like slivers on water, or a tiny mast that reads as a cross: remove them or make their meaning clear.
-   - **Broken or disconnected shapes**, such as a road drawn in pieces: the polygon is self-intersecting. Order the points as the left edge up, then the right edge down.
-   - **Focal element hidden**, such as a sun behind a mesa: check the draw order and the overlap, and move the element into a gap.
-   - **(Oil) Elements lost in the texture**, such as hay bales: add a darker shadow region offset beneath them for contrast.
-   - **(Oil) Regions too thin to paint**: anything under about 1.5 logical units wide gets overpainted. Widen it or add it later in the list.
-   - **(Paper cut) Ghostly ring around the sun**: a `glowCF` halo. Replace it with flat concentric discs.
-   - **(Paper cut) Bands that merge**: two neighbouring pieces too close in value. Lighten the farther one or darken the nearer one.
-   - **(Paper cut) Specks instead of details**: pieces under about 2.5 units in both directions (dots, tiny shapes) are swallowed by their own shadow and rim. Enlarge them or drop them. Long thin strips are fine down to about 1.5 units wide.
-   - **(Paper cut) Reflection reads as a ramp or as blobs**: redo it as rows of slivers (see the paper-cut guidance).
-   - **(Paper cut) Pinched or zigzag strips at 1:1**: widen them toward 2 units, or set a smaller `jit` on those regions.
-   - **JS errors**: `render.js` prints PAGE ERROR. Common causes:
-     - a duplicate `const` inside `scene.js`, including redeclaring a helper from `helpers.js`
-     - a region with no `col`, `grad` or `cf`
-     - `-x**2`, which must be written `-(x**2)`
+     - **(Oil) Linen showing through as brown flecks**: coverage is too thin. Raise the underpainting count (2400 x A) and the mid count (5200 x A). Do not lower them.
+     - **Glow halos around small objects** (for example, glows behind houses looked like snowballs): drop the glow or make it much weaker. Only large light sources should get `glowCF` halos.
+     - **Stripes that look like stairs**: evenly spaced, full-width ledges or strata look artificial. Use 3 or 4 short strata at irregular spacing, in a colour close to the base.
+     - **Unreadable blobs**, such as a dark polygon on a cliff face, debris-like slivers on water, or a tiny mast that reads as a cross: remove them or make their meaning clear.
+     - **Broken or disconnected shapes**, such as a road drawn in pieces: the polygon is self-intersecting. Order the points as the left edge up, then the right edge down.
+     - **Focal element hidden**, such as a sun behind a mesa: check the draw order and the overlap, and move the element into a gap.
+     - **(Oil) Elements lost in the texture**, such as hay bales: add a darker shadow region offset beneath them for contrast.
+     - **(Oil) Regions too thin to paint**: anything under about 1.5 logical units wide gets overpainted. Widen it or add it later in the list.
+     - **(Paper cut) Ghostly ring around the sun**: a `glowCF` halo. Replace it with flat concentric discs.
+     - **(Paper cut) Bands that merge**: two neighbouring pieces too close in value. Lighten the farther one or darken the nearer one.
+     - **(Paper cut) Specks instead of details**: pieces under about 2.5 units in both directions (dots, tiny shapes) are swallowed by their own shadow and rim. Enlarge them or drop them. Long thin strips are fine down to about 1.5 units wide.
+     - **(Paper cut) Reflection reads as a ramp or as blobs**: redo it as rows of slivers (see the paper-cut guidance).
+     - **(Paper cut) Pinched or zigzag strips at 1:1**: widen them toward 2 units, or set a smaller `jit` on those regions.
+     - **JS errors**: `render.js` prints PAGE ERROR. Common causes:
+       - a duplicate `const` inside `scene.js`, including redeclaring a helper from `helpers.js`
+       - a region with no `col`, `grad` or `cf`
+       - `-x**2`, which must be written `-(x**2)`
+       - `region N has a non-finite point`: a `NaN` in `pts`, usually a negative number raised to a fractional power, such as `(x/170)**2.5` at x = -2. Clamp the base with `Math.max(0,x)`.
 5. Render each wallpaper at the final resolution into `output/`, passing a crop of about 240 x 135 logical units around the focal point. For example: `node src/render.js 0 3840 2160 output/oil-lighthouse-sunset-3840x2160.png '' 70,150,240,135`. The empty `''` keeps the scene's own seed. Read the crop it prints to check the brushwork or the cut edges at 1:1.
 6. Deliver the finished files from `output/`:
    - Name them `<style>-<scene>-<width>x<height>.png`, for example `papercut-lakeside-cabin-3840x2160.png`.

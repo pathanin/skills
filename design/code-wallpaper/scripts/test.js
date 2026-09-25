@@ -19,6 +19,7 @@ const SCENES=[
     o.push({pts:lens(200,200,40,4),col:'#fff'},{pts:strip([[50,50,3],[150,80,3],[250,60,3]]),col:'#f80'},{pts:cloud(400,100,90,12,1),col:'#88a'},{pts:star4(600,80,6),col:'#ffe'});
     if(Math.abs(P.x(0)-100)>1e-9||Math.abs(P.x(1)-500)>1e-9||Math.abs(P.t(P.x(.3))-.3)>1e-9||Math.abs(P.s(500)-.4)>1e-9||hump(0,0,5)!==1) throw new Error('helper math');
     return o; } },
+  { name:'t-nan', seed:5, style:'papercut', build(C){ const {W,H}=C; return [{pts:[[0,0],[W,0],[W,H],[0,H]],col:'#223'},{pts:[[10,10],[(-2/170)**2.5,50],[60,60]],col:'#fff'}]; } },
 ];`);
 
 let fails=0; const ok=(name,cond,detail='')=>{ console.log((cond?'PASS ':'FAIL ')+name+(detail?'  ('+detail+')':'')); if(!cond) fails++; };
@@ -52,6 +53,8 @@ const cli=(args,env={})=>{ try{ return {out:execFileSync('node',[path.join(T,'re
   ok('oil still paints strokes',!oil.err&&oil.done>1000,oil.err||'strokes '+oil.done);
   const hl=await render(br,'s=2&w=711&h=400');
   ok('helpers.js is loaded before scene.js',!hl.err&&hl.done>0,hl.err||'');
+  const nan=await render(br,'s=3&w=711&h=400');
+  ok('a non-finite point is reported, not silently dropped',/non-finite/.test(nan.err||''),nan.err||'no error');
   await br.close();
 
   // CLI: positional seed + crop still work, --crop-out picks the crop path, crops never land next to the output
