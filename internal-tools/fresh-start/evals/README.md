@@ -211,5 +211,5 @@ The one ask-path run stopped over the EU express fee, which raises prices. Step 
 - There is no case where the right answer is **hybrid**.
 - `max-length`, `daily-unchanged` and `weekly` ask the judge to work out outputs by reading the code. They were right every time they were checked, but they are the same kind of check that once made `weekly` fail.
 - **Narrowed coverage:**
-  - `simpler` no longer checks for dead branches; `no-flags` covers the old code's dead express branch, because that branch tests `done`.
+  - `simpler` used to check that all five rules (zone rate, weight charge, surcharge, express, free shipping) were written once. It now counts only the weight charge and the express fee, the two the old code repeated per zone. It no longer checks for dead branches either; `no-flags` covers the old code's dead express branch, because that branch tests `done`.
   - `old-lines-kept` fails any rename of the old lines, which matches the new step-5 rule.
