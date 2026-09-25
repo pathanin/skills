@@ -13,7 +13,8 @@ simplest correct starting point, whether that is the old code or a clean rewrite
 
 This is not a license to rewrite. A rewrite has to beat the old code on the comparison in
 step 4. If it only ties, keep the old code, because a tie still costs review time, churn,
-and risk.
+and risk. That holds even when the user calls the code messy or invites a rewrite: the
+invitation lets you consider one, but the comparison still decides.
 
 ## 1. Pick the unit
 
@@ -31,7 +32,11 @@ further. That is a migration, not a fresh start.
 ## 2. Pull the behavior contract out of the old code
 
 Read the old code, its tests, its callers, and `git log -p` / `git blame` on the
-confusing parts. Write a short contract as a plain list:
+confusing parts. Then find whatever consumes what the unit produces: read the README or
+docs index, and search the whole repo, docs included, for readers of each file it writes,
+format it emits, or message it logs. Search by path, header, or message text, not only by
+function name, because a consumer that parses the output never mentions the function.
+Write a short contract as a plain list:
 
 - **Inputs and outputs**: types, shapes, and ranges actually passed in by real callers.
 - **Side effects**: writes, network calls, mutations of arguments, logging that someone
@@ -44,7 +49,8 @@ confusing parts. Write a short contract as a plain list:
 Every odd branch, magic number, or special case is a candidate requirement. Before
 dropping one, find out why it exists (commit message, linked issue, test, comment). If you
 cannot find out, keep it in the contract and mark it `unexplained`. Never drop behavior
-just because you can't see its purpose.
+just because you can't see its purpose. If you can't read the history at all (for example,
+`git` fails), say so in the report, so the user knows some reasons may be missing.
 
 ## 3. Write the fresh version from the contract
 
@@ -73,7 +79,9 @@ Run both versions against the same inputs:
 4. Cases for the requested change itself. New behavior has no old version to diff
    against, so write expected outputs for it by hand, including its boundaries (exactly at
    a limit, just over it, the input where it should do nothing), and run every version
-   you might keep against them.
+   you might keep against them. Work out each expected output from the request before you
+   run any version, and never change one to match what the code returns. When they
+   disagree, the code is wrong unless the request says otherwise.
 
 Classify every difference as one of:
 
@@ -99,6 +107,8 @@ Choose one of these outcomes:
   code in place, delete the scaffolding, and keep or port the old tests.
 - **Old version**: the fresh version was not clearly better. Keep the old code, apply the
   original change to it, and fold in any old bugs found in step 4 only if the user agrees.
+  Leave the existing lines as they are: no renames, reformatting, or reordering beyond what
+  the change needs. The old code plus the requested change is this outcome, not a hybrid.
 - **Hybrid**: the fresh version's structure with specific pieces of old logic that proved
   correct (usually the `unexplained` cases). Say which pieces came from where.
 
