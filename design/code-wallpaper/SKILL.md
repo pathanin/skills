@@ -73,13 +73,13 @@ node src/render.js <scene_index> <width> <height> <out.png|out.jpg> [seed] [crop
 
 **Oil** (the default) paints every stroke pixel by pixel into a colour buffer and a paint-height buffer, in these passes:
 
-1. A linen ground: an irregular plain weave (uneven threads, slubs, wavy paths), stained with a thin wash of the scene's colour so gaps between strokes read as canvas, not specks.
+1. A linen ground: an irregular plain weave (uneven threads, slubs, wavy paths), stained with a thin wash of the scene's colour so gaps between strokes read as canvas, not specks. The wash is heavier where the scene is far from the linen's value (night skies), so gaps never pop as bright confetti.
 2. A broad underpainting pass: thin, opaque lay-in.
 3. A mid pass.
 4. A fine detail pass.
 5. Edge strokes placed on region borders.
 6. Extra strokes inside small regions such as windows and stars.
-7. Lighting: raking light from the upper left over the height buffer. It gives diffuse shading of the relief, darker cavities in grooves, and specular highlights only where the paint is thick. The weave shows through thin paint, and a faint falloff runs across the whole canvas as in a photograph.
+7. Lighting: raking light from the upper left over the height buffer. It gives diffuse shading of the relief, darker cavities in grooves, and an oily sheen on the ridges that is strongest on thick impasto; bare linen stays matte. The weave shows through thin paint, and a faint falloff runs across the whole canvas as in a photograph.
 
 Each stroke is a row of bristles, each with its own paint load, tone, share of a second nearby pigment, and lift-off point. Together they give streaky, imperfect mixing and ragged tails, some trailing past the end. Paint runs out along the stroke, so starved bristles skip and break up, catching the weave's high points first (dry brush). Toward the tail the brush drags the wet paint beneath it along. Lights are laid on thicker than darks, paint piles up along the stroke edges, and a blob marks where the brush touched down. A new stroke mostly flattens the texture under it. All of this is drawn from the texture seed, so `--tseed` changes the brushwork and never the composition.
 
@@ -106,7 +106,7 @@ Each region is `{pts:[[x,y],...], dir, jit?, ...colour}`:
 - **Colour** is one of three options:
   - `col:'#hex'` or `col:[r,g,b]` for a flat colour. The array form takes `C.mixc` output directly.
   - `grad:[[y,'#hex'],...]` for a vertical gradient, used for skies, sea and ground.
-  - `cf:(x,y)=>[r,g,b]` for any colour function, used for glows, light beams and shaded cliffs.
+  - `cf:(x,y)=>[r,g,b]` for any colour function, used for glows, light beams and shaded cliffs. Keep it a pure function of `(x,y)`: never call `C.rnd` inside it. The oil engine calls it once per pixel, so a `C.rnd` call there would make the preview and the final render differ.
 - **Stroke direction (`dir`)**, used by oil only (paper cut ignores it):
   - `sky`: wavy sky flow.
   - `horiz`: water, clouds and walls.

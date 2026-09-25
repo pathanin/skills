@@ -89,24 +89,25 @@ if(SC.style==='papercut'){
 // Thread pitch TP and bristle spacing SE never drop below 3 px, so a preview is the same painting with coarser texture.
 const NP=PX*PY, img=b.createImageData(PX,PY), D=img.data, HT=new Float32Array(NP), WV=new Uint8ClampedArray(NP), TP=Math.max(.55,3/k), SE=Math.max(.5,3/k);
 const ts=R()*4294967296>>>0, hs=(a,c)=>{ let h=Math.imul(a^ts,0x85ebca6b)^Math.imul(c+0x632be5ab,0xc2b2ae35); h^=h>>>15; h=Math.imul(h,0x2c1b3c6d); h^=h>>>12; h=Math.imul(h,0x297a2d39); h^=h>>>15; return (h>>>0)/4294967296; };
-// linen: plain weave of irregular threads, washed with the scene's colour so gaps between strokes read as stained canvas, not specks.
+// linen: plain weave of irregular threads, washed with the scene's colour so gaps between strokes read as stained canvas, not specks
+// (the wash is heavier where the scene is far from the linen's value, e.g. a night sky, so a gap stays within ~14 levels of the paint).
 // The weave: (thickness per thread, slubs along it, wavy paths), so raking light shows no moire
-const gr=hex(SC.ground||'#b98d63'), nT=Math.ceil((Math.max(W,H)+4)/TP)+2, tw=new Float32Array(nT*2);
+const gr=hex(SC.ground||'#b98d63'), lg=.3*gr[0]+.59*gr[1]+.11*gr[2], nT=Math.ceil((Math.max(W,H)+4)/TP)+2, tw=new Float32Array(nT*2);
 for(let i=0;i<nT*2;i++) tw[i]=.6+.4*hs(1,i);
 for(let py=0,q=0;py<PY;py++){ const y=(py+.5)/k;
   for(let px=0;px<PX;px++,q++){ const x=(px+.5)/k, u=x/TP+1+.2*Math.sin(y*.21+x*.013), v=y/TP+1+.2*Math.sin(x*.17+y*.011), iu=u|0, iv=v|0;
     const a=Math.sin(Math.PI*(u-iu)), c=Math.sin(Math.PI*(v-iv)), up=(iu+iv)&1;
     const h=up?a*(.4+.6*c)*tw[iu]*(.8+.2*Math.sin(v*.9+iu)):c*(.4+.6*a)*tw[nT+iv]*(.8+.2*Math.sin(u*.9+iv));
-    WV[q]=h*255; const o=q*4, f=(.8+.3*h)*(up?.97:1.03), sc=colorAt(x,y), wa=.72+.1*Math.sin(x*.07+Math.sin(y*.05)*2)*Math.sin(y*.06);
+    WV[q]=h*255; const o=q*4, f=(.8+.3*h)*(up?.97:1.03), sc=colorAt(x,y), dl=Math.abs(lg-.3*sc[0]-.59*sc[1]-.11*sc[2]), wa=clamp(Math.max(.72,1-14/(dl||1))+.08*Math.sin(x*.07+Math.sin(y*.05)*2)*Math.sin(y*.06),0,.97);
     for(let c=0;c<3;c++) D[o+c]=(gr[c]+(sc[c]-gr[c])*wa)*f; D[o+3]=255; } } // a thin block-in wash of the scene's colour stains the linen
 // one stroke = NB bristles side by side. Per bristle: paint load, tone, share of the second pigment, where it lifts off (ragged, some trail past
 // the end), and a noise track along it. Paint runs out along the stroke (depl); a starved bristle skips, catching the weave's tops first.
 const BH=new Float32Array(64), BL=new Float32Array(64), BT=new Float32Array(64), BM=new Float32Array(64), BE=new Float32Array(64), BS=new Float32Array(64), NZ=new Float32Array(64*64);
 function paint(s){ const {col,col2,dx,dy,w,id}=s, nx=-dy, ny=dx, cap=w*.4, len=Math.hypot(s.p1[0]-s.p0[0],s.p1[1]-s.p0[1])+2*cap, bw=s.bend*w, p0=[s.p0[0]-dx*cap,s.p0[1]-dy*cap]; // the bristles overrun both ends by cap
-  const NB=Math.min(64,Math.max(2,Math.round(w/SE))), NS=Math.min(62,Math.ceil(len/1.2))+2, rg=.1+.7*hs(id,-1), gd=.3+.5*hs(id,-2), bb=hs(id,-3); // per stroke: edge ridge, groove depth, landing blob
+  const NB=Math.min(64,Math.max(2,Math.round(w/SE))), NS=Math.min(62,Math.ceil(len/1.2))+2, rg=.1+.7*hs(id,-1), gd=.3+.5*hs(id,-2), bb=hs(id,-3), rs=sstep(1.5,4,w); // per stroke: edge ridge, groove depth, landing blob; rs: narrow strokes (stars, windows) stay solid dabs
   for(let j=0;j<NB;j++){ const e=Math.abs((j+.5)/NB*2-1), r=hs(id,j*8+3);
-    BL[j]=(.6+.4*hs(id,j*8))*(1-.45*sstep(.6,1,e)); BH[j]=.4+hs(id,j*8+5)*(.3+.9*hs(id,j*8+6)); BT[j]=hs(id,j*8+1)-.5; BM[j]=hs(id,j*8+2)*.6;
-    BE[j]=r>.9?1.1:1-.3*r*r*(.3+e); BS[j]=.06*hs(id,j*8+4);
+    BL[j]=(1-rs*(.4-.4*hs(id,j*8)))*(1-.45*rs*sstep(.6,1,e)); BH[j]=.4+hs(id,j*8+5)*(.3+.9*hs(id,j*8+6)); BT[j]=hs(id,j*8+1)-.5; BM[j]=hs(id,j*8+2)*.6;
+    BE[j]=r>.9?1.1:1-.3*rs*r*r*(.3+e); BS[j]=.06*hs(id,j*8+4);
     for(let i=0;i<NS;i++) NZ[j*64+i]=hs(id+7777,j*64+i); }
   const ex=len*1.12, hw=w/2+Math.abs(bw)+.5, ax=p0[0]-dx*.5, ay=p0[1]-dy*.5, bx=p0[0]+dx*ex, by=p0[1]+dy*ex;
   const X0=Math.max(0,Math.floor((Math.min(ax,bx)-hw)*k)), X1=Math.min(PX-1,Math.ceil((Math.max(ax,bx)+hw)*k)), Y0=Math.max(0,Math.floor((Math.min(ay,by)-hw)*k)), Y1=Math.min(PY-1,Math.ceil((Math.max(ay,by)+hw)*k));
@@ -115,7 +116,7 @@ function paint(s){ const {col,col2,dx,dy,w,id}=s, nx=-dy, ny=dx, cap=w*.4, len=M
       const uc=u>1?1:u, ul=u*len/cap, half=w*.5*(ul<1?Math.sqrt(ul*(2-ul)):1)*(1-.12*sstep(.5,1.1,u)), vn=(rx*nx+ry*ny-bw*4*uc*(1-uc))/half;
       if(vn<=-1||vn>=1) continue;
       const bj=(vn+1)*.5*NB, j=bj|0, fb=bj-j; if(u<BS[j]||u>BE[j]) continue;
-      const ni=uc*(NS-2), i0=ni|0, f=ni-i0, nz=NZ[j*64+i0]*(1-f)+NZ[j*64+i0+1]*f, q=py*PX+px, hq=HT[q], m=BL[j]*(1-s.depl*uc);
+      const ni=uc*(NS-2), i0=ni|0, f=ni-i0, nz=NZ[j*64+i0]*(1-f)+NZ[j*64+i0+1]*f, q=py*PX+px, hq=HT[q], m=BL[j]*(1-s.depl*rs*uc);
       const cov=sstep(.06,.3,m+(.5*(nz-.5)+.4*(WV[q]/255-.5)/(1+3*hq))*(1.1-m)); // a starved bristle skips; tooth only shows through thin paint
       const a=cov*s.op*clamp(Math.min((1-(vn<0?-vn:vn))*half*k,(BE[j]-u)*len*k,(u-BS[j])*len*k+.5)); if(a<.003) continue;
       const t=BM[j], tn=1+.16*BT[j], pk=s.wet*uc, o=q*4; // wet-into-wet: toward the tail the brush drags the paint beneath along
@@ -133,9 +134,9 @@ let e=0, tries=0; const N3=Math.round(1050*A*1.4); while(e<N3&&tries++<N3*100){ 
 REG.forEach((r,ri)=>{ if(r.area<900){ const m=r.area<30?12:40; for(let q=0;q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)===ri) add(oilStroke(x,y,rnd(2,6),r.area<30?rnd(.8,1.4):rnd(1.2,2),1.1)); } } });
 // light: raking from the upper left. Diffuse is linear in the slope, so bumps don't darken the scene on average. Specular only where
 // the paint is thick (bare linen and thin scumbles stay matte). The weave pushes up through thin paint. A faint falloff, as in a photo.
-const L0=-.5, L1=-.62, L2=.6, ll=Math.hypot(L0,L1,L2), lx=L0/ll, ly=L1/ll, lz=L2/ll, hl=Math.hypot(lx,ly,lz+1), hx=lx/hl, hy=ly/hl, hz=(lz+1)/hl, SPE=14, s0=hz**SPE;
+const L0=-.5, L1=-.62, L2=.6, ll=Math.hypot(L0,L1,L2), lx=L0/ll, ly=L1/ll, lz=L2/ll, hl=Math.hypot(lx,ly,lz+1), hx=lx/hl, hy=ly/hl, hz=(lz+1)/hl, SPE=10, s0=hz**SPE;
 const TT=new Float32Array(NP), RB=Math.max(1,Math.round(k*.4)); // cavity blur radius (px)
-for(let q=0;q<NP;q++){ const h=HT[q]; TT[q]=h+.4*WV[q]/255/(1+6*h*h); WV[q]=255*sstep(.3,1.3,h); } // WV now holds gloss: thick paint shines
+for(let q=0;q<NP;q++){ const h=HT[q]; TT[q]=h+.4*WV[q]/255/(1+6*h*h); WV[q]=255*sstep(0,.15,h)*(.3+.7*sstep(.2,1,h)); } // WV now holds gloss: bare linen is matte, oil has a sheen, impasto shines
 { const tmp=new Float32Array(Math.max(PX,PY)); // separable box blur TT -> HT
   for(let y=0;y<PY;y++){ const r=y*PX; let acc=0; for(let x=-RB;x<=RB;x++) acc+=TT[r+clamp(x,0,PX-1)];
     for(let x=0;x<PX;x++){ tmp[x]=acc/(2*RB+1); acc+=TT[r+Math.min(PX-1,x+RB+1)]-TT[r+Math.max(0,x-RB)]; } HT.set(tmp.subarray(0,PX),r); }
@@ -143,7 +144,8 @@ for(let q=0;q<NP;q++){ const h=HT[q]; TT[q]=h+.4*WV[q]/255/(1+6*h*h); WV[q]=255*
     for(let y=0;y<PY;y++){ tmp[y]=acc/(2*RB+1); acc+=HT[Math.min(PY-1,y+RB+1)*PX+x]-HT[Math.max(0,y-RB)*PX+x]; } for(let y=0;y<PY;y++) HT[y*PX+x]=tmp[y]; } }
 for(let py=0;py<PY;py++){ const up=(py?py-1:0)*PX, dn=(py<PY-1?py+1:py)*PX, row=py*PX;
   for(let px=0;px<PX;px++){ const q=row+px, gx=(TT[px<PX-1?q+1:q]-TT[px?q-1:q])*.55, gy=(TT[dn+px]-TT[up+px])*.55, iz=1/Math.sqrt(gx*gx+gy*gy+1);
-    const ndh=(-gx*hx-gy*hy+hz)*iz, sp=Math.max(0,ndh**SPE-s0)*.27*WV[q], cav=clamp((TT[q]-HT[q])*.6,-.12,.08); // grooves hold shadow
+    const ig=1/Math.sqrt(9*(gx*gx+gy*gy)+1), ndh=(-3*gx*hx-3*gy*hy+hz)*ig, sp=Math.max(0,ndh**SPE-s0)*.7*WV[q], // gloss sees the relief steeper than diffuse does
+      cav=clamp((TT[q]-HT[q])*.6,-.12,.08); // grooves hold shadow
     const sh=clamp(1-.75*(gx*lx+gy*ly)/lz,.5,1.5)*(1+cav)*(1+.035*(1-2*(px/PX*.6+py/PY*.4))), o=q*4;
     D[o]=D[o]*sh+sp; D[o+1]=D[o+1]*sh+sp*.97; D[o+2]=D[o+2]*sh+sp*.9; } }
 b.putImageData(img,0,0);

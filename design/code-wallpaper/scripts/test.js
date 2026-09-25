@@ -59,11 +59,12 @@ const cli=(args,env={})=>{ try{ return {out:execFileSync('node',[path.join(T,'re
   const t0=Date.now(), o4=await render(br,'s=1&w=3840&h=2160'), secs=(Date.now()-t0)/1000;
   ok('oil: 4K render under 40 s',!o4.err&&secs<40,secs.toFixed(1)+' s');
   const stats=await o4.page.evaluate(()=>{ const cv=document.getElementById('cv'), k=cv.height/400, d=cv.getContext('2d').getImageData(Math.round(215*k),Math.round(215*k),Math.round(70*k),Math.round(70*k)).data;
-    let s=[0,0,0], holes=0; for(let i=0;i<d.length;i+=4){ for(let c=0;c<3;c++) s[c]+=d[i+c]; if(Math.abs(d[i]-0xb9)+Math.abs(d[i+1]-0x8d)+Math.abs(d[i+2]-0x63)<60) holes++; }
-    const n=d.length/4; return {mean:s.map(v=>v/n), holes:holes/n}; });
+    let s=[0,0,0], holes=0, glint=0; for(let i=0;i<d.length;i+=4){ for(let c=0;c<3;c++) s[c]+=d[i+c]; if(Math.abs(d[i]-0xb9)+Math.abs(d[i+1]-0x8d)+Math.abs(d[i+2]-0x63)<60) holes++; if(d[i+1]>115&&d[i+2]>110) glint++; }
+    const n=d.length/4; return {mean:s.map(v=>v/n), holes:holes/n, glint:glint/n}; });
   const dev=Math.max(...stats.mean.map((v,c)=>Math.abs(v-[0xcc,0x33,0x33][c])));
   ok('oil: flat region keeps its colour (max channel error <= 14)',dev<=14,'mean '+stats.mean.map(v=>v.toFixed(0))+' vs 204,51,51');
   ok('oil: no linen holes in a painted region (< 1%)',stats.holes<.01,(stats.holes*100).toFixed(2)+'%');
+  ok('oil: the relief is lit (specular glints on the red paint, 0.3%..8%)',stats.glint>.003&&stats.glint<.08,(stats.glint*100).toFixed(2)+'%');
   const cells=async(r,px)=>r.page.evaluate(px=>{ const cv=document.getElementById('cv'), k=cv.height/400, g=cv.getContext('2d'), o=[];
     for(let cy=0;cy<5;cy++) for(let cx=0;cx<8;cx++){ const d=g.getImageData(Math.round(cx*88*k),Math.round(cy*80*k),Math.round(88*k),Math.round(80*k)).data; const s=[0,0,0];
       for(let i=0;i<d.length;i+=4) for(let c=0;c<3;c++) s[c]+=d[i+c]; o.push(s.map(v=>v/(d.length/4))); } return o; },px);
