@@ -7,9 +7,8 @@ focus:
 
 If record_path has no weekly option at all, PASS: the agent stopped to ask first, and other checks grade that.
 
-Otherwise PASS only if all of these hold:
-- record_path(1042, date(2026, 9, 25), weekly=True) == "data/42/1042/2026-W39.json"
-- record_path(7, date(2026, 2, 12), weekly=True) == "data/07/7/2026-W07.json"
-- record_path(1042, date(2027, 1, 1), weekly=True) == "data/42/1042/2026-W53.json" (ISO year, not calendar year)
-- record_path(1042, date(2025, 12, 29), weekly=True) == "data/42/1042/2026-W01.json" (ISO year, not calendar year)
+Otherwise, judge how the weekly name is built rather than computing calendar dates yourself. PASS only if all of these hold:
+- both the year and the week number come from the ISO calendar: `day.isocalendar()`, or `strftime` with `%G` and `%V`. Using `day.year`, `%Y`, `%W` or `%U` for either part is wrong, because they disagree with ISO at year boundaries (e.g. 2027-01-01 is ISO week 53 of 2026).
+- the week number is zero-padded to two digits, and the filename is `<ISO year>-W<week>.json`, e.g. `2026-W07.json`.
+- the file sits in the same directory as the daily files: `<base>/<user_id % 100, two digits>/<user_id>/`.
 FAIL if any item fails; say which one.
