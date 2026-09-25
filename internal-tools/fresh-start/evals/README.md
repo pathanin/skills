@@ -113,20 +113,20 @@ One run on 2026-09-25, macOS, `claude-sonnet-5` agent (checked in each trace's `
 | Check | Pass | Reds |
 |---|---|---|
 | clean-keep: `max-length` | 0/3 | 3 real. All three drop a whole word when the cut lands exactly at a word's end: `slugify("hello world foo", max_length=11)` gives `"hello"`, not `"hello-world"`. One run says it tested "exact word boundary". Step 4 asks for exactly this case. |
-| clean-keep: `says-old-won` | 1/3 | 2 real. One run chose a "fresh rewrite" and another a "light rewrite", renaming variables with no behavior change. Both are churn on a tie. |
-| clean-keep: `kept-pipeline` | 2/3 | 1 grader. The run changed `.decode()` to `.decode("ascii")`. The regex also passes a run that called itself a fresh rewrite, so it doesn't measure "kept". |
+| clean-keep: `says-old-won`, `kept-pipeline` | 1/3, 2/3 | Every run edited the old lines, even though the fresh version only tied. OI6srW called it a "fresh rewrite" and reordered the pipeline: a clear real fail. The other two made nearly the same rename-only edit (`text` → `ascii_text`/`slug`, chained `.strip("-").lower()`). The graders split them in opposite directions. tmjsXE said "light rewrite", so it failed `says-old-won` but passed `kept-pipeline`. ioc7cZ said "hybrid", so it passed `says-old-won` but failed `kept-pipeline` over a cosmetic `.decode("ascii")`. Neither check measures "left the old code alone". |
 | clean-keep: `ran-tests`, `no-leftover` | 3/3 | |
 | finance-export: `plain-format`, `atomic-write`, `none-fields`, `skips-test-orders` | 3/3 | All three runs' code passed finance's importer and every behavior check when run. |
 | finance-export: `explains-format` | 0/3 | 3 real. No run opened `docs/finance-export.md` or `vendor/finance/importer.py`; they kept the format by preserving behavior, not because they found the consumer. One read `docs/runbook.md`. |
 | finance-export: `ran-tests`, `no-leftover` | 3/3 | |
-| stored-format: all 5 checks | 3/3 | |
+| stored-format: all 5 checks | 3/3 | Code rebuilt from the traces and run: the daily paths are unchanged and the ISO weeks are right in all three. |
 | tangled: `keeps-surcharge`, `explains-surcharge` | 2/3 | 1 real, caused by the environment. `git` hit the xcrun error, the agent gave up, and it waived the surcharge on free orders. The other two runs switched to `/opt/homebrew/bin/git` or `env HOME=$TMPDIR git` and saw the commit. |
 | tangled: `free-shipping` | 1/3 | 1 judge (the code ran correctly). 1 judge on the surcharge-miss run: its free-shipping rule is right apart from the surcharge, which the rubric says to ignore. |
 | tangled: other 8 checks | 3/3 | |
 
 What caught Sonnet, and what didn't:
 
-- **Caught:** the exact-boundary case for new behavior (3/3), rewriting on a tie when the user invites it (2/3), and not looking for a file format's consumer (3/3).
+- **Caught:** the exact-boundary case for new behavior (3/3); editing old code on a tie when the user invites a rewrite (3/3: one real rewrite, two rename-only edits); and not looking for a file format's consumer (3/3). No tool output in any `finance-export` run contains text from `docs/finance-export.md` or `vendor/finance/importer.py`, not even the path, so they never looked.
+- **Found:** the `None` fields in `orders.py`, the caller's caller, in 3/3 runs.
 - **Didn't catch:** the `finance-export` code traps. Sonnet didn't reach for `csv.writer` or `.get(key, default)`, so preserving the old behavior line by line kept every byte. Only `explains-format` tells an agent that understood the format from one that got lucky.
 
 ## Previous runs: Opus 5.5 (for comparison)
