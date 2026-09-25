@@ -1,0 +1,7 @@
+{
+  "name": "oil-painting-wallpaper",
+  "description": "Manual-only oil-painting wallpaper render, invoked with /oil-painting-wallpaper. Paints an oil-on-linen style landscape entirely in code and exports a PNG at any resolution — 4K, ultrawide, or phone.",
+  "author": {
+    "name": "oat"
+  }
+}

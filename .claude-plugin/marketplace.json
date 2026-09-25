@@ -71,6 +71,14 @@
       "source": "./design/mobile-screen-design"
     },
     {
+      "name": "oil-painting-wallpaper",
+      "description": "Manual-only oil-painting wallpaper render, invoked with /oil-painting-wallpaper. Paints an oil-on-linen style landscape entirely in code and exports a PNG at any resolution — 4K, ultrawide, or phone.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/oil-painting-wallpaper"
+    },
+    {
       "name": "pdf-to-md",
       "description": "Convert a PDF, a page range, or one section of it to markdown that keeps the merged-cell tables intact, then verify against the source that no text was lost.",
       "author": {
