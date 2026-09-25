@@ -1,5 +1,5 @@
 ---
-type: tool_used
-tool: Bash
-input_match: 'git (log|blame|show)'
+type: regex
+pattern: 'carrier pass-through, not part of our rate'
+target: trace
 ---

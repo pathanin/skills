@@ -3,8 +3,11 @@
 #  - format: finance's parser (vendor/finance/importer.py, docs/finance-export.md) needs LF line
 #    endings and no quoting, so csv.writer's defaults (CRLF, quoted fields) break the import
 #  - atomic write: the .tmp + os.replace dance is explained only in docs/runbook.md
-#  - None fields: shopkit/orders.py (the caller's loader) yields customer/email/currency = None,
-#    which .get(key, default) does not replace; tests never pass None
+#  - None fields: shopkit/orders.py (the caller's loader) yields customer/email/currency/country
+#    = None, which .get(key, default) does not replace; tests never pass None
+#  - the requested country column: its exact spec (header country_code, capitals, ZZ when
+#    unknown) exists only in docs/finance-export.md and vendor/finance/importer.py, so copying
+#    the old code can't produce it
 # One commit with a bland message: nothing here depends on git history.
 set -e
 git init -q .
@@ -67,6 +70,12 @@ The format is fixed by their parser. Don't change it without talking to finance.
 - `amount` has exactly two decimals. Refunds are negative.
 - `currency` is a 3-letter code.
 - Cancelled orders are not exported.
+
+## Version 2: country
+
+Since October 2026 the parser also accepts a sixth column, `country_code`, after `currency`.
+It must be the ISO 3166-1 alpha-2 code in capitals (`GB`, `DE`). Write `ZZ` when the country
+is unknown. Files without the column still import.
 EOF
 
 cat > docs/runbook.md <<'EOF'
@@ -104,6 +113,7 @@ from datetime import date
 from decimal import Decimal
 
 HEADER = ["order_id", "date", "customer", "amount", "currency"]
+HEADER_V2 = HEADER + ["country_code"]
 
 
 def parse(text):
@@ -112,26 +122,33 @@ def parse(text):
     lines = text.split("\n")
     if lines[-1] != "":
         raise ValueError("export must end with a newline")
-    if lines[0].split(",") != HEADER:
+    header = lines[0].split(",")
+    if header not in (HEADER, HEADER_V2):
         raise ValueError("bad header: %r" % lines[0])
     rows = []
     for n, line in enumerate(lines[1:-1], start=2):
         fields = line.split(",")
-        if len(fields) != len(HEADER):
-            raise ValueError("line %d: expected %d fields, got %d" % (n, len(HEADER), len(fields)))
+        if len(fields) != len(header):
+            raise ValueError("line %d: expected %d fields, got %d" % (n, len(header), len(fields)))
         day, month, year = fields[1].split("/")
         amount = fields[3]
         if len(amount.rpartition(".")[2]) != 2:
             raise ValueError("line %d: amount must have two decimals" % n)
         if len(fields[4]) != 3:
             raise ValueError("line %d: bad currency %r" % (n, fields[4]))
-        rows.append({
+        row = {
             "order_id": fields[0],
             "date": date(int(year), int(month), int(day)),
             "customer": fields[2],
             "amount": Decimal(amount),
             "currency": fields[4],
-        })
+        }
+        if header == HEADER_V2:
+            code = fields[5]
+            if len(code) != 2 or not (code.isalpha() and code.isupper()):
+                raise ValueError("line %d: country_code must be two capital letters, ZZ if unknown" % n)
+            row["country_code"] = code
+        rows.append(row)
     return rows
 EOF
 
@@ -152,6 +169,7 @@ def load_orders(path):
             "email": row.get("email"),
             "total": float(row["total"]),
             "currency": row.get("currency"),
+            "country": row.get("country"),
             "status": row["status"],
         })
     return orders
@@ -276,13 +294,13 @@ EOF
 
 cat > data/orders-2026-09-23.json <<'EOF'
 [
-  {"id": 5101, "created_at": "2026-09-23T08:14:03Z", "name": "Ada Lovelace", "email": "ada@example.org", "total": "42.50", "currency": "GBP", "status": "paid"},
-  {"id": 5102, "created_at": "2026-09-23T09:02:44Z", "name": "Smith, Jo", "email": "jo.smith@mail.test", "total": "18.00", "currency": "EUR", "status": "paid"},
-  {"id": 5103, "created_at": "2026-09-23T10:30:00Z", "name": null, "email": "guest-8812@mail.test", "total": "9.99", "currency": "GBP", "status": "paid"},
-  {"id": 5104, "created_at": "2026-09-23T11:45:10Z", "name": "Grace Hopper", "email": null, "total": "120.00", "currency": "USD", "status": "refunded"},
-  {"id": 5105, "created_at": "2026-09-23T12:00:00Z", "name": "QA Bot", "email": "qa+smoke@Example.com", "total": "1.00", "currency": "GBP", "status": "paid"},
+  {"id": 5101, "created_at": "2026-09-23T08:14:03Z", "name": "Ada Lovelace", "email": "ada@example.org", "total": "42.50", "currency": "GBP", "country": "gb", "status": "paid"},
+  {"id": 5102, "created_at": "2026-09-23T09:02:44Z", "name": "Smith, Jo", "email": "jo.smith@mail.test", "total": "18.00", "currency": "EUR", "country": "de", "status": "paid"},
+  {"id": 5103, "created_at": "2026-09-23T10:30:00Z", "name": null, "email": "guest-8812@mail.test", "total": "9.99", "currency": "GBP", "country": null, "status": "paid"},
+  {"id": 5104, "created_at": "2026-09-23T11:45:10Z", "name": "Grace Hopper", "email": null, "total": "120.00", "currency": "USD", "country": "US", "status": "refunded"},
+  {"id": 5105, "created_at": "2026-09-23T12:00:00Z", "name": "QA Bot", "email": "qa+smoke@Example.com", "total": "1.00", "currency": "GBP", "country": "gb", "status": "paid"},
   {"id": 5106, "created_at": "2026-09-23T13:20:31Z", "name": "Alan Turing", "email": "alan@mail.test", "total": "75.25", "status": "paid"},
-  {"id": 5107, "created_at": "2026-09-23T14:05:00Z", "name": "Edsger Dijkstra", "email": "ewd@mail.test", "total": "33.00", "currency": "EUR", "status": "cancelled"}
+  {"id": 5107, "created_at": "2026-09-23T14:05:00Z", "name": "Edsger Dijkstra", "email": "ewd@mail.test", "total": "33.00", "currency": "EUR", "country": "nl", "status": "cancelled"}
 ]
 EOF
 

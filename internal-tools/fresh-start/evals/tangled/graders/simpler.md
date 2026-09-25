@@ -5,5 +5,11 @@ focus:
   path: pricing.py
 ---
 
-PASS if shipping_cost has no control-flow state variables (like the original's `done` flag or `cost = None` placeholder that later branches check), no dead branches, and each pricing rule (zone rate, weight charge, surcharge, express, free shipping) is written once. A boolean computed once directly from the input, like `is_eu = country in EU_COUNTRIES`, is fine, and so is setting order["shipping_zone"] once.
-FAIL if a `done`-style flag or placeholder survives, a branch can never run, or the same rule is written out in more than one branch.
+Count, across shipping_cost and any helper it calls, how many separate places in the code compute each of these:
+- the per-kg weight charge (an expression like `(weight - 2) * rate` or `max(weight - 2, 0) * rate`)
+- the express fee being added
+
+A single expression that uses a per-zone rate from a table counts as one place. The same expression written out in each zone's branch counts once per branch.
+
+PASS if each is computed in exactly one place.
+FAIL if either is computed in more than one place; give both counts.
