@@ -181,7 +181,7 @@ If it fails with `Cannot find module 'playwright'`, run `npm i playwright` in th
 
 ### scene.js (write per request)
 
-`scene.js` defines `const SCENES=[...]`. Each entry is `{name, seed, style?, ground?, build(C)}`, and `build` returns the regions **back to front** (later regions are painted on top). `style` is `'oil'` (the default) or `'papercut'`. To render one scene in both styles, add a second entry `{...SCENES[0], name:'…-papercut', style:'papercut'}`. `ground` is the colour under everything: linen brown for oil, and dark board (`#2a2530`) for paper cut. `C` provides `{W,H,rnd,hex,mixc,gradAt,lerp,clamp}`. Always use `C.rnd`, never `Math.random`, so a seed reproduces the same image exactly.
+`scene.js` defines `const SCENES=[...]`. Each entry is `{name, seed, style?, ground?, build(C)}`, and `build` returns the regions **back to front** (later regions are painted on top). `style` is `'oil'` (the default) or `'papercut'`. To render one scene in both styles, add a copy after the array, for example `SCENES.push({...SCENES[0], name:'…-papercut', style:'papercut'})`. Don't write the copy inside the `SCENES=[...]` literal, because `SCENES` is not defined yet there. `ground` is the colour under everything: linen brown for oil, and dark board (`#2a2530`) for paper cut. `C` provides `{W,H,rnd,hex,mixc,gradAt,lerp,clamp}`. Always use `C.rnd`, never `Math.random`, so a seed reproduces the same image exactly.
 
 Each region is `{pts:[[x,y],...], dir, ...colour}`:
 
@@ -256,7 +256,7 @@ For paper cut, also:
 
 ## Workflow, including the polishing loop
 
-1. Settle the scene, the resolution and the number of variations, then compute W.
+1. Settle the style, the scene, the resolution and the number of variations, then compute W.
 2. Write `scene.js`, one entry per wallpaper.
 3. Render a preview of each wallpaper at (s x W) by (s x 400) px, with s = 2 for landscape and s = 3 for portrait (for example 1422 x 800 for W = 711). This keeps the same W, so the preview shows exactly the painting the final render will produce, in about 2 seconds.
 4. **Review each preview visually** with the Read tool. Fix what you see, re-render only the changed scenes, and review again. Repeat until clean. These are the problems found in earlier runs:
