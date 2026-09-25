@@ -1,11 +1,11 @@
 ---
-name: oil-painting-wallpaper
-description: Manual-only code-drawn wallpaper render, invoked with /oil-painting-wallpaper. Paints a landscape entirely in code, as oil on linen (multi-bristle stroke engine) or as layered paper cut (shadowed, hand-cut paper pieces), from one polygon scene in headless Chromium, and exports a PNG at any resolution — 4K, ultrawide, or phone.
+name: code-wallpaper
+description: Manual-only code-drawn wallpaper render, invoked with /code-wallpaper. Paints a landscape entirely in code, as oil on linen (multi-bristle stroke engine) or as layered paper cut (shadowed, hand-cut paper pieces), from one polygon scene in headless Chromium, and exports a PNG at any resolution — 4K, ultrawide, or phone.
 argument-hint: "[scene, style (oil | paper cut), resolution, number of variations]"
 disable-model-invocation: true
 ---
 
-# Oil-painting wallpaper
+# Code wallpaper
 
 Draw a landscape entirely in code and export it as a PNG at the size the user asks for, in one of two styles:
 
@@ -21,7 +21,7 @@ Both styles use the same scene, a list of flat-coloured polygons, rendered in he
 - **Resolution**: default 3840 x 2160 (4K UHD). Common alternatives: 2560 x 1440, 5120 x 2160 (ultrawide), 1170 x 2532 or 1080 x 1920 (phone), 6016 x 3384 (6K). Stay at or below about 8000 px per side, because Chromium's canvas limit is roughly 16384 px per side and 268M px in total.
 - **How many variations**: each one is a new scene or a new seed.
 
-Take these from the text after `/oil-painting-wallpaper`. If the scene, resolution or number of variations is missing, ask for all of the missing ones in a single message. If the user says to go ahead without answering, use the defaults and state them.
+Take these from the text after `/code-wallpaper`. If the scene, resolution or number of variations is missing, ask for all of the missing ones in a single message. If the user says to go ahead without answering, use the defaults and state them.
 
 ## Coordinate system
 
