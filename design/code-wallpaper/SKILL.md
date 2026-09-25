@@ -45,9 +45,9 @@ src/      engine.html, render.js, helpers.js (copied from the skill), scene.js (
 output/   finished wallpapers only
 ```
 
-1. Copy the assets from this skill's base directory. That is `${CLAUDE_PLUGIN_ROOT}`; if the variable is empty, use the "Base directory for this skill" path shown when the skill loads.
+1. Copy the assets from this skill's base directory. That is `${CLAUDE_SKILL_DIR}`; if that is not an absolute path, or the `cp` fails, use the "Base directory for this skill" path shown when the skill loads.
    ```bash
-   mkdir -p src output && cp "${CLAUDE_PLUGIN_ROOT}"/assets/{engine.html,render.js,helpers.js} src/
+   mkdir -p src output && cp "${CLAUDE_SKILL_DIR}"/assets/{engine.html,render.js,helpers.js} src/
    ```
    If `src/` already exists from an earlier run, copy the three files again (never overwrite `scene.js`), then delete any helper definitions that an older `scene.js` declares itself (see **Helpers**).
 2. Use `engine.html`, `render.js` and `helpers.js` as they are. The one allowed edit is raising the oil stroke counts when the polishing loop says so.
