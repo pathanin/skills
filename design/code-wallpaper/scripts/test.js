@@ -51,6 +51,25 @@ const cli=(args,env={})=>{ try{ return {out:execFileSync('node',[path.join(T,'re
 
   const oil=await render(br,'s=1&w=711&h=400');
   ok('oil still paints strokes',!oil.err&&oil.done>1000,oil.err||'strokes '+oil.done);
+  const oil2=await render(br,'s=1&w=711&h=400'), oil3=await render(br,'s=1&w=711&h=400&tseed=9');
+  ok('oil: same seed + tseed is deterministic',oil.hash===oil2.hash);
+  ok('oil: tseed changes the brushwork',oil.hash!==oil3.hash);
+
+  // 4K oil: the flat #c33 square keeps its colour under lighting, has no linen holes, and the preview shows the same painting
+  const t0=Date.now(), o4=await render(br,'s=1&w=3840&h=2160'), secs=(Date.now()-t0)/1000;
+  ok('oil: 4K render under 40 s',!o4.err&&secs<40,secs.toFixed(1)+' s');
+  const stats=await o4.page.evaluate(()=>{ const cv=document.getElementById('cv'), k=cv.height/400, d=cv.getContext('2d').getImageData(Math.round(215*k),Math.round(215*k),Math.round(70*k),Math.round(70*k)).data;
+    let s=[0,0,0], holes=0; for(let i=0;i<d.length;i+=4){ for(let c=0;c<3;c++) s[c]+=d[i+c]; if(Math.abs(d[i]-0xb9)+Math.abs(d[i+1]-0x8d)+Math.abs(d[i+2]-0x63)<60) holes++; }
+    const n=d.length/4; return {mean:s.map(v=>v/n), holes:holes/n}; });
+  const dev=Math.max(...stats.mean.map((v,c)=>Math.abs(v-[0xcc,0x33,0x33][c])));
+  ok('oil: flat region keeps its colour (max channel error <= 14)',dev<=14,'mean '+stats.mean.map(v=>v.toFixed(0))+' vs 204,51,51');
+  ok('oil: no linen holes in a painted region (< 1%)',stats.holes<.01,(stats.holes*100).toFixed(2)+'%');
+  const cells=async(r,px)=>r.page.evaluate(px=>{ const cv=document.getElementById('cv'), k=cv.height/400, g=cv.getContext('2d'), o=[];
+    for(let cy=0;cy<5;cy++) for(let cx=0;cx<8;cx++){ const d=g.getImageData(Math.round(cx*88*k),Math.round(cy*80*k),Math.round(88*k),Math.round(80*k)).data; const s=[0,0,0];
+      for(let i=0;i<d.length;i+=4) for(let c=0;c<3;c++) s[c]+=d[i+c]; o.push(s.map(v=>v/(d.length/4))); } return o; },px);
+  const pv=await render(br,'s=1&w=1422&h=800'), cA=await cells(pv), cB=await cells(o4);
+  const cellErr=Math.max(...cA.map((a,i)=>Math.max(...a.map((v,c)=>Math.abs(v-cB[i][c])))));
+  ok('oil: preview matches the 4K render cell by cell (max error <= 10)',cellErr<=10,'max '+cellErr.toFixed(1));
   const hl=await render(br,'s=2&w=711&h=400');
   ok('helpers.js is loaded before scene.js',!hl.err&&hl.done>0,hl.err||'');
   const nan=await render(br,'s=3&w=711&h=400');
