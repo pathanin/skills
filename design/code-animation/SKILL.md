@@ -143,7 +143,7 @@ const SCENE={
 Hard rules. Breaking any of them makes frames differ between the sheet, the preview and the final render:
 
 1. `render(t)` sets every animated property from `t` on every call. Never carry state from one call to the next, such as `x+=v`. Frames render out of order: sheets, studies, motion-blur subframes and seeking back.
-2. Never use `Math.random`, `Date`, `performance.now`, timers, `requestAnimationFrame` or CSS transitions. For randomness, use `M.rng(seed)` in `setup` and `M.hash(i,seed)` or `M.noise` in `render`.
+2. Never use `Date`, `performance.now`, timers, `requestAnimationFrame` or CSS transitions. For randomness, use `M.rng(seed)` in `setup` and `M.hash(i,seed)` or `M.noise` in `render`. (The harness seeds `Math.random` as a safety net, so a stray call stays reproducible, but a stray call in `render` still re-rolls every frame.)
 3. CSS `@keyframes` and `element.animate()` are fine: the harness pauses them and sets `currentTime` to `t`. Libraries are not shipped: install them with `(cd src && npm i <lib>)` and `await import('./node_modules/…')` in `setup`, rather than from a CDN, which sandboxed networks often block. GSAP: `({gsap}=await import('./node_modules/gsap/index.js'))`, build timelines paused, and call `tl.seek(t)` in `render`.
 4. Anything stateful, such as physics, flocking, particle collisions or cloth, is simulated in `setup` into arrays of samples (at the scene fps or finer, with substeps for stability). `render` reads them with `M.sample(samples,t,rate)`, which interpolates between samples, so motion-blur subframes and a higher `--fps` stay smooth.
 5. Create every element in `setup`, and hide it with opacity or `display` until it is needed. Creating elements inside `render` leaks. Canvas layers are the exception: clear them and redraw every frame.
@@ -216,7 +216,7 @@ Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a v
 
 | Symptom | Cause and fix |
 |---|---|
-| Frames differ between the sheet and the video, or flicker | State carried across `render` calls, or unseeded randomness. See hard rules 1 and 2. |
+| `WARNING: the frame at …s changed after seeking elsewhere` | `video` and `sheet` render one frame twice, with a seek in between and on two pages, and they differed: state carried across `render` calls, a clock, or setup that differs per page. Frames will flicker. See hard rules 1 and 2. |
 | A part swings around the wrong point | The pivot `(ox,oy)` is in the part's own drawing coordinates, before its transform. Measure it on the art. |
 | Gaps open at joints when limbs rotate | Overlap the parts by the joint radius, with round caps, and put each pivot at the centre of the joint circle. |
 | A transform in the markup is lost | `M.tf` overwrote it. Wrap the art in a `<g>` and animate the wrapper (hard rule 6). |

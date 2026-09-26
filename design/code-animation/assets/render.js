@@ -56,6 +56,11 @@ async function openStage(br,srv,dsf,extra='',quiet=false){
   await seek(0); await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   return {page,meta,seek,shot,ctx};
 }
+// a frame must come out the same after seeking elsewhere, and on every page: otherwise render(t) reads state, clocks or accumulated values
+async function selfCheck(stages,t,meta,alpha){ const a=await stages[0].shot(t,alpha); await stages[0].seek(0); await stages[0].seek(lastT(meta));
+  const again=[await stages[0].shot(t,alpha)]; if(stages[1]) again.push(await stages[1].shot(t,alpha));
+  if(again.some(b=>!a.equals(b))) console.error(`WARNING: the frame at ${fmt(t)}s changed after seeking elsewhere${stages[1]?' or on another page':''}: render(t) depends on something besides t `+
+    '(state carried between calls such as x+=v, Date or performance.now, or setup that differs per page). Frames will flicker or disagree between sheet, preview and final. See hard rules 1-2.'); }
 async function sceneMeta(br,srv){ const s=await openStage(br,srv,1,'',true); await s.ctx.close(); return s.meta; }
 // output size from --size / --width / --scale; the aspect must match the scene (compose a new scene for another aspect)
 function outSize(meta,defScale=1){ let w,h; if(F.size){ [w,h]=F.size.split('x').map(Number); } else if(F.width){ w=+F.width; h=Math.round(w*meta.H/meta.W); } else { const k=num(F.scale,defScale); w=Math.round(meta.W*k); h=Math.round(meta.H*k); }
@@ -100,6 +105,7 @@ async function video(){ const out=F.out; if(!out) die('video needs --out=output/
   const nw=Math.max(1,Math.min(num(F.workers,Math.min(4,Math.max(1,os.cpus().length-1)))|0,Math.ceil(n/8)));
   const workers=await Promise.all(Array.from({length:nw},async()=>({st:await openStage(br,srv,dsf,'',true),comp:mb>1?await composer(br):null})));
   fs.mkdirSync(seq?out:path.dirname(path.resolve(out)),{recursive:true});
+  await selfCheck(workers.map(w=>w.st),from+(n>>1)/fps,meta,alpha);
   let proc=null, errTxt='';
   if(!seq){ const lite=!ff.full; const args=lite?['-y','-hide_banner','-loglevel','error','-f','image2pipe','-framerate',String(fps),'-c:v','mjpeg','-i','pipe:0','-c:v','libvpx','-b:v','12M','-crf','8','-deadline','good',out]:[...encoderArgs(ext,fps,alpha,F.audio,from),out];
     if(lite) console.error('using Playwright\'s limited ffmpeg: VP8 WebM, no alpha, no audio');
@@ -151,7 +157,7 @@ async function sheet(){ const vid=P[1], srv=await serve(), br=await launch(), n=
     from=num(F.from,0); to=Math.min(num(F.to,meta.duration),meta.duration-1/meta.fps);
     for(let k=0;k<n;k++){ const t=from+(to-from)*k/(n-1); shots.push({t,f:Math.round(t*meta.fps),u:dataUrl(videoFrame(ff,vid,t,cell))}); } }
   else { meta=await sceneMeta(br,srv); from=num(F.from,0); to=Math.min(num(F.to,meta.duration),lastT(meta)); cell=meta.W>=meta.H?480:300;
-    const st=await openStage(br,srv,cell/meta.W);
+    const st=await openStage(br,srv,cell/meta.W); await selfCheck([st],Math.round((from+to)/2*meta.fps)/meta.fps,meta,false);
     for(let k=0;k<n;k++){ const t=Math.round((from+(to-from)*k/(n-1))*meta.fps)/meta.fps; shots.push({t,f:Math.round(t*meta.fps),u:dataUrl(await st.shot(t))}); } }
   const cols=Math.max(1,Math.min(n,Math.ceil(Math.sqrt(n*meta.H/meta.W*1.6)))), comp=await composer(br);
   await comp.setContent(`<body style="margin:0;background:#222;font:600 14px system-ui,sans-serif;color:#eee"><div id=g style="display:grid;grid-template-columns:repeat(${cols},${cell}px);gap:6px;padding:6px;width:max-content">`+
