@@ -26,6 +26,10 @@ const SCENES=[
     {pts:strip([[250,80,2.6],[650,330,2.6]]),col:'#00c800',dir:'angle',a:Math.atan2(250,400)},
     // a real scene has hundreds of regions sharing the edge pass; 400 small squares along the bottom, clear of the measured strips, dilute it the same way
     ...Array.from({length:404},(_,i)=>({pts:rect(2+(i%101)*7,364+(i/101|0)*9,7+(i%101)*7,369+(i/101|0)*9),col:'#6a4a8a'}))]; } }, // cable: 2.6 wide, bbox > 900
+  // a comb of 2-wide hangers 14 apart in front of an open sky, like a suspension bridge's
+  { name:'t-oil-comb', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),grad:[[0,'#35507a'],[400,'#c9a27a']],dir:'sky'},
+    ...Array.from({length:21},(_,i)=>({pts:rect(299+i*14,40,301+i*14,300),col:'#c8402a',dir:'vert'}))]; } },
+  { name:'t-oil-bs0', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),grad:[[0,'#335'],[400,'#a86']],dir:'sky'},{pts:rect(200,200,300,300),col:'#c33',bs:0}]; } },
 ];`);
 
 let fails=0; const ok=(name,cond,detail='')=>{ console.log((cond?'PASS ':'FAIL ')+name+(detail?'  ('+detail+')':'')); if(!cond) fails++; };
@@ -91,6 +95,18 @@ const cli=(args,env={})=>{ try{ return {out:execFileSync('node',[path.join(T,'re
   for(const [name,m] of Object.entries(tm)){
     ok(`oil: thin ${name} stays unbroken (centre coverage >= 97%, longest gap <= 0.75 units)`,m.cov>=.97&&m.maxGap<=.75,(m.cov*100).toFixed(1)+'%, gap '+m.maxGap.toFixed(2));
     ok(`oil: thin ${name} does not smear into the sky 3-6 units away (<= 1%)`,m.bleed<=.01,(m.bleed*100).toFixed(2)+'%'); }
+  // stroke size follows the subject: slabs in open areas, fine strokes on thin ones; big strokes stay visible, and don't spill past their region
+  const pvs=await pv.page.evaluate(()=>window.VIS(10,10,190,190,0));
+  ok('oil: open sky shows big strokes (>= 30% of it from strokes 12+ units wide, p90 >= 16)',pvs.big>=.3&&pvs.p90>=16,(pvs.big*100).toFixed(0)+'%, p90 '+pvs.p90);
+  const comb=await render(br,'s=5&w=1422&h=800'), cs=await comb.page.evaluate(()=>window.VIS(300,60,580,280,0));
+  ok('oil: sky between hangers 14 apart still shows big strokes (>= 20%)',cs.big>=.2,(cs.big*100).toFixed(0)+'%');
+  const bs0=await render(br,'s=6&w=1422&h=800'), sq=await bs0.page.evaluate(()=>window.VIS(205,205,295,295,1)), sq1=await pv.page.evaluate(()=>window.VIS(205,205,295,295,1));
+  ok('oil: bs:0 keeps slabs off a region that would get them (< 3% big, was >= 30%)',sq.big<.03&&sq1.big>=.3,(sq.big*100).toFixed(1)+'% vs '+(sq1.big*100).toFixed(0)+'%');
+  const hv=await thin.page.evaluate(()=>window.VIS(200.5,50,201.5,350,1));
+  ok('oil: the core of a 2.2-wide hanger is painted with strokes no wider than 3 units (p90)',hv.p90<=3,'p90 '+hv.p90);
+  const spill=await o4.page.evaluate(()=>{ const cv=document.getElementById('cv'), k=cv.height/400, Wp=cv.width, d=cv.getContext('2d').getImageData(0,0,Wp,cv.height).data; let n=0, red=0;
+    for(let y=190;y<310;y+=.25) for(let x=190;x<310;x+=.25){ const o=Math.max(200-x,x-300,200-y,y-300); if(o<3||o>6) continue; const i=((y*k|0)*Wp+(x*k|0))*4; n++; if(Math.max(d[i+1],d[i+2])<.45*d[i]) red++; } return red/n; }); // a hue test (#c33 has G/R .25, the sky's orange >= .58), so lit sky doesn't count
+  ok('oil: the square does not spill 3-6 units into the sky behind it (<= 1%)',spill<=.01,(spill*100).toFixed(2)+'%');
   const hl=await render(br,'s=2&w=711&h=400');
   ok('helpers.js is loaded before scene.js',!hl.err&&hl.done>0,hl.err||'');
   const nan=await render(br,'s=3&w=711&h=400');

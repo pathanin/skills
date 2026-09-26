@@ -1,6 +1,6 @@
 ---
 name: code-wallpaper
-description: Manual-only code-drawn wallpaper render, invoked with /code-wallpaper. Paints a landscape entirely in code, as oil on linen (multi-bristle stroke engine) or as layered paper cut (shadowed, hand-cut paper pieces), from one polygon scene in headless Chromium, and exports a PNG at any resolution — 4K, ultrawide, or phone.
+description: Manual-only code-drawn wallpaper render, invoked with /code-wallpaper. Paints a landscape entirely in code, as oil on linen (multi-bristle and palette-knife stroke engine) or as layered paper cut (shadowed, hand-cut paper pieces), from one polygon scene in headless Chromium, and exports a PNG at any resolution — 4K, ultrawide, or phone.
 argument-hint: "[scene, style (oil | paper cut), resolution, number of variations]"
 disable-model-invocation: true
 ---
@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Draw a landscape entirely in code and export it as a PNG at the size the user asks for, in one of two styles:
 
-- **Oil** (default): a stroke engine paints over the scene with thousands of directional, multi-bristle brush strokes on a woven linen ground, then lights the paint's relief (bristle grooves, impasto ridges, gloss) as if photographing a real canvas.
+- **Oil** (default): a stroke engine paints over the scene with thousands of directional brush strokes on a woven linen ground, from broad brush and palette-knife slabs in open areas down to liner strokes on thin detail. It then lights the paint's relief (bristle grooves, knife ridges, impasto, gloss) as if photographing a real canvas.
 - **Paper cut**: every region becomes a sheet of cut paper with a rough edge and a soft drop shadow, stacked back to front.
 
 Both styles use the same scene, a list of flat-coloured polygons, rendered in headless Chromium through Playwright.
@@ -75,15 +75,16 @@ node src/render.js <scene_index> <width> <height> <out.png|out.jpg> [seed] [crop
 
 1. A linen ground: an irregular plain weave (uneven threads, slubs, wavy paths), stained with a thin wash of the scene's colour so gaps between strokes read as canvas, not specks. The wash is heavier where the scene is far from the linen's value (night skies), so gaps never pop as bright confetti.
 2. A broad underpainting pass: thin, opaque lay-in.
-3. A mid pass.
-4. A fine detail pass.
-5. Edge strokes placed on region borders.
-6. Extra strokes inside small regions such as windows and stars.
-7. Lighting: raking light from the upper left over the height buffer. It gives diffuse shading of the relief, darker cavities in grooves, and an oily sheen on the ridges that is strongest on thick impasto; bare linen stays matte. The weave shows through thin paint, and a faint falloff runs across the whole canvas as in a photograph.
+3. A slab pass: big brush and palette-knife strokes, 7 to 28 units wide (most near 10), only in open regions (see `bs`). A slab shrinks until its region's colour is nearly flat across it, so fast gradients and halos get smaller slabs.
+4. A mid pass, thinned out in open regions so the slabs stay visible.
+5. A fine detail pass, thinned out the same way.
+6. Edge strokes on the front side of region borders.
+7. Extra strokes inside small regions such as windows and stars.
+8. Lighting: raking light from the upper left over the height buffer. It gives diffuse shading of the relief, darker cavities in grooves, and an oily sheen on the ridges that is strongest on thick impasto; bare linen stays matte. The weave shows through thin paint, and a faint falloff runs across the whole canvas as in a photograph.
 
-Every pass is laid in painter's order, back to front by region, so a region's strokes land on top of every region listed before it. A stroke may overlap the soft 0.5-unit edge of a region in front of its own, but never paints across its core, so cables, masts and hangers stay unbroken. The brush fits the subject: where a region is narrower than the brush (a cable, a hanger, a window), the stroke is centred across it, narrowed to its width and held straight along it, like a liner brush.
+Every pass is laid in painter's order, back to front by region, so a region's strokes land on top of every region listed before it. A stroke may overlap the soft 0.5-unit edge of a region in front of its own, but never paints across its core, so cables, masts and hangers stay unbroken. A stroke stops only where it would cross into a region *behind* its own (overhanging it by 2.2 units at most), so sky slabs run on under a bridge's hangers, which are painted over them later. The brush fits the subject: where a region is narrower than the brush (a cable, a hanger, a window), the stroke is centred across it, narrowed to its width and held straight along it, like a liner brush.
 
-Each stroke is a row of bristles, each with its own paint load, tone, share of a second nearby pigment, and lift-off point. Together they give streaky, imperfect mixing and ragged tails, some trailing past the end. Paint runs out along the stroke, so starved bristles skip and break up, catching the weave's high points first (dry brush). Toward the tail the brush drags the wet paint beneath it along. Lights are laid on thicker than darks, paint piles up along the stroke edges, and a blob marks where the brush touched down. A new stroke mostly flattens the texture under it. All of this is drawn from the texture seed, so `--tseed` changes the brushwork and never the composition.
+Each stroke is a row of bristles, each with its own paint load, tone, share of a second nearby pigment, and lift-off point. Together they give streaky, imperfect mixing and ragged tails, some trailing past the end. Paint runs out along the stroke, so starved bristles skip and break up, catching the weave's high points first (dry brush). Toward the tail the brush drags the wet paint beneath it along. Lights are laid on thicker than darks, paint piles up along the stroke edges, and a blob marks where the brush touched down. A new stroke mostly flattens the texture under it. A palette-knife slab has no bristles: a flat plateau with faint drag streaks, one colour smeared into the other across it, a sharp raised ridge on the side the blade pushed paint to and a feathered edge on the other, thick where it lands and scraped thin toward a ridge where the knife lifts off, with ends cut at a slant. All of this is drawn from the texture seed, so `--tseed` changes the brushwork and never the composition.
 
 **Paper cut** (`style:'papercut'`) lays each region down as one sheet of cut paper, back to front. The first region fills the whole canvas. Every later piece gets:
 
@@ -122,6 +123,7 @@ Each region is `{pts:[[x,y],...], dir, jit?, ...colour}`:
   - `pine` + `tx`: drooping pine branches.
   - `swirl` + `cx,cy`: foliage.
 - **`jit`** (paper cut only): the cut-edge jitter in units, overriding the automatic value.
+- **`bs`** (oil only): how open the region is, 0 to 1, which decides how many slabs it gets and how far the mid and fine strokes thin out over them. By default it comes from the region's size: 0 at about 6 units thick (2 x area / perimeter) and below, 1 at 30 and above, so skies, sea and broad hills get slabs and detail keeps small strokes. Set `bs:0` on a focal shape a slab would break, such as a sun or moon disc or a sign; `bs` .3 to .5 on water or a field for medium, choppy dabs; `bs:1` to slab a smaller region.
 - **The first region must cover the entire canvas**, usually the sky. It is the fallback for every pixel.
 
 ### Helpers
@@ -198,17 +200,19 @@ Recompose for W instead of stretching: a 4:3 photo becomes a 16:9 wallpaper by w
 
 1. Settle the style, the scene, the resolution and the number of variations, then compute W. Set up `src/` and `output/` (see **Project layout and setup**).
 2. Write `src/scene.js`, one entry per wallpaper.
-3. Render a preview of each wallpaper at (s x W) by (s x 400) px, with s = 2 for landscape and s = 3 for portrait (for example 1422 x 800 for W = 711), into your scratchpad or temp directory. This keeps the same W, so the preview shows the composition and colours of the final render exactly; oil texture looks coarser in it (see **Coordinate system**). A paper-cut render takes under a second up to 4K and about 2 seconds at 8K. An oil render takes about 6 seconds at 4K and about 20 seconds at 8K.
+3. Render a preview of each wallpaper at (s x W) by (s x 400) px, with s = 2 for landscape and s = 3 for portrait (for example 1422 x 800 for W = 711), into your scratchpad or temp directory. This keeps the same W, so the preview shows the composition and colours of the final render exactly; oil texture looks coarser in it (see **Coordinate system**). A paper-cut render takes under a second up to 4K and about 2 seconds at 8K. An oil render takes about 10 to 20 seconds at 4K, depending on the scene, and about 30 seconds at 8K.
 4. **Review each preview visually** with the Read tool. Fix what you see, re-render only the changed scenes, and review again. Repeat until clean.
    - When the scene has pieces under about 3 units wide, render a 1:1 crop during this loop, not only at the end. Thin pieces look fine in the preview even when their cut edges pinch at full size. For example, `node src/render.js 0 3840 2160 <scratch>/full.png '' 150,170,240,135`, then Read the crop path it prints.
    - These are the problems found in earlier runs:
-     - **(Oil) Linen showing through**: weave inside thin paint and small stained-canvas gaps between strokes are intended; they are part of the real-paint look. Only contrasting flecks spread across a whole region at wallpaper scale are a problem: coverage is too thin there. Raise the underpainting count (2400 x A) and the mid count (5200 x A). Do not lower them.
+     - **(Oil) Linen showing through**: weave inside thin paint and small stained-canvas gaps between strokes are intended; they are part of the real-paint look. Only contrasting flecks spread across a whole region at wallpaper scale are a problem: coverage is too thin there. Raise the underpainting count (2400 x A), and the mid count (5200 x A) for detail regions or the slab count (1000 x A) for open ones. Do not lower them.
      - **Glow halos around small objects** (for example, glows behind houses looked like snowballs): drop the glow or make it much weaker. Only large light sources should get `glowCF` halos.
      - **Stripes that look like stairs**: evenly spaced, full-width ledges or strata look artificial. Use 3 or 4 short strata at irregular spacing, in a colour close to the base.
      - **Unreadable blobs**, such as a dark polygon on a cliff face, debris-like slivers on water, or a tiny mast that reads as a cross: remove them or make their meaning clear.
      - **Broken or disconnected shapes**, such as a road drawn in pieces: the polygon is self-intersecting. Order the points as the left edge up, then the right edge down.
      - **Focal element hidden**, such as a sun behind a mesa: check the draw order and the overlap, and move the element into a gap.
      - **(Oil) Elements lost in the texture**, such as hay bales: add a darker shadow region offset beneath them for contrast.
+     - **(Oil) A slab breaks a focal shape** (a dark streak across the moon, a sun disc cut in two): set `bs:0` on that region.
+     - **(Oil) Brushwork too blocky or too even**: water that reads as tiles wants `bs` .3 to .5; a region that should carry big strokes but shows only small dabs wants `bs:1`.
      - **(Oil) Regions too thin to paint**: a region keeps an unbroken core only if it is wider than about 1.5 logical units, because the region map is a 0.5-unit grid and strokes from behind may overlap 0.5 units of its edge. Widen anything thinner. List order is paint order, so a thin region must also come after everything it crosses.
      - **(Paper cut) Ghostly ring around the sun**: a `glowCF` halo. Replace it with flat concentric discs.
      - **(Paper cut) Bands that merge**: two neighbouring pieces too close in value. Lighten the farther one or darken the nearer one.
