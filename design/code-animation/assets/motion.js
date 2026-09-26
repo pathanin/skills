@@ -128,9 +128,17 @@ M.pointIn=(el,x,y,target)=>{ const svg=el.ownerSVGElement||el, tgt=target||svg, 
 M.ik2=(ax,ay,tx,ty,l1,l2,bend=1)=>{ const dx=tx-ax, dy=ty-ay, d=Math.max(1e-9,M.clamp(Math.hypot(dx,dy),Math.abs(l1-l2),l1+l2)), base=Math.atan2(dy,dx);
   const A=Math.acos(M.clamp((l1*l1+d*d-l2*l2)/(2*l1*d),-1,1)), a1=base-bend*A, jx=ax+l1*Math.cos(a1), jy=ay+l1*Math.sin(a1);
   const ex=ax+d*Math.cos(base), ey=ay+d*Math.sin(base), a2=Math.atan2(ey-jy,ex-jx)-a1; return {a1:M.deg(a1), a2:M.deg(Math.atan2(Math.sin(a2),Math.cos(a2))), jx, jy, ex, ey}; };
-// split an HTML element's text into inline-block spans for per-letter or per-word animation. Returns the spans.
-M.split=(el,by='chars')=>{ const text=el.textContent; el.textContent=''; const parts=by==='words'?text.split(/(\s+)/):[...text], out=[];
-  for(const p of parts){ if(/^\s+$/.test(p)){ el.appendChild(document.createTextNode(p)); continue; } const s=M.html('span',{style:'display:inline-block;white-space:pre'},el); s.textContent=p; out.push(s); } return out; };
+// split an HTML element's text into inline-block spans for per-letter or per-word animation. Returns the spans in reading order.
+// Child elements (<br>, <b>, <em>, coloured <span>s) are kept; in 'chars' mode each word is an unbreakable wrapper, so lines never break mid-word.
+M.split=(el,by='chars')=>{ const out=[], ib='display:inline-block;white-space:pre';
+  const walk=node=>{ for(const ch of [...node.childNodes]){
+    if(ch.nodeType===1){ if(ch.tagName!=='BR') walk(ch); continue; } if(ch.nodeType!==3) continue;
+    const frag=document.createDocumentFragment();
+    for(const w of ch.textContent.split(/(\s+)/)){ if(!w) continue; if(/^\s+$/.test(w)){ frag.appendChild(document.createTextNode(w)); continue; }
+      if(by==='words'){ const s=M.html('span',{style:ib},frag); s.textContent=w; out.push(s); continue; }
+      const word=M.html('span',{style:'display:inline-block;white-space:nowrap'},frag); for(const c of w){ const s=M.html('span',{style:ib},word); s.textContent=c; out.push(s); } }
+    ch.replaceWith(frag); } };
+  walk(el); return out; };
 
 window.M=M;
 })();

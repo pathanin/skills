@@ -191,7 +191,7 @@ Asset URLs resolve from `src/`, so the materials are at `../refs/<file>`.
 | DOM | `svg(tag,attrs,parent)`, `html(…)`, `set(el,attrs)` |
 | Rig | `tf(el,{x,y,r,s,sx,sy,sa,skx,ox,oy,o})` transforms about the pivot `(ox,oy)`, with `sa` as the squash axis and `o` as opacity. `ik2(ax,ay,tx,ty,l1,l2,bend)` is two-bone IK. `pointIn(el,x,y,target)` maps a local point through the rig |
 | Paths | `trim(path,start,end)` draws a stroke on or off. `along(path,u)` gives `{x,y,a}` for following a path |
-| Text | `split(htmlEl,'chars' or 'words')` returns spans to stagger |
+| Text | `split(htmlEl,'chars' or 'words')` returns spans to stagger, in reading order. It keeps `<br>` and inline markup, and never breaks a line inside a word |
 
 ### render.js
 

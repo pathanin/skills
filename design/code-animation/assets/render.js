@@ -65,7 +65,8 @@ function findFfmpeg(){ const c=[process.env.FFMPEG,'ffmpeg'];
   return null; }
 const NOFF='No full ffmpeg found. Install one: `pip install imageio-ffmpeg` (bundles a static ffmpeg), or `npm i ffmpeg-static` in src/, or the system package; or set FFMPEG=/path/to/ffmpeg.\n'+
   'Without it you can still write a PNG sequence (--out=output/frames/) or, with Playwright\'s ffmpeg, a VP8 .webm.';
-function encoderArgs(ext,fps,alpha,audio){ const i=['-y','-hide_banner','-loglevel','error','-f','image2pipe','-framerate',String(fps),'-c:v','png','-i','pipe:0'], a=audio?['-i',audio]:[], m=audio?['-map','0:v','-map','1:a','-shortest']:[];
+// a partial render (--from) starts the audio at the same point
+function encoderArgs(ext,fps,alpha,audio,from=0){ const i=['-y','-hide_banner','-loglevel','error','-f','image2pipe','-framerate',String(fps),'-c:v','png','-i','pipe:0'], a=audio?[...(from>0?['-ss',String(from)]:[]),'-i',audio]:[], m=audio?['-map','0:v','-map','1:a','-shortest']:[];
   if(ext==='.mp4') return [...i,...a,...m,'-vf','scale=trunc(iw/2)*2:trunc(ih/2)*2','-c:v','libx264','-preset','slow','-crf','16','-pix_fmt','yuv420p','-movflags','+faststart',...(audio?['-c:a','aac','-b:a','192k']:[])];
   if(ext==='.webm') return [...i,...a,...m,'-c:v','libvpx-vp9','-b:v','0','-crf','26','-row-mt','1','-pix_fmt',alpha?'yuva420p':'yuv420p',...(alpha?['-auto-alt-ref','0']:[]),...(audio?['-c:a','libopus','-b:a','160k']:[])];
   if(ext==='.mov') return [...i,...a,...m,'-c:v','prores_ks','-profile:v','4','-pix_fmt',alpha?'yuva444p10le':'yuv444p10le','-vendor','apl0',...(audio?['-c:a','pcm_s16le']:[])];
@@ -80,7 +81,7 @@ async function video(){ const out=F.out; if(!out) die('video needs --out=output/
   const st=await openStage(br,srv,dsf), comp=mb>1?await composer(br):null;
   fs.mkdirSync(seq?out:path.dirname(path.resolve(out)),{recursive:true});
   let proc=null, errTxt='';
-  if(!seq){ const lite=!ff.full; const args=lite?['-y','-hide_banner','-loglevel','error','-f','image2pipe','-framerate',String(fps),'-c:v','mjpeg','-i','pipe:0','-c:v','libvpx','-b:v','12M','-crf','8','-deadline','good',out]:[...encoderArgs(ext,fps,alpha,F.audio),out];
+  if(!seq){ const lite=!ff.full; const args=lite?['-y','-hide_banner','-loglevel','error','-f','image2pipe','-framerate',String(fps),'-c:v','mjpeg','-i','pipe:0','-c:v','libvpx','-b:v','12M','-crf','8','-deadline','good',out]:[...encoderArgs(ext,fps,alpha,F.audio,from),out];
     if(lite) console.error('using Playwright\'s limited ffmpeg: VP8 WebM, no alpha, no audio');
     proc=spawn(ff.bin,args,{stdio:['pipe','ignore','pipe']}); proc.stderr.on('data',d=>errTxt+=d); proc.stdin.on('error',()=>{}); }
   let exited=null; if(proc) proc.on('close',c=>{ exited=c; });
@@ -177,8 +178,15 @@ function qa(file,loop=F.loop){ const ff=findFfmpeg(); if(!ff||!ff.full) die(NOFF
   const dur=(r.match(/Duration: (\d+):(\d+):([\d.]+)/)||[]).slice(1).map(Number), total=dur.length?dur[0]*3600+dur[1]*60+dur[2]:null; if(open!==null) holds.push([open,total]);
   // a jump: one frame changes far more than both neighbours (a cut, a pop, a visibility toggle, a motion that starts at full speed)
   const jumps=d.filter((f,i)=>{ const n=Math.max(i>0?d[i-1].v:0,i<d.length-1?d[i+1].v:0); return f.v>=.1&&f.v>=2.5*n; });
-  console.log(`qa ${file}${total?`  ${fmt(total)}s`:''}\nholds (no visible change for >= 0.4 s): ${holds.length?holds.map(([a,b])=>`${fmt(a)}–${b==null?'end':fmt(b)}s`).join(', '):'none'}`+
-    `\njumps (one frame changes far more than its neighbours): ${jumps.length?jumps.map(f=>`${fmt(f.t)}s (${f.v.toFixed(1)})`).join(', '):'none'}`);
+  const fps=+(r.match(/, ([\d.]+) fps/)||[])[1]||30, gap=1.5/fps;
+  // holds split only by single-frame flashes (a blinking element) read as one hold
+  const hm=[]; for(const h of holds){ const l=hm[hm.length-1]; if(l&&l[1]!=null&&h[0]-l[1]<=gap){ l[1]=h[1]; l[2]=true; } else hm.push([h[0],h[1],false]); }
+  // evenly spaced jumps of similar size (something flashing or cutting on a beat) collapse into one line
+  const jl=[]; for(let i=0;i<jumps.length;){ let k=i+1; const step=k<jumps.length?jumps[k].t-jumps[i].t:0;
+    while(k<jumps.length&&Math.abs(jumps[k].t-jumps[k-1].t-step)<=gap&&jumps[k].v<=jumps[i].v*2&&jumps[k].v>=jumps[i].v/2) k++;
+    if(k-i>=3) jl.push(`${fmt(jumps[i].t)}–${fmt(jumps[k-1].t)}s every ${fmt((jumps[k-1].t-jumps[i].t)/(k-i-1))}s (${k-i}×, ${jumps[i].v.toFixed(1)})`); else { k=i+1; jl.push(`${fmt(jumps[i].t)}s (${jumps[i].v.toFixed(1)})`); } i=k; }
+  console.log(`qa ${file}${total?`  ${fmt(total)}s`:''}\nholds (no visible change for >= 0.4 s): ${hm.length?hm.map(([a,b,f])=>`${fmt(a)}–${b==null?'end':fmt(b)}s${f?' (broken only by single changed frames)':''}`).join(', '):'none'}`+
+    `\njumps (one frame changes far more than its neighbours): ${jl.length?jl.join(', '):'none'}`);
   if(loop&&total){ const seam=d.find(f=>Math.abs(f.t-total)<1e-3); // played twice: the frame at t=duration is the first frame again
     console.log(`loop seam: ${!seam?'not found':jumps.includes(seam)?`POPS (${seam.v.toFixed(1)}): the last frame does not lead into the first; make every motion periodic in duration`:'smooth'}  (times past the duration are the second play)`); } }
 
@@ -195,11 +203,16 @@ function audio(){ const file=P[1], ff=findFfmpeg(); if(!ff||!ff.full) die(NOFF);
   let best=0, lag=0; for(let L=Math.round(60/180/fr);L<=Math.round(60/60/fr);L++){ const c=ac(L)*prior(L); if(c>best){ best=c; lag=L; } }
   if(lag){ const a=ac(lag-1), b=ac(lag), c=ac(lag+1), d=a-2*b+c; if(d<0) lag+=.5*(a-c)/d; } // parabolic refinement to a fractional lag
   let ph=0, bp=-1; for(let o=0;o<lag;o++){ let c=0; for(let k=0;o+k*lag<nf;k++) c+=on[Math.round(o+k*lag)]; if(c>bp){ bp=c; ph=o; } }
-  const sec=Math.floor(nf*fr), rms=[]; for(let s=0;s<sec;s++){ let e=0, c=0; for(let f=Math.round(s/fr);f<Math.round((s+1)/fr)&&f<nf;f++){ e+=10**(le[f]/10); c++; } rms.push(10*Math.log10(e/(c||1)+1e-10)); }
-  const jumps=[]; for(let s=2;s<rms.length;s++){ const d=rms[s]-(rms[s-1]+rms[s-2])/2; if(Math.abs(d)>=6) jumps.push(`${s}s (${d>0?'+':''}${d.toFixed(0)} dB)`); }
+  const sec=Math.floor(n/sr), rms=[], hi=[]; for(let s=0;s<sec;s++){ let e=0, h=0; for(let i=s*sr+1;i<(s+1)*sr;i++){ e+=x[i]*x[i]; h+=(x[i]-x[i-1])**2; } rms.push(10*Math.log10(e/sr+1e-10)); hi.push(10*Math.log10(h/sr+1e-10)); } // loudness, and brightness (high-frequency energy)
+  const bucket=Math.max(1,Math.ceil(rms.length/90)), lv=[]; for(let s=0;s<rms.length;s+=bucket) lv.push(Math.round(Math.max(...rms.slice(s,s+bucket))));
+  const jumps=[]; for(const [v,what] of [[rms,'louder'],[hi,'brighter']]) for(let s=1;s<v.length;s++){ const w=v.slice(Math.max(0,s-2),s), before=v[s]>w[0]?Math.max(...w):Math.min(...w), d=v[s]-before, after=v[s+1]!==undefined?v[s+1]-before:d;
+    if(Math.abs(d)>=3&&Math.sign(after)===Math.sign(d)&&Math.abs(after)>=2&&!jumps.some(j=>Math.abs(j.s-s)<=1&&Math.abs(j.d)>=Math.abs(d))) jumps.push({s,d,what:d>0?what:what==='louder'?'quieter':'darker'}); } // sustained, not one bar
+  jumps.sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)); const jtxt=jumps.filter((j,i,a)=>!a.slice(0,i).some(k=>Math.abs(k.s-j.s)<=1)).slice(0,6).sort((a,b)=>a.s-b.s).map(j=>{ // snap to the onset that starts the change
+    let bi=-1, bv=0; for(let f=Math.max(0,Math.round((j.s-.7)/fr));f<Math.min(nf,Math.round((j.s+1)/fr));f++) if(on[f]>bv){ bv=on[f]; bi=f; }
+    return `${bi>=0?fmt(bi*fr):j.s}s (${j.what} ${j.d>0?'+':''}${j.d.toFixed(0)} dB)`; });
   const bpm=lag?60/(lag*fr):0;
   console.log(`audio ${file}  ${fmt(n/sr)}s\ntempo ≈ ${bpm.toFixed(1)} BPM (beat every ${fmt(lag*fr)}s, first beat ${fmt(ph*fr)}s; half or double may be the felt tempo)`+
-    `\nstrongest hits: ${strong.map(p=>fmt(p[0])).join(' ')}\nenergy jumps: ${jumps.join(', ')||'none'}`); }
+    `\nstrongest hits: ${strong.map(p=>fmt(p[0])).join(' ')}\nloudness per ${bucket>1?bucket+' s':'second'} (dB): ${lv.join(' ')}\nenergy jumps (sections start or drop): ${jtxt.join(', ')||'none'}`); }
 
 // one-shot environment check before the first render
 async function check(){ let ok=true; console.log('node '+process.version); console.log('playwright '+require.resolve('playwright'));

@@ -12,7 +12,7 @@ const SCENE={ width:640, height:360, fps:30, duration:4, background:'#ffffff',
     const st=document.createElement('style'); st.textContent='@keyframes mv{from{transform:translateX(0)}to{transform:translateX(200px)}} #box{animation:mv 2s linear infinite alternate}'; document.head.appendChild(st);
     stage.add('<rect id="ball" x="0" y="20" width="20" height="20" fill="#ff0000"/>');
     stage.add('<g id="arm"><rect x="0" y="-5" width="100" height="10" fill="#0000ff"/></g><circle id="pin" r="3" fill="none"/>');
-    stage.html.innerHTML='<div id="box" style="position:absolute;left:0;top:300px;width:20px;height:20px;background:#00ff00"></div><div id="title" style="position:absolute;left:300px;top:10px;font:20px sans-serif">Hello world</div>';
+    stage.html.innerHTML='<div id="box" style="position:absolute;left:0;top:300px;width:20px;height:20px;background:#00ff00"></div><div id="title" style="position:absolute;left:300px;top:10px;font:20px sans-serif">Hello world</div><div id="t2" style="position:absolute;left:0;top:200px;width:120px;font:20px sans-serif">What if <b>light</b><br>woke you up</div>';
     this.g=stage.canvas('fx','over'); this.spans=M.split(stage.$('#title')); this.r=M.rng(7); this.stars=Array.from({length:5},()=>[this.r()*640,this.r()*360]);
   },
   render(t,stage){
@@ -60,7 +60,13 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
   await seek(1); const pin=await p.evaluate(()=>{ const r=stage.$('#arm').getBoundingClientRect(); return [r.x,r.y,r.width,r.height]; });
   ok('tf rotates about the pivot (arm hangs down from 300,180 at 90 deg)',Math.abs(pin[0]-295)<1&&Math.abs(pin[1]-180)<1&&Math.abs(pin[3]-100)<1,pin.map(v=>v.toFixed(1)).join(','));
   ok('M.pointIn maps a local point through the rig',await p.evaluate(()=>{ const [x,y]=M.pointIn(stage.$('#arm'),100,0); return Math.abs(x-300)<.01&&Math.abs(y-280)<.01; }));
-  await seek(0); const spans=await p.evaluate(()=>stage.$$('#title span').length); ok('M.split wraps each non-space character',spans===10,spans+' spans');
+  await seek(0); const spans=await p.evaluate(()=>stage.$$('#title span span').length); ok('M.split wraps each non-space character',spans===10,spans+' spans');
+  const sp2=await p.evaluate(()=>{ const el=stage.$('#t2'), w=M.split(el,'words'); return {n:w.length,text:el.innerText.replace(/\s+/g,' '),br:!!el.querySelector('br'),b:el.querySelector('b span')?.textContent,
+    lines:new Set(w.map(s=>Math.round(s.getBoundingClientRect().top))).size}; });
+  ok('M.split keeps <br> and inline markup, and splits words',sp2.n===6&&sp2.br&&sp2.b==='light'&&sp2.text==='What if light woke you up',JSON.stringify(sp2));
+  const nobreak=await p.evaluate(()=>{ const d=M.html('div',{style:'position:absolute;width:90px;font:20px sans-serif'},stage.html); d.textContent='abc defghij klm'; const c=M.split(d);
+    const byWord=[[0,3],[3,10],[10,13]].map(([a,b])=>new Set(c.slice(a,b).map(s=>Math.round(s.getBoundingClientRect().top))).size); d.remove(); return byWord; });
+  ok('M.split by chars never breaks a line inside a word',nobreak.every(n=>n===1),JSON.stringify(nobreak));
   const {p:p2}=await open(2); await p2.evaluate(()=>window.__anim.seek(0)); px=await pixels(p2,[[1199,599],[1201,601],[1218,618],[1221,621]]);
   ok('canvas layers are hi-DPI and drawn in stage units (10 units = 20 px at 2x)',px[0][0]>200&&px[1][0]<60&&px[2][0]<60&&px[3][0]>200,JSON.stringify(px));
 

@@ -105,14 +105,15 @@ Prefer a single specific image over a generic loop. "Autumn" could be one leaf's
 
 ## Audio: music, voice-over, sound effects
 
-- Run `render.js audio refs/track.mp3` for the duration, tempo and beat grid, the strongest hits, and energy jumps.
+- Run `render.js audio refs/track.mp3` for the duration, tempo and beat grid, the strongest hits, loudness per second, and energy jumps (where a section starts or the track drops, snapped to the onset).
+- Put the grid in the scene and time everything in beats: `const BEAT=60/bpm, B0=<first beat>, beat=n=>B0+n*BEAT;`. Snap shot lengths to beats and feed them to `M.shots`.
 - The piece lasts as long as the audio unless the user says otherwise.
 - Place events on the audio:
   - Land cuts on beats, or 1 frame early so they feel in sync.
   - Put accents on the strongest hits.
   - Put the big reveal on the largest energy jump.
 - With voice-over, show each visual 0 to 4 frames before the word it illustrates.
-- Mux the audio with `video --audio=refs/track.mp3`.
+- Mux the audio with `video --audio=refs/track.mp3`. A partial render (`--from`) starts the audio at the same point, so a preview of one section stays in sync.
 
 ## Conflicts and gaps
 
