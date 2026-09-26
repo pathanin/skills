@@ -7,7 +7,7 @@
 //   node src/render.js qa     <video> [--loop]                         holds (frozen spans) and jumps (hard frame changes) with timecodes; --loop also checks the seam
 //   node src/render.js audio  <file>                                   duration, tempo + beat grid, strongest hits, energy jumps (for syncing to music)
 //   node src/render.js check                                           is playwright, a browser and a full ffmpeg available?
-// Common: --scene=src/scene.js  --dir=<review folder, default $TMPDIR/code-animation>. Output formats by extension: .mp4 .webm .mov (ProRes 4444, alpha) .gif, or a folder/ for PNGs.
+// Common: --scene=src/scene.js  --set=k=v,k2=v2 (global PARAMS in scene.js, for variants)  --dir=<review folder, default $TMPDIR/code-animation>. Output formats by extension: .mp4 .webm .mov (ProRes 4444, alpha) .gif, or a folder/ for PNGs.
 const {chromium}=require('playwright'), fs=require('fs'), os=require('os'), path=require('path'), http=require('http'), {spawn,spawnSync,execFileSync}=require('child_process');
 const argv=process.argv.slice(2), F={}, P=[];
 for(const a of argv){ if(a.startsWith('--')){ const [k,v]=a.slice(2).split(/=(.*)/s); F[k]=v===undefined?true:v; } else P.push(a); }
@@ -30,7 +30,7 @@ async function openStage(br,srv,dsf,extra=''){
   const scene=path.resolve(F.scene||path.join(__dirname,'scene.js')); if(!fs.existsSync(scene)) die('no scene at '+scene);
   const ctx=await br.newContext({viewport:{width:1280,height:720},deviceScaleFactor:dsf}), page=await ctx.newPage(); let err=null;
   page.on('pageerror',e=>{ err=e.message; console.error('PAGE ERROR:',e.message); }); page.on('console',m=>{ if(m.type()==='error') console.error('console:',m.text()); });
-  await page.goto(urlOf(srv,path.join(__dirname,'stage.html'))+'?render&scene='+encodeURIComponent(urlOf(srv,scene))+extra);
+  await page.goto(urlOf(srv,path.join(__dirname,'stage.html'))+'?render&scene='+encodeURIComponent(urlOf(srv,scene))+(F.set?'&set='+encodeURIComponent(F.set):'')+extra);
   await page.waitForFunction(()=>window.READY||window.LOAD_ERROR,null,{timeout:180000}).catch(()=>{});
   const meta=await page.evaluate(()=>{ const a=window.__anim; return a&&{W:a.W,H:a.H,fps:a.fps,duration:a.duration,frames:a.frames,background:a.background}; });
   if(err||!meta){ await br.close(); die('scene failed to load'+(err?'':' (no error thrown: is SCENE defined, and does setup() resolve?)')); }
@@ -163,10 +163,10 @@ async function probe(){ const img=P[1]; if(!img||!fs.existsSync(img)) die('probe
 
 function qa(file,loop=F.loop){ const ff=findFfmpeg(); if(!ff||!ff.full) die(NOFF); if(!file||!fs.existsSync(file)) die('no file '+file);
   // freezedetect finds holds; the mean absolute difference between neighbouring frames (at 480 px wide) finds jumps
-  const r=spawnSync(ff.bin,['-hide_banner','-nostats',...(loop?['-stream_loop','1']:[]),'-i',file,'-an','-vf','freezedetect=n=-60dB:d=0.4,scale=480:-2,tblend=all_mode=difference,signalstats,metadata=mode=print','-f','null','-'],{encoding:'utf8',maxBuffer:256<<20}).stderr||'';
+  const r=spawnSync(ff.bin,['-hide_banner','-nostats',...(loop?['-stream_loop','1']:[]),'-i',file,'-an','-vf','freezedetect=n=-60dB:d=0.4,scale=480:-2,format=gray,tblend=all_mode=difference,signalstats,metadata=mode=print:key=lavfi.signalstats.YAVG','-f','null','-'],{encoding:'utf8',maxBuffer:256<<20}).stderr||'';
   const holds=[], d=[]; let open=null, cur=null;
   for(const l of r.split('\n')){ let m; if((m=l.match(/freeze_start: ([\d.]+)/))) open=+m[1]; else if((m=l.match(/freeze_end: ([\d.]+)/))){ holds.push([open,+m[1]]); open=null; }
-    else if((m=l.match(/pts_time:([\d.]+)/))) d.push(cur={t:+m[1],v:0}); else if(cur&&(m=l.match(/signalstats\.(Y|U|V)AVG=([\d.]+)/))) cur.v+=+m[2]*(m[1]==='Y'?1:.5); }
+    else if((m=l.match(/pts_time:([\d.]+)/))) d.push(cur={t:+m[1],v:0}); else if(cur&&(m=l.match(/signalstats\.YAVG=([\d.]+)/))) cur.v=+m[1]; } // luma only: tblend's chroma difference wraps around on near-identical frames
   const dur=(r.match(/Duration: (\d+):(\d+):([\d.]+)/)||[]).slice(1).map(Number), total=dur.length?dur[0]*3600+dur[1]*60+dur[2]:null; if(open!==null) holds.push([open,total]);
   // a jump: one frame changes far more than both neighbours (a cut, a pop, a visibility toggle, a motion that starts at full speed)
   const jumps=d.filter((f,i)=>{ const n=Math.max(i>0?d[i-1].v:0,i<d.length-1?d[i+1].v:0); return f.v>=.1&&f.v>=2.5*n; });

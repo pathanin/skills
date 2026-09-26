@@ -23,6 +23,12 @@ const SCENE={ width:640, height:360, fps:30, duration:4, background:'#ffffff',
   } };`);
 W('scene-cut.js',`const SCENE={ width:320, height:180, fps:30, duration:3, background:'#000000', setup(stage){ stage.add('<rect id="r" width="40" height="40" fill="#ffffff"/>'); },
   render(t,stage){ const s=M.shots(t,[1,1,1]); stage.$('#r').setAttribute('fill',s.i===2?'#ff00ff':'#ffffff'); M.tf(stage.$('#r'),{x:s.i===1?140:40+200*s.u*(s.i===0?1:0)+(s.i===2?100*s.u:0),y:70}); } };`); // shot 1 holds, shot 2 cuts
+fs.mkdirSync(path.join(T,'refs'));
+const LOGO=c=>`<?xml version="1.0"?>\n<!-- Illustrator-style export: shared class names and ids -->\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><defs><style>.cls-1{fill:${c}}rect{stroke:none}</style>
+  <linearGradient id="g1"><stop offset="0" stop-color="${c}"/><stop offset="1" stop-color="${c}"/></linearGradient></defs><rect class="cls-1" width="50" height="100"/><rect x="50" width="50" height="100" fill="url(#g1)"/></svg>`;
+fs.writeFileSync(path.join(T,'refs','red.svg'),LOGO('#ff0000')); fs.writeFileSync(path.join(T,'refs','blue.svg'),LOGO('#0000ff'));
+W('scene-load.js',`const SCENE={ width:300, height:120, duration:1, background:PARAMS.bg||'#ffffff', async setup(stage){
+  const a=await stage.load('../refs/red.svg'), b=await stage.load('../refs/blue.svg'), c=await stage.load('../refs/red.svg'); M.set(b,{x:100}); M.set(c,{x:200}); }, render(){} };`);
 W('scene-bad.js',`const SCENE={ width:320, height:180, fps:30, duration:2, render(t){ if(t>1) null.x; } };`);
 W('scene-alpha.js',`const SCENE={ width:320, height:180, fps:30, duration:1, background:'transparent', setup(stage){ stage.add('<circle id="c" cx="160" cy="90" r="40" fill="#ff8800"/>'); }, render(t,stage){ M.tf(stage.$('#c'),{x:50*t}); } };`);
 
@@ -95,6 +101,10 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
   r=cli(['study','--from=0','--to=1','--track=#ball']); const sp=(r.out.match(/spacing per frame \(stage units\) ([\d. ]+)/)||[])[1]||'';
   ok('study tracks one dot per frame with the true spacing',r.code===0&&sp.trim().split(' ').length===30&&sp.trim().split(' ').every(v=>Math.abs(v-3.3)<.05),sp.slice(0,40));
   r=cli(['probe',path.join(REV,'still-0.50s.png'),'--pick=60,30']); ok('probe reports size, palette and exact picks',r.code===0&&/640x360/.test(r.out)&&/#ffffff/.test(r.out)&&/pick 60,30 #ff0000/.test(r.out),r.out.split('\n')[2]);
+  r=cli(['stills','--at=0','--scene=src/scene-load.js']); r=cli(['probe',path.join(REV,'still-0.00s.png'),'--pick=25,50;75,50;125,50;175,50;225,50;275,50']);
+  ok('stage.load scopes each file\'s styles and renames colliding ids',(r.out.match(/pick \S+ (#\w+)/g)||[]).map(v=>v.split(' ').pop()).join()==='#ff0000,#ff0000,#0000ff,#0000ff,#ff0000,#ff0000',r.out.split('\n').filter(l=>l.startsWith('pick')).map(l=>l.split(' ').pop()).join(','));
+  r=cli(['stills','--at=0','--scene=src/scene-load.js','--set=bg=transparent']); r=cli(['probe',path.join(REV,'still-0.00s.png'),'--pick=150,50;150,110']);
+  ok('--set reaches the scene as PARAMS; a transparent background is really transparent',/pick 150,50 #0000ff/.test(r.out)&&/pick 150,110 #\w+ alpha 0/.test(r.out),r.out.split('\n')[0]);
   r=cli(['sheet','--scene=src/scene-bad.js']); ok('a throwing scene names the time and frame',r.code!==0&&/scene threw at t=1\.\d+s \(frame \d+\)/.test(r.out),r.out.trim().split('\n').pop());
   r=cli(['video','--scene=src/scene-cut.js','--out=out/frames/','--to=0.5']); ok('video to a folder writes a PNG sequence',r.code===0&&fs.readdirSync(path.join(T,'out/frames')).length===15);
   if(!ffBin){ console.log('skip  video/qa/audio checks: no full ffmpeg (pip install imageio-ffmpeg)'); }
@@ -107,7 +117,8 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
     r=cli(['video','--scene=src/scene-loop.js','--out=out/loop.mp4','--qa','--loop']); ok('qa --loop passes a periodic loop',r.code===0&&/loop seam: smooth/.test(r.out));
     r=cli(['qa','out/cut.mp4','--loop']); ok('qa --loop catches a seam that pops',/loop seam: POPS/.test(r.out),r.out.split('\n').pop()||r.out.split('\n').slice(-2)[0]);
     r=cli(['video','--scene=src/scene-alpha.js','--out=out/a.webm']); const wi=spawnSync(ffBin,['-hide_banner','-c:v','libvpx-vp9','-i',path.join(T,'out/a.webm')],{encoding:'utf8'}).stderr;
-    ok('a transparent scene keeps alpha in WebM',r.code===0&&/yuva420p/.test(wi));
+    spawnSync(ffBin,['-y','-loglevel','error','-c:v','libvpx-vp9','-i',path.join(T,'out/a.webm'),'-frames:v','1',path.join(T,'out/a-f0.png')]); const pa=cli(['probe',path.join(T,'out/a-f0.png'),'--pick=5,5;160,90']);
+    ok('a transparent scene keeps real alpha in WebM',r.code===0&&/yuva420p/.test(wi)&&/pick 5,5 #\w+ alpha 0/.test(pa.out)&&/pick 160,90 #f[ef][78]/.test(pa.out),pa.out.split('\n').filter(l=>l.startsWith('pick')).join(' | '));
     r=cli(['video','--scene=src/scene-alpha.js','--out=out/a.gif','--fps=20']); ok('GIF export works',r.code===0&&fs.statSync(path.join(T,'out/a.gif')).size>1000);
     r=cli(['video','--scene=src/scene-cut.js','--out=out/mb.mp4','--to=0.3','--mblur=3']); ok('motion blur renders',r.code===0&&/mblur 3/.test(r.out),r.out.trim().split('\n').pop());
     const wav=path.join(T,'click.wav'); spawnSync(ffBin,['-y','-loglevel','error','-f','lavfi','-i',"aevalsrc='if(lt(mod(t-0.25\\,0.5)\\,0.03)*gte(t\\,0.25)\\,0.6*sin(2*PI*880*t)\\,0)':s=44100:d=6",wav]);

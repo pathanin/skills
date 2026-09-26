@@ -19,6 +19,8 @@ const Q=new URLSearchParams(location.search), RENDER=Q.has('render');
 const showErr=m=>{ document.getElementById('err').textContent+=m+'\n'; };
 if(!RENDER) addEventListener('error',e=>showErr(e.message));
 const load=src=>new Promise((ok,no)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('cannot load '+src)); document.head.appendChild(s); });
+// ?set=k=v,k2=v2 (render.js --set) becomes the global PARAMS, readable while SCENE is defined: variants without copying the scene
+window.PARAMS=Object.fromEntries((Q.get('set')||'').split(',').filter(Boolean).map(kv=>{ const [k,v='true']=kv.split(/=(.*)/s); return [k,v==='true'?true:v==='false'?false:v!==''&&!isNaN(+v)?+v:v]; }));
 (async()=>{
   await load(Q.get('scene')||'scene.js');
   const S=typeof SCENE!=='undefined'?SCENE:window.SCENE; if(!S) throw new Error('scene.js must define const SCENE={...}');
@@ -29,11 +31,23 @@ const load=src=>new Promise((ok,no)=>{ const s=document.createElement('script');
   const svg=layer('svg',1,true); M.set(svg,{width:W,height:H,viewBox:`0 0 ${W} ${H}`,overflow:'hidden'});
   const defs=M.svg('defs',{},svg), world=M.svg('g',{id:'world'},svg), screen=M.svg('g',{id:'screen'},svg);
   const html=layer('div',3); html.style.cssText+=`;width:${W}px;height:${H}px;z-index:3`;
-  const dpr=window.devicePixelRatio||1;
+  const dpr=window.devicePixelRatio||1; let loads=0;
   const stage={ W,H,fps,duration,frames,svg,defs,world,screen,html,el,dpr,t:0,frame:0,render:RENDER,
     $:s=>el.querySelector(s), $$:s=>[...el.querySelectorAll(s)],
     // insert SVG markup (default into the camera-moved world group); returns the first element added
     add(markup,parent=world){ const n=parent.children.length; parent.insertAdjacentHTML('beforeend',markup); return parent.children[n]; },
+    // fetch an SVG file (logo, character art) and insert it as live, animatable markup; returns its <svg> element
+    // Its <style> rules are scoped to this copy and colliding ids are renamed to <file>_<n>__<id> (with their url(#…)/href refs), so
+    // exports that all use .cls-1 or #gradient1 (Illustrator, Figma) can be loaded side by side, or the same file twice
+    async load(url,parent=world){ const r=await fetch(url); if(!r.ok) throw new Error('cannot load '+url+' ('+r.status+')');
+      const doc=new DOMParser().parseFromString(await r.text(),'image/svg+xml'), root=doc.documentElement;
+      if(root.nodeName!=='svg'||doc.querySelector('parsererror')) throw new Error(url+' is not valid SVG');
+      const tag=url.split('/').pop().replace(/\.\w+$/,'').replace(/[^\w-]/g,'_')+'_'+(++loads); if(!root.id) root.id=tag;
+      const ren={}; root.querySelectorAll('[id]').forEach(e=>{ if(e!==root&&document.getElementById(e.id)){ ren[e.id]=tag+'__'+e.id; e.id=ren[e.id]; } });
+      const fix=v=>v.replace(/url\(\s*['"]?#([^)'"\s]+)['"]?\s*\)/g,(m,id)=>ren[id]?`url(#${ren[id]})`:m);
+      root.querySelectorAll('*').forEach(e=>{ for(const a of [...e.attributes]){ if(/(^|:)href$/.test(a.name)&&a.value[0]==='#'&&ren[a.value.slice(1)]) e.setAttributeNS(a.namespaceURI,a.name,'#'+ren[a.value.slice(1)]); else if(a.value.includes('url(')) a.value=fix(a.value); } });
+      root.querySelectorAll('style').forEach(st=>{ st.textContent=fix(st.textContent).replace(/(^|\})(\s*)([^{}@][^{}]*)\{/g,(m,b,w,sel)=>b+w+sel.split(',').map(x=>`#${root.id} ${x.trim()}`).join(', ')+'{'); });
+      return parent.appendChild(document.importNode(root,true)); },
     // hi-DPI canvas layer drawn in stage units. where: 'under' (behind the SVG) or 'over' (between SVG and HTML). type '2d' returns the context, others the canvas
     canvas(name,where='over',type='2d'){ const c=layer('canvas',where==='under'?0:2); c.id=name; c.width=Math.round(W*dpr); c.height=Math.round(H*dpr); c.style.width=W+'px'; c.style.height=H+'px';
       if(type!=='2d') return c; const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
@@ -53,7 +67,7 @@ const load=src=>new Promise((ok,no)=>{ const s=document.createElement('script');
     r.style.cssText+=`;left:${x}px;top:${y}px;width:${w}px;height:${h}px;object-fit:contain;opacity:${Q.get('refop')||.5};z-index:9`; await r.decode().catch(()=>{}); }
   seek(+Q.get('t')||0);
   window.__anim={W,H,fps,duration,frames,background:bg,seek};
-  if(RENDER){ document.body.classList.add('render'); document.body.style.background=bg==='transparent'?'transparent':bg; window.READY=true; return; }
+  if(RENDER){ document.body.classList.add('render'); document.documentElement.style.background=document.body.style.background=bg==='transparent'?'transparent':bg; window.READY=true; return; }
   // live preview: fit to window, play, scrub. Space play/pause, arrows step a frame (shift: 1 s), Home to start
   if(Q.has('clean')) document.body.classList.add('clean');
   const fit=()=>{ const k=Math.min(innerWidth/W,(innerHeight-(Q.has('clean')?0:36))/H); el.style.transform=`translate(${(innerWidth-W*k)/2}px,${Math.max(0,(innerHeight-36-H*k)/2)}px) scale(${k})`; };

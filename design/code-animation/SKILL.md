@@ -138,6 +138,8 @@ const SCENE={
 };
 ```
 
+`PARAMS` holds the values passed with `--set=k=v,k2=v2`, and is readable while `SCENE` is being defined. Use it for variants of one scene instead of copying it: `background: PARAMS.alpha ? 'transparent' : '#f4efe6'`, then `video --set=alpha --out=output/x-alpha.mov`.
+
 Hard rules. Breaking any of them makes frames differ between the sheet, the preview and the final render:
 
 1. `render(t)` sets every animated property from `t` on every call. Never carry state from one call to the next, such as `x+=v`. Frames render out of order: sheets, studies, motion-blur subframes and seeking back.
@@ -167,6 +169,7 @@ The stacking order, back to front: canvas `'under'`, SVG (`world`, then `screen`
 | `W H fps duration frames dpr t frame` | Scene metrics and the current time |
 | `svg defs world screen html el` | The root SVG and its `<defs>`; `world` (moved by the camera); `screen` (SVG that ignores the camera, for titles and UI); the HTML layer; the stage div |
 | `add(markup, parent=world)` | Inserts SVG markup and returns the first element added |
+| `await load(url, parent=world)` | Inserts a supplied SVG file (logo, character art) as live markup and returns its `<svg>`. Its `<style>` rules are scoped to that copy, and ids that collide with ones already on the stage become `<file>_<n>__<id>`. Position it with `x y width height` on the returned `<svg>`, and wrap the parts you animate in new `<g>` elements (hard rule 6) |
 | `$(sel)` `$$(sel)` | `querySelector` and `querySelectorAll` inside the stage |
 | `canvas(name, where='over', type='2d')` | A hi-DPI layer drawn in stage units, with `ctx.clear()` |
 | `camera({x,y,zoom,r})` | Centres `world` on (x, y). Neutral is `{x:W/2, y:H/2, zoom:1, r:0}` |
@@ -192,7 +195,7 @@ Asset URLs resolve from `src/`, so the materials are at `../refs/<file>`.
 
 ### render.js
 
-Every command takes `--scene=src/other.js`, for alternate versions, and `--dir=`.
+Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a variant of this one, see `PARAMS`) and `--dir=`.
 
 | Command | What it does |
 |---|---|
