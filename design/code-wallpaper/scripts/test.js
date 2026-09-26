@@ -20,6 +20,12 @@ const SCENES=[
     if(Math.abs(P.x(0)-100)>1e-9||Math.abs(P.x(1)-500)>1e-9||Math.abs(P.t(P.x(.3))-.3)>1e-9||Math.abs(P.s(500)-.4)>1e-9||hump(0,0,5)!==1) throw new Error('helper math');
     return o; } },
   { name:'t-nan', seed:5, style:'papercut', build(C){ const {W,H}=C; return [{pts:[[0,0],[W,0],[W,H],[0,H]],col:'#223'},{pts:[[10,10],[(-2/170)**2.5,50],[60,60]],col:'#fff'}]; } },
+  { name:'t-oil-thin', seed:11, build(C){ const {W,H}=C; return [{pts:[[0,0],[W,0],[W,H],[0,H]],grad:[[0,'#35507a'],[400,'#c9a27a']],dir:'sky'},
+    {pts:rect(199.9,40,202.1,360),col:'#00c800',dir:'vert'},                                   // hanger: 2.2 wide (the Golden Gate's oil hangers), bbox < 900 (small-region pass)
+    {pts:rect(129.8,60,133.3,315),col:'#00c800',dir:'vert'},                                   // wide hanger: 3.5 x 255, the Golden Gate's most broken one
+    {pts:strip([[250,80,2.6],[650,330,2.6]]),col:'#00c800',dir:'angle',a:Math.atan2(250,400)},
+    // a real scene has hundreds of regions sharing the edge pass; 400 small squares along the bottom, clear of the measured strips, dilute it the same way
+    ...Array.from({length:404},(_,i)=>({pts:rect(2+(i%101)*7,364+(i/101|0)*9,7+(i%101)*7,369+(i/101|0)*9),col:'#6a4a8a'}))]; } }, // cable: 2.6 wide, bbox > 900
 ];`);
 
 let fails=0; const ok=(name,cond,detail='')=>{ console.log((cond?'PASS ':'FAIL ')+name+(detail?'  ('+detail+')':'')); if(!cond) fails++; };
@@ -71,6 +77,20 @@ const cli=(args,env={})=>{ try{ return {out:execFileSync('node',[path.join(T,'re
   const pv=await render(br,'s=1&w=1422&h=800'), cA=await cells(pv), cB=await cells(o4);
   const cellErr=Math.max(...cA.map((a,i)=>Math.max(...a.map((v,c)=>Math.abs(v-cB[i][c])))));
   ok('oil: preview matches the 4K render cell by cell (max error <= 10)',cellErr<=10,'max '+cellErr.toFixed(1));
+  // oil thin regions in front of a busy sky, at 4K: the background's strokes must not cut through them, and their own strokes must not smear sideways
+  const thin=await render(br,'s=4&w=3840&h=2160');
+  const tm=await thin.page.evaluate(()=>{ const cv=document.getElementById('cv'), k=cv.height/400, Wp=cv.width, d=cv.getContext('2d').getImageData(0,0,Wp,cv.height).data;
+    const green=(x,y)=>{ const i=((y*k|0)*Wp+(x*k|0))*4; return d[i+1]-Math.max(d[i],d[i+2])>60; };
+    const line=(x0,y0,x1,y1)=>{ const L=Math.hypot(x1-x0,y1-y0), ux=(x1-x0)/L, uy=(y1-y0)/L, nx=-uy, ny=ux; let cov=0, n=0, gap=0, maxGap=0, bleed=0, nb=0;
+      for(let s=0;s<=L;s+=.25){ const cx=x0+ux*s, cy=y0+uy*s; let gp=0, np=0; // a sample is covered when half of the 1x1-unit window on the centre line is strip paint
+        for(let a=-.5;a<=.5;a+=1/k) for(let b=-.5;b<=.5;b+=1/k){ np++; if(green(cx+ux*a+nx*b,cy+uy*a+ny*b)) gp++; }
+        n++; if(gp/np>=.5){ cov++; gap=0; } else { gap+=.25; maxGap=Math.max(maxGap,gap); }
+        for(const sd of [-1,1]) for(let o=3;o<=6;o+=1/k){ nb++; if(green(cx+nx*o*sd,cy+ny*o*sd)) bleed++; } }
+      return {cov:cov/n, maxGap, bleed:bleed/nb}; };
+    return {hanger:line(201,50,201,350), 'wide hanger':line(131.55,68,131.55,307), cable:line(262,87.5,638,322.5)}; });
+  for(const [name,m] of Object.entries(tm)){
+    ok(`oil: thin ${name} stays unbroken (centre coverage >= 97%, longest gap <= 0.75 units)`,m.cov>=.97&&m.maxGap<=.75,(m.cov*100).toFixed(1)+'%, gap '+m.maxGap.toFixed(2));
+    ok(`oil: thin ${name} does not smear into the sky 3-6 units away (<= 1%)`,m.bleed<=.01,(m.bleed*100).toFixed(2)+'%'); }
   const hl=await render(br,'s=2&w=711&h=400');
   ok('helpers.js is loaded before scene.js',!hl.err&&hl.done>0,hl.err||'');
   const nan=await render(br,'s=3&w=711&h=400');

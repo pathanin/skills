@@ -81,6 +81,8 @@ node src/render.js <scene_index> <width> <height> <out.png|out.jpg> [seed] [crop
 6. Extra strokes inside small regions such as windows and stars.
 7. Lighting: raking light from the upper left over the height buffer. It gives diffuse shading of the relief, darker cavities in grooves, and an oily sheen on the ridges that is strongest on thick impasto; bare linen stays matte. The weave shows through thin paint, and a faint falloff runs across the whole canvas as in a photograph.
 
+Every pass is laid in painter's order, back to front by region, so a region's strokes land on top of every region listed before it. A stroke may overlap the soft 0.5-unit edge of a region in front of its own, but never paints across its core, so cables, masts and hangers stay unbroken. The brush fits the subject: where a region is narrower than the brush (a cable, a hanger, a window), the stroke is centred across it, narrowed to its width and held straight along it, like a liner brush.
+
 Each stroke is a row of bristles, each with its own paint load, tone, share of a second nearby pigment, and lift-off point. Together they give streaky, imperfect mixing and ragged tails, some trailing past the end. Paint runs out along the stroke, so starved bristles skip and break up, catching the weave's high points first (dry brush). Toward the tail the brush drags the wet paint beneath it along. Lights are laid on thicker than darks, paint piles up along the stroke edges, and a blob marks where the brush touched down. A new stroke mostly flattens the texture under it. All of this is drawn from the texture seed, so `--tseed` changes the brushwork and never the composition.
 
 **Paper cut** (`style:'papercut'`) lays each region down as one sheet of cut paper, back to front. The first region fills the whole canvas. Every later piece gets:
@@ -207,7 +209,7 @@ Recompose for W instead of stretching: a 4:3 photo becomes a 16:9 wallpaper by w
      - **Broken or disconnected shapes**, such as a road drawn in pieces: the polygon is self-intersecting. Order the points as the left edge up, then the right edge down.
      - **Focal element hidden**, such as a sun behind a mesa: check the draw order and the overlap, and move the element into a gap.
      - **(Oil) Elements lost in the texture**, such as hay bales: add a darker shadow region offset beneath them for contrast.
-     - **(Oil) Regions too thin to paint**: anything under about 1.5 logical units wide gets overpainted. Widen it or add it later in the list.
+     - **(Oil) Regions too thin to paint**: a region keeps an unbroken core only if it is wider than about 1.5 logical units, because the region map is a 0.5-unit grid and strokes from behind may overlap 0.5 units of its edge. Widen anything thinner. List order is paint order, so a thin region must also come after everything it crosses.
      - **(Paper cut) Ghostly ring around the sun**: a `glowCF` halo. Replace it with flat concentric discs.
      - **(Paper cut) Bands that merge**: two neighbouring pieces too close in value. Lighten the farther one or darken the nearer one.
      - **(Paper cut) Specks instead of details**: pieces under about 2.5 units in both directions (dots, tiny shapes) are swallowed by their own shadow and rim. Enlarge them or drop them. Long thin strips are fine down to about 1.5 units wide.
@@ -234,5 +236,5 @@ Recompose for W instead of stretching: a 4:3 photo becomes a 16:9 wallpaper by w
 ## Notes
 
 - An oil PNG is about 22 MB at 4K and 75 MB at 8K (an 8K oil JPEG is about 10 MB); a paper-cut PNG is about 10 to 13 MB at 4K. If the user wants something smaller, give the output a `.jpg` name and `render.js` writes a JPEG at quality 92.
-- To reproduce an image exactly, keep the same scene, `seed`, `tseed` and W, and the same browser (the Chrome fallback can differ slightly from bundled Chromium). Seeds do not reproduce images made before the texture seed existed, because the texture used to continue the build's random sequence.
+- To reproduce an image exactly, keep the same scene, `seed`, `tseed` and W, the same browser (the Chrome fallback can differ slightly from bundled Chromium), and the same engine: an engine update can change the brushwork, never the layout. Seeds do not reproduce images made before the texture seed existed, because the texture used to continue the build's random sequence.
 - `scripts/test.js` checks the shipped assets end to end (`NODE_PATH=<dir with playwright> node scripts/test.js`). Run it after changing anything in `assets/`.

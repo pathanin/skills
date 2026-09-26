@@ -50,12 +50,16 @@ function angleAt(x,y,r){ const g=REG[r], d=g.dir||'horiz';
 const sstep=(a,c,v)=>{ const t=clamp((v-a)/(c-a)); return t*t*(3-2*t); };
 // a stroke: centred on (x,y), clipped along its length to the region it starts in. rnd() draws are the same for every stroke and resolution,
 // so a preview places exactly the strokes the final render does. col2 is a second pigment from nearby in the same region (streaky, imperfect mix)
-function oilStroke(x,y,L,w,thick,dry=1){ const r=idAt(x,y), a=angleAt(x,y,r)+rnd(-.3,.3), dx=Math.cos(a), dy=Math.sin(a), st=.5; let l0=0, l1=0;
+function oilStroke(x,y,L,w,thick,dry=1){ const r=idAt(x,y), tn=Math.min(1,(REG[r].thick/12)**2), a=angleAt(x,y,r)+rnd(-.3,.3)*tn, dx=Math.cos(a), dy=Math.sin(a), st=.5; let l0=0, l1=0;
+  // a region narrower than the brush here (a cable, a hanger) gets a brush that fits: centred across it and no wider than it,
+  // held straight along it (tn fades the tilt and bend out below ~12 units thick, as a liner brush follows a line)
+  let m0=0, m1=0; while(m0<w&&idAt(x+dy*(m0+st),y-dx*(m0+st))===r) m0+=st; while(m1<w&&idAt(x-dy*(m1+st),y+dx*(m1+st))===r) m1+=st;
+  if(m0+m1<w){ const c=(m0-m1)/2; x+=dy*c; y-=dx*c; w=Math.max(1.2,m0+m1); }
   while(l0<L/2&&idAt(x-dx*(l0+st),y-dy*(l0+st))===r) l0+=st; while(l1<L/2&&idAt(x+dx*(l1+st),y+dy*(l1+st))===r) l1+=st;
   const jit=c=>c.map(v=>clamp(v*rnd(.9,1.1)+rnd(-8,8),0,255)), x2=clamp(x+rnd(-6,6),0,W-.01), y2=clamp(y+rnd(-6,6),0,H-.01), c0=colorAt(x,y), c2=colorAt(x2,y2);
   const col=jit(c0), col2=jit(idAt(x2,y2)===r?c2:c0), lum=(.3*col[0]+.59*col[1]+.11*col[2])/255;
-  return {p0:[x-dx*l0,y-dy*l0],p1:[x+dx*l1,y+dy*l1],w:Math.min(w,1.2+(l0+l1)*.8),col,col2,dx,dy,bend:rnd(-.3,.3),id:R()*4294967296>>>0,
-    op:rnd(.85,1), depl:rnd(.1,.7)*dry, wet:rnd(.1,.4), thick:thick*(.7+.6*lum)}; } // lights are laid on thicker (impasto)
+  return {p0:[x-dx*l0,y-dy*l0],p1:[x+dx*l1,y+dy*l1],w:Math.min(w,1.2+(l0+l1)*.8),col,col2,dx,dy,bend:rnd(-.3,.3)*tn,id:R()*4294967296>>>0,
+    op:rnd(.85,1), depl:rnd(.1,.7)*dry, wet:rnd(.1,.4), thick:thick*(.7+.6*lum), r}; } // lights are laid on thicker (impasto)
 
 const cv=document.getElementById('cv'); cv.width=PX; cv.height=PY; const b=cv.getContext('2d');
 b.setTransform(k,0,0,k,0,0);
@@ -115,6 +119,7 @@ function paint(s){ const {col,col2,dx,dy,w,id}=s, nx=-dy, ny=dx, cap=w*.4, len=M
     for(let px=X0;px<=X1;px++){ const rx=(px+.5)/k-p0[0], u=(rx*dx+ry*dy)/len; if(u<0||u>1.12) continue;
       const uc=u>1?1:u, ul=u*len/cap, half=w*.5*(ul<1?Math.sqrt(ul*(2-ul)):1)*(1-.12*sstep(.5,1.1,u)), vn=(rx*nx+ry*ny-bw*4*uc*(1-uc))/half;
       if(vn<=-1||vn>=1) continue;
+      const x=(px+.5)/k, y=(py+.5)/k; if(idAt(x,y)>s.r&&idAt(x+.5,y)>s.r&&idAt(x-.5,y)>s.r&&idAt(x,y+.5)>s.r&&idAt(x,y-.5)>s.r) continue; // in front: only the edge margin may be overlapped
       const bj=(vn+1)*.5*NB, j=bj|0, fb=bj-j; if(u<BS[j]||u>BE[j]) continue;
       const ni=uc*(NS-2), i0=ni|0, f=ni-i0, nz=NZ[j*64+i0]*(1-f)+NZ[j*64+i0+1]*f, q=py*PX+px, hq=HT[q], m=BL[j]*(1-s.depl*rs*uc);
       const cov=sstep(.06,.3,m+(.5*(nz-.5)+.4*(WV[q]/255-.5)/(1+3*hq))*(1.1-m)); // a starved bristle skips; tooth only shows through thin paint
@@ -126,12 +131,13 @@ function paint(s){ const {col,col2,dx,dy,w,id}=s, nx=-dy, ny=dx, cap=w*.4, len=M
       const av=vn<0?-vn:vn, g=.5+.5*Math.cos(TAU*fb), th=s.thick*m*((1+rg*m*sstep(.45,.85,av))*BH[j]*(1-gd*g)+bb*(1-sstep(0,.12,u)))*sstep(1,.8,av)*sstep(0,.15,BE[j]-u);
       HT[q]=hq+(th-hq*.7)*a; } } }
 const A=W*H/(400*400);
-const add=s=>{ paint(s); n++; };
-for(let i=0,N=Math.round(2400*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(14,24),rnd(8,11),.35,.3));
-for(let i=0,N=Math.round(5200*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(7,12),rnd(3.5,5.5),.7));
-for(let i=0,N=Math.round(3500*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(4,8),rnd(1.8,3),1));
-let e=0, tries=0; const N3=Math.round(1050*A*1.4); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r!==idAt(x+3,y)||r!==idAt(x,y+3)||r!==idAt(x-3,y)||r!==idAt(x,y-3)){ add(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1)); e++; } }
-REG.forEach((r,ri)=>{ if(r.area<900){ const m=r.area<30?12:40; for(let q=0;q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)===ri) add(oilStroke(x,y,rnd(2,6),r.area<30?rnd(.8,1.4):rnd(1.2,2),1.1)); } } });
+// painter's order: each pass is laid back to front, so a region's strokes land on everything behind it and nothing behind it lands on them
+let P=[]; const add=s=>P.push(s), lay=()=>{ P.sort((a,b)=>a.r-b.r).forEach(s=>{ paint(s); n++; }); P=[]; }; // stable sort: generation order within a region
+for(let i=0,N=Math.round(2400*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(14,24),rnd(8,11),.35,.3)); lay();
+for(let i=0,N=Math.round(5200*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(7,12),rnd(3.5,5.5),.7)); lay();
+for(let i=0,N=Math.round(3500*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(4,8),rnd(1.8,3),1)); lay();
+let e=0, tries=0; const N3=Math.round(1050*A*1.4); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r!==idAt(x+3,y)||r!==idAt(x,y+3)||r!==idAt(x-3,y)||r!==idAt(x,y-3)){ add(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1)); e++; } } lay();
+REG.forEach((r,ri)=>{ if(r.area<900){ const m=r.area<30?12:40; for(let q=0;q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)===ri) add(oilStroke(x,y,rnd(2,6),r.area<30?rnd(.8,1.4):rnd(1.2,2),1.1)); } } }); lay();
 // light: raking from the upper left. Diffuse is linear in the slope, so bumps don't darken the scene on average. Specular only where
 // the paint is thick (bare linen and thin scumbles stay matte). The weave pushes up through thin paint. A faint falloff, as in a photo.
 const L0=-.5, L1=-.62, L2=.6, ll=Math.hypot(L0,L1,L2), lx=L0/ll, ly=L1/ll, lz=L2/ll, hl=Math.hypot(lx,ly,lz+1), hx=lx/hl, hy=ly/hl, hz=(lz+1)/hl, SPE=10, s0=hz**SPE;
