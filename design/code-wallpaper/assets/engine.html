@@ -30,7 +30,7 @@ function pip(pts,x,y){ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j=i+
 const inR=(r,x,y)=>{ const b=REG[r].box; return x>=b[0]&&x<=b[2]&&y>=b[1]&&y<=b[3]&&pip(REG[r].pts,x,y); };
 const GS=.5, GX=W/GS|0, GY=H/GS|0, ID=new Uint16Array(GX*GY);
 if(SC.style!=='papercut') for(let gy=0;gy<GY;gy++) for(let gx=0;gx<GX;gx++){ const x=(gx+.5)*GS, y=(gy+.5)*GS; let r=REG.length-1; while(r>0&&!inR(r,x,y)) r--; ID[gy*GX+gx]=r; }
-const idAt=(x,y)=>ID[clamp(Math.floor(y/GS),0,GY-1)*GX+clamp(Math.floor(x/GS),0,GX-1)];
+const gi=(x,y)=>clamp(Math.floor(y/GS),0,GY-1)*GX+clamp(Math.floor(x/GS),0,GX-1), idAt=(x,y)=>ID[gi(x,y)];
 const regCol=(r,x,y)=>r.cf?r.cf(x,y):r.grad?gradAt(r.grad,y):r.rgb, colorAt=(x,y)=>regCol(REG[idAt(x,y)],x,y);
 
 function angleAt(x,y,r){ const g=REG[r], d=g.dir||'horiz';
@@ -140,13 +140,18 @@ let P=[]; const add=s=>P.push(s), lay=()=>{ P.sort((a,b)=>a.r-b.r).forEach(s=>{ 
 for(let i=0,N=Math.round(2400*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(14,24),rnd(8,11),.35,.3)); lay();
 // slabs: big brush and knife strokes where the region is open (sky, sea, broad hills). Sizes are heavy-tailed, 7..28 units, most near 10;
 // a slab shrinks until the region's own colour is near-flat across it, so gradients and halos get smaller strokes where they change fast
+// SL marks the logical grid cells a slab's body covers, so the later passes know where the slabs landed
+const SL=new Uint8Array(GX*GY), cover=s=>{ const [ax,ay]=s.p0, [bx,by]=s.p1, L=Math.hypot(bx-ax,by-ay), hw=s.w*.4;
+  for(let gy=Math.max(0,Math.floor((Math.min(ay,by)-hw)/GS)),g1=Math.min(GY-1,Math.floor((Math.max(ay,by)+hw)/GS));gy<=g1;gy++)
+    for(let gx=Math.max(0,Math.floor((Math.min(ax,bx)-hw)/GS)),x1=Math.min(GX-1,Math.floor((Math.max(ax,bx)+hw)/GS));gx<=x1;gx++){ const x=(gx+.5)*GS-ax, y=(gy+.5)*GS-ay, u=x*s.dx+y*s.dy, v=y*s.dx-x*s.dy;
+      if(u>=0&&u<=L&&v>=-hw&&v<=hw) SL[gy*GX+gx]=1; } };
 for(let i=0,N=Math.round(1000*A);i<N;i++){ const x=rnd(W), y=rnd(H), r=idAt(x,y), g=R(), u=R(), kn=R(); let w=7*4**(u*u);
   if(g>=REG[r].open) continue; const c=regCol(REG[r],x,y), far=(ox,oy)=>{ const d=regCol(REG[r],clamp(x+ox,0,W),clamp(y+oy,0,H)); return Math.max(...d.map((v,i)=>Math.abs(v-c[i]))); };
   while(w>7&&Math.max(far(w/2,0),far(-w/2,0),far(0,w/2),far(0,-w/2))>26) w*=.8;
-  const knife=w>=11&&kn<.45; add(oilStroke(x,y,w*(knife?rnd(1.2,2):rnd(1.6,2.6)),w,knife?1.1:.9,1,knife)); } lay();
-// mid and fine strokes thin out where the slabs are, so the slabs stay visible and the brushwork varies in size across the canvas
-for(let i=0,N=Math.round(5200*A);i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(g>=.85*REG[idAt(x,y)].open) add(oilStroke(x,y,rnd(7,12),rnd(3.5,5.5),.7)); } lay();
-for(let i=0,N=Math.round(3500*A);i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(g>=.9*REG[idAt(x,y)].open) add(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1)); } lay();
+  const knife=w>=11&&kn<.45, st=oilStroke(x,y,w*(knife?rnd(1.2,2):rnd(1.6,2.6)),w,knife?1.1:.9,1,knife); add(st); cover(st); } lay();
+// mid and fine strokes thin out on top of slabs, so the slabs stay visible and the brushwork varies in size; the gaps between slabs get the full count
+for(let i=0,N=Math.round(5200*A);i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(g>=.85*SL[gi(x,y)]*REG[idAt(x,y)].open) add(oilStroke(x,y,rnd(7,12),rnd(3.5,5.5),.7)); } lay();
+for(let i=0,N=Math.round(3500*A);i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(g>=.9*SL[gi(x,y)]*REG[idAt(x,y)].open) add(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1)); } lay();
 let e=0, tries=0; const N3=Math.round(1050*A*1.4); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r>idAt(x+3,y)||r>idAt(x,y+3)||r>idAt(x-3,y)||r>idAt(x,y-3)){ add(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1)); e++; } } lay();
 REG.forEach((r,ri)=>{ if(r.area<900){ const m=r.area<30?12:40; for(let q=0;q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)===ri) add(oilStroke(x,y,rnd(2,6),r.area<30?rnd(.8,1.4):rnd(1.2,2),1.1)); } } }); lay();
 // light: raking from the upper left. Diffuse is linear in the slope, so bumps don't darken the scene on average. Specular only where
@@ -167,8 +172,9 @@ for(let py=0;py<PY;py++){ const up=(py?py-1:0)*PX, dn=(py<PY-1?py+1:py)*PX, row=
     D[o]=D[o]*sh+sp; D[o+1]=D[o+1]*sh+sp*.97; D[o+2]=D[o+2]*sh+sp*.9; } }
 b.putImageData(img,0,0);
 // for tests: width (units) of the top-most stroke over the pixels of a box, optionally only where region r shows
-window.VIS=(x0,y0,x1,y1,r)=>{ const v=[]; for(let py=Math.round(y0*k);py<Math.round(y1*k);py++) for(let px=Math.round(x0*k);px<Math.round(x1*k);px++){ const t=TW[py*PX+px]; if(t&&(r===undefined||idAt((px+.5)/k,(py+.5)/k)===r)) v.push(t/4); }
-  v.sort((a,b)=>a-b); return {n:v.length, big:v.filter(w=>w>=12).length/(v.length||1), p90:v[Math.floor(v.length*.9)]||0}; };
+window.VIS=(x0,y0,x1,y1,r)=>{ const v=[], L=[0,0,0,0]; for(let py=Math.round(y0*k);py<Math.round(y1*k);py++) for(let px=Math.round(x0*k);px<Math.round(x1*k);px++){ const q=py*PX+px, t=TW[q];
+    if(t&&(r===undefined||idAt((px+.5)/k,(py+.5)/k)===r)){ v.push(t/4); const b=t>=48?0:2; L[b]+=.3*D[q*4]+.59*D[q*4+1]+.11*D[q*4+2]; L[b+1]++; } }
+  v.sort((a,b)=>a-b); return {n:v.length, big:v.filter(w=>w>=12).length/(v.length||1), p90:v[Math.floor(v.length*.9)]||0, lumBig:L[0]/(L[1]||1), lumSmall:L[2]/(L[3]||1)}; };
 }
 window.DONE=n;
 }

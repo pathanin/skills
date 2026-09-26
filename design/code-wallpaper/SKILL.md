@@ -76,7 +76,7 @@ node src/render.js <scene_index> <width> <height> <out.png|out.jpg> [seed] [crop
 1. A linen ground: an irregular plain weave (uneven threads, slubs, wavy paths), stained with a thin wash of the scene's colour so gaps between strokes read as canvas, not specks. The wash is heavier where the scene is far from the linen's value (night skies), so gaps never pop as bright confetti.
 2. A broad underpainting pass: thin, opaque lay-in.
 3. A slab pass: big brush and palette-knife strokes, 7 to 28 units wide (most near 10), only in open regions (see `bs`). A slab shrinks until its region's colour is nearly flat across it, so fast gradients and halos get smaller slabs.
-4. A mid pass, thinned out in open regions so the slabs stay visible.
+4. A mid pass, thinned out on top of slabs so they stay visible; the gaps between slabs get the full count.
 5. A fine detail pass, thinned out the same way.
 6. Edge strokes on the front side of region borders.
 7. Extra strokes inside small regions such as windows and stars.
