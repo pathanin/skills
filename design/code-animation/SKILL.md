@@ -39,7 +39,7 @@ The creative decisions are yours: concept, staging, timing, style, and how each 
 Load `references/materials.md` and follow it for every material the user gave:
 
 - View each image with Read.
-- Run `render.js probe <image>` for its exact size and palette, `--pick=x,y` for exact swatch colours, and `--crop=x,y,w,h` to zoom in on details.
+- Run `render.js probe <image>` for its exact size and palette, `--pick=x,y` for exact swatch colours, `--bbox=x,y,w,h` for a figure's exact extent, and `--crop=x,y,w,h` to zoom in on details.
 - Read PDFs page by page.
 - Turn video references into frame tiles, and run `qa` on them for their cut rhythm.
 - Run `render.js audio <file>` on music or voice-over.
@@ -78,7 +78,7 @@ In your first message, give the concept and format in 2 to 4 lines, then carry o
 
 1. Write `setup` with all the art, and a `render` that only places things at their style-frame poses.
 2. Render the style frames with `stills --at=…` and review them with Read.
-3. For a character or logo built from a reference, also render a trace check: `stills --at=0 --ref=refs/sheet.png --ref-opacity=.5 --ref-box=x,y,w,h`, with the box placed where the art sits on the stage.
+3. For a character or logo built from a reference, also render a trace check: `stills --at=<rest pose> --ref=refs/sheet.png --ref-opacity=.5 --ref-box=x,y,w,h`. The box that makes the overlay line up is in `references/rigging.md`.
 4. Fix everything until the look matches the materials: exact palette hex, proportions against the ref overlay, line weight, and type.
 
 Building the look before any motion keeps look bugs apart from motion bugs. Load `references/rigging.md` before you build a character or any jointed object.
@@ -204,7 +204,7 @@ Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a v
 | `stills --at=0,1.5,f90` | One PNG per time, given in seconds or as `f<frame>`. Options: `--scale`, `--ref=img --ref-opacity=.5 --ref-box=x,y,w,h` |
 | `sheet [--n=12] [--from --to]` | A labelled contact sheet of evenly spaced frames |
 | `study --from --to [--n=8] [--track=#a,#b]` | Onion skin of the moving parts, plus a dot per frame for each tracked element, with the spacing listed in stage units |
-| `probe <image> [--pick=x,y;x,y] [--crop=x,y,w,h] [--colors=12]` | Size, palette with shares, exact pixel colours, and a zoomed crop |
+| `probe <image> [--pick=x,y;x,y] [--bbox=x,y,w,h;…] [--crop=x,y,w,h] [--colors=12]` | Size, palette with shares, exact pixel colours, the exact extent of a figure inside a region (the region must have background all around its edge), and a zoomed crop |
 | `qa <video> [--loop]` | Holds of 0.4 s or more, and jumps (a frame that changes far more than both its neighbours), with timecodes. `--loop` also checks the seam from the last frame back to the first |
 | `audio <file>` | Duration, tempo and beat grid, the strongest hits, and energy jumps. It is an estimate; timings the user gives win |
 

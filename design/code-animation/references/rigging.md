@@ -3,7 +3,9 @@
 ## 1. Read the sheet into numbers
 
 - Run `probe` with `--pick` on the fills, shadows, line colour and eye colour, and `--crop` on the face and hands.
-- Pick the unit: the head height in stage units. Choose the character's size on stage first, then derive the head height from the sheet's head-to-body ratio.
+- Measure with `probe --bbox=x,y,w,h` around each view (leave background all around the figure): it prints the exact extent and bottom centre. Measure the head the same way with a box around the head alone, or read it off a `--crop`.
+- Draw the character in the sheet's own pixel units, with the origin at a landmark you measured, usually the bottom centre between the feet of the front view. Then every number you read off the sheet goes straight into the markup, and scale comes from one `s` on the root group.
+- Pick the unit: the head height. Every proportion note ("3.2 heads tall") becomes a pixel length on the sheet.
 - Line weight is a fraction of the head height on the sheet. Use the same fraction on stage, with `stroke-linejoin="round"` and `stroke-linecap="round"` unless the style is sharp.
 
 ## 2. Pick the rig style that fits the design and the beats
@@ -79,7 +81,9 @@ M.tf($('#handR'),{x:ik.ex,y:ik.ey,r:ik.a1+ik.a2});
 - Line: use the sheet's line colour, which is rarely pure black, and its weight ratio. Decide whether the line is a stroke on each part (it shows at the joints) or a single outline behind the whole silhouette (a thicker copy of the silhouette in the line colour).
 - Shading: make a shadow shape in the shadow colour, clipped to the part with `<clipPath>` that references the part's own path. It then moves with the part. Rim lights work the same way.
 - Texture and grain: an `feTurbulence` filter or a canvas grain layer. Keep the seed fixed per drawing, and change it on twos for boil.
-- Trace check: run `stills --at=0 --ref=refs/sheet.png --ref-opacity=.5 --ref-box=x,y,w,h`, with the box scaled so the sheet's character matches yours. Fix the proportions until the silhouettes line up in the rest pose.
+- Trace check: with the character drawn in sheet pixels around the landmark `(fx,fy)` on the sheet, placed on stage at `(X,Y)` with scale `K`, and the sheet `SW×SH` pixels, the overlay lines up with
+  `--ref-box=X-fx*K, Y-fy*K, SW*K, SH*K`.
+  Render `stills --at=<a rest pose> --ref=refs/sheet.png --ref-opacity=.5 --ref-box=…` and fix the proportions until the silhouettes coincide. Where your art and the ghost of the sheet disagree, the sheet wins.
 
 ## 6. Test the rig before animating it
 

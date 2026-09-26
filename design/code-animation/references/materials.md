@@ -11,6 +11,7 @@ Turn each material into two lists in `plan.md` under **Reading**:
 2. Get exact numbers for images; don't estimate colours or sizes by eye.
    - `render.js probe refs/x.png` gives the size and palette.
    - `--pick=x,y;x,y` samples swatches, fills, the line colour and the background.
+   - `--bbox=x,y,w,h` gives the exact extent of a figure: a view on a model sheet, a head, the logo on an artboard.
    - `--crop=x,y,w,h` zooms in on hands, eyes, logo corners and small type.
 3. PDFs: read them page by page. In brand guidelines, find the logo construction, clear space, colour values, typefaces, any motion or tone-of-voice pages, and the don'ts.
    - Use RGB or HEX values as given.

@@ -3,7 +3,7 @@
 //   node src/render.js stills --at=0,1.5,f90 [--scale=1] [--ref=refs/sheet.png --ref-opacity=.5 --ref-box=x,y,w,h]
 //   node src/render.js sheet  [--n=12] [--from=s --to=s]              contact sheet: n frames in one labelled grid
 //   node src/render.js study  --from=s --to=s [--n=8] [--track=#a,#b]  motion study: onion skin of the moving parts + per-frame spacing dots
-//   node src/render.js probe  <image> [--pick=x,y;x,y] [--crop=x,y,w,h] exact size, palette and pixel colours of a source image
+//   node src/render.js probe  <image> [--pick=x,y;x,y] [--bbox=x,y,w,h;…] [--crop=x,y,w,h]  size, palette, exact pixel colours, a figure's extent
 //   node src/render.js qa     <video> [--loop]                         holds (frozen spans) and jumps (hard frame changes) with timecodes; --loop also checks the seam
 //   node src/render.js audio  <file>                                   duration, tempo + beat grid, strongest hits, energy jumps (for syncing to music)
 //   node src/render.js check                                           is playwright, a browser and a full ffmpeg available?
@@ -148,16 +148,23 @@ async function study(){ const srv=await serve(), br=await launch(), meta=await s
   await br.close(); srv.close(); }
 
 async function probe(){ const img=P[1]; if(!img||!fs.existsSync(img)) die('probe needs an image path'); const srv=await serve(), br=await launch(), comp=await composer(br);
-  const r=await comp.evaluate(async([u,pick,crop,k])=>{ const i=await load(u), W=i.naturalWidth, H=i.naturalHeight, s=Math.min(1,240/Math.max(W,H)), d=pix(i,Math.max(1,Math.round(W*s)),Math.max(1,Math.round(H*s))).data;
+  const r=await comp.evaluate(async([u,pick,crop,k,bbox])=>{ const i=await load(u), W=i.naturalWidth, H=i.naturalHeight, s=Math.min(1,240/Math.max(W,H)), d=pix(i,Math.max(1,Math.round(W*s)),Math.max(1,Math.round(H*s))).data;
     const hx=v=>'#'+v.map(c=>Math.round(c).toString(16).padStart(2,'0')).join(''), B=new Map(); let tot=0;
     for(let p=0;p<d.length;p+=4){ if(d[p+3]<128) continue; tot++; const key=(d[p]>>3)<<10|(d[p+1]>>3)<<5|(d[p+2]>>3), b=B.get(key)||[0,0,0,0]; b[0]+=d[p]; b[1]+=d[p+1]; b[2]+=d[p+2]; b[3]++; B.set(key,b); }
     const pal=[]; for(const b of [...B.values()].sort((a,b)=>b[3]-a[3])){ const c=[b[0]/b[3],b[1]/b[3],b[2]/b[3]], near=pal.find(q=>Math.hypot(q.c[0]-c[0],q.c[1]-c[1],q.c[2]-c[2])<34);
       if(near) near.n+=b[3]; else if(pal.length<k) pal.push({c,n:b[3]}); }
     const full=pix(i).data, picks=pick?pick.split(';').map(q=>{ const [x,y]=q.split(',').map(Number), p=(Math.round(y)*W+Math.round(x))*4; return `${x},${y} ${hx([full[p],full[p+1],full[p+2]])}${full[p+3]<255?' alpha '+full[p+3]:''}`; }):[];
+    // tight box of the pixels in a region that differ from the region's border colour: a figure's exact extent on a sheet
+    const boxes=bbox?bbox.split(';').map(q=>{ const [x0,y0,w,h]=q.split(',').map(Number), at=(x,y)=>(Math.min(H-1,Math.max(0,y))*W+Math.min(W-1,Math.max(0,x)))*4, border=[0,0,0,0]; let nb=0;
+      for(let x=x0;x<x0+w;x++) for(const y of [y0,y0+h-1]){ const p=at(x,y); for(let c=0;c<4;c++) border[c]+=full[p+c]; nb++; }
+      for(let y=y0;y<y0+h;y++) for(const x of [x0,x0+w-1]){ const p=at(x,y); for(let c=0;c<4;c++) border[c]+=full[p+c]; nb++; }
+      const bg=border.map(v=>v/nb); let a=1e9,b=1e9,c=-1,d=-1;
+      for(let y=y0;y<y0+h;y++) for(let x=x0;x<x0+w;x++){ const p=at(x,y); if(Math.abs(full[p]-bg[0])+Math.abs(full[p+1]-bg[1])+Math.abs(full[p+2]-bg[2])+Math.abs(full[p+3]-bg[3])>40){ a=Math.min(a,x); b=Math.min(b,y); c=Math.max(c,x); d=Math.max(d,y); } }
+      return c<0?`bbox ${q}: nothing but background`:`bbox ${q}: x ${a}..${c}, y ${b}..${d} (${c-a+1}x${d-b+1}, centre ${((a+c)/2).toFixed(1)},${((b+d)/2).toFixed(1)}, bottom centre ${((a+c)/2).toFixed(1)},${d})`; }):[];
     let cropUrl=null; if(crop){ const [x,y,w,h]=crop.split(',').map(Number), z=Math.max(1,Math.min(8,Math.floor(900/Math.max(w,h)))), c=document.createElement('canvas'); c.width=w*z; c.height=h*z; const g=c.getContext('2d');
       g.imageSmoothingEnabled=false; g.drawImage(i,x,y,w,h,0,0,w*z,h*z); cropUrl=c.toDataURL('image/png'); }
-    return {W,H,pal:pal.sort((a,b)=>b.n-a.n).map(p=>`${hx(p.c)} ${(p.n/tot*100).toFixed(1)}%`),picks,cropUrl,opaque:tot/(d.length/4)}; },[urlOf(srv,img),F.pick||'',F.crop||'',num(F.colors,12)]);
-  console.log(`${img}: ${r.W}x${r.H}${r.opaque<.99?`, ${((1-r.opaque)*100).toFixed(0)}% transparent`:''}\npalette (share of opaque pixels): ${r.pal.join('  ')}`); r.picks.forEach(p=>console.log('pick '+p));
+    return {W,H,pal:pal.sort((a,b)=>b.n-a.n).map(p=>`${hx(p.c)} ${(p.n/tot*100).toFixed(1)}%`),picks,boxes,cropUrl,opaque:tot/(d.length/4)}; },[urlOf(srv,img),F.pick||'',F.crop||'',num(F.colors,12),F.bbox||'']);
+  console.log(`${img}: ${r.W}x${r.H}${r.opaque<.99?`, ${((1-r.opaque)*100).toFixed(0)}% transparent`:''}\npalette (share of opaque pixels): ${r.pal.join('  ')}`); r.picks.forEach(p=>console.log('pick '+p)); r.boxes.forEach(b=>console.log(b));
   if(r.cropUrl){ fs.mkdirSync(dir,{recursive:true}); const f=path.join(dir,`crop-${path.basename(img).replace(/\.\w+$/,'')}-${F.crop.replace(/,/g,'_')}.png`); fs.writeFileSync(f,fromDataUrl(r.cropUrl)); console.log(f); }
   await br.close(); srv.close(); }
 

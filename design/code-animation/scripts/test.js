@@ -105,6 +105,7 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
   ok('stage.load scopes each file\'s styles and renames colliding ids',(r.out.match(/pick \S+ (#\w+)/g)||[]).map(v=>v.split(' ').pop()).join()==='#ff0000,#ff0000,#0000ff,#0000ff,#ff0000,#ff0000',r.out.split('\n').filter(l=>l.startsWith('pick')).map(l=>l.split(' ').pop()).join(','));
   r=cli(['stills','--at=0','--scene=src/scene-load.js','--set=bg=transparent']); r=cli(['probe',path.join(REV,'still-0.00s.png'),'--pick=150,50;150,110']);
   ok('--set reaches the scene as PARAMS; a transparent background is really transparent',/pick 150,50 #0000ff/.test(r.out)&&/pick 150,110 #\w+ alpha 0/.test(r.out),r.out.split('\n')[0]);
+  r=cli(['probe',path.join(REV,'still-0.50s.png'),'--bbox=30,5,60,50']); ok('probe --bbox finds a figure\'s exact extent',/bbox 30,5,60,50: x 50\.\.69, y 20\.\.39/.test(r.out),r.out.split('\n').pop()||r.out.split('\n').slice(-2)[0]);
   r=cli(['sheet','--scene=src/scene-bad.js']); ok('a throwing scene names the time and frame',r.code!==0&&/scene threw at t=1\.\d+s \(frame \d+\)/.test(r.out),r.out.trim().split('\n').pop());
   r=cli(['video','--scene=src/scene-cut.js','--out=out/frames/','--to=0.5']); ok('video to a folder writes a PNG sequence',r.code===0&&fs.readdirSync(path.join(T,'out/frames')).length===15);
   if(!ffBin){ console.log('skip  video/qa/audio checks: no full ffmpeg (pip install imageio-ffmpeg)'); }

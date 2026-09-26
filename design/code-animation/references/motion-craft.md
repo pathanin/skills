@@ -68,7 +68,8 @@ These are starting points. Adapt them to the character and the concept.
 - The body is lowest at *down*, just after contact, and highest at *up*. So the vertical bob runs at twice the step frequency: `y=bob*Math.cos(2*M.TAU*phase)`.
 - Arms swing opposite to the legs. Hips and shoulders counter-rotate by 3–6°.
 - The head bobs slightly behind the body (overlap).
-- Planted feet must not slide: move the world or camera at the exact stride speed, or drive the feet with `M.ik2` to fixed ground points.
+- Planted feet must not slide: move the world or camera at the exact stride speed, or give each foot a world position that stays fixed through its stance and arcs to the next plant during its swing, and connect it to the hip with `M.ik2` or a stroked leg.
+- Prove it with `study --track=#footL,#footR`: the spacing list must read `0.0` for every stance frame.
 
 **Jump.** Anticipation crouch (6–8 f), launch stretch (2 f), arc (hang at the top: `M.arc` already slows there), landing squash (2–3 f), recovery overshoot, settle.
 
