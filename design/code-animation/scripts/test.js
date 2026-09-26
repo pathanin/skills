@@ -30,6 +30,8 @@ fs.writeFileSync(path.join(T,'refs','red.svg'),LOGO('#ff0000')); fs.writeFileSyn
 W('scene-load.js',`const SCENE={ width:300, height:120, duration:1, background:PARAMS.bg||'#ffffff', async setup(stage){
   const a=await stage.load('../refs/red.svg'), b=await stage.load('../refs/blue.svg'), c=await stage.load('../refs/red.svg'); M.set(b,{x:100}); M.set(c,{x:200}); }, render(){} };`);
 W('scene-font.js',`const SCENE={ width:320, height:180, duration:1, setup(stage){ stage.add('<text x="10" y="90" font-family="NoSuchFont" font-size="30">hello</text>'); }, render(){} };`);
+W('scene-hang.js',`const SCENE={ width:320, height:180, duration:1, render(t){ if(t>.5) while(true){} } };`);
+W('scene-norender.js',`const SCENE={ width:320, height:180, duration:1 };`);
 W('scene-bad.js',`const SCENE={ width:320, height:180, fps:30, duration:2, render(t){ if(t>1) null.x; } };`);
 W('scene-alpha.js',`const SCENE={ width:320, height:180, fps:30, duration:1, background:'transparent', setup(stage){ stage.add('<circle id="c" cx="160" cy="90" r="40" fill="#ff8800"/>'); }, render(t,stage){ M.tf(stage.$('#c'),{x:50*t}); } };`);
 
@@ -117,6 +119,15 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
   r=cli(['stills','--at=0','--scene=src/scene-font.js']); const r2=cli(['stills','--at=0']);
   ok('a missing font is reported once; installed and generic fonts are not',(r.out.match(/FONT FALLBACK: "NoSuchFont"/g)||[]).length===1&&!/FONT FALLBACK/.test(r2.out),r.out.split('\n')[0].slice(0,80));
   r=cli(['sheet','--scene=src/scene-bad.js']); ok('a throwing scene names the time and frame',r.code!==0&&/scene threw at t=1\.\d+s \(frame \d+\)/.test(r.out),r.out.trim().split('\n').pop());
+  r=cli(['video','--scene=src/scene-hang.js','--out=out/h/','--timeout=3']); ok('a render that never returns is stopped and named',r.code!==0&&/did not return within 3 s/.test(r.out)&&/frame 1[6-9]|frame 2\d/.test(r.out),r.out.trim().split('\n').pop());
+  r=cli(['stills','--at=0','--scene=src/scene-norender.js']); ok('a scene without render() is refused with the reason',r.code!==0&&/SCENE.render\(t,stage\) is missing/.test(r.out));
+  r=cli(['video','--out=x.mp4','--size','1920x1080']); ok('an option given with a space is refused',r.code!==0&&/unexpected argument: 1920x1080/.test(r.out));
+  r=cli(['video','--output=x.mp4']); ok('an unknown option is refused and the valid ones listed',r.code!==0&&/unknown option for video: --output/.test(r.out)&&/--out /.test(r.out));
+  r=cli(['video','--out=out/range/','--from=3.5','--to=9']); ok('--to past the end is clamped with a note',r.code===0&&/past the end/.test(r.out)&&fs.readdirSync(path.join(T,'out/range')).length===15);
+  r=cli(['video','--out=out/range2/','--from=5']); ok('--from after the end is refused',r.code!==0&&/must be before/.test(r.out));
+  r=cli(['video','--scene=src/scene-cut.js','--out=out/w1/','--workers=1']); const r4=cli(['video','--scene=src/scene-cut.js','--out=out/w4/','--workers=4']);
+  const same=r.code===0&&r4.code===0&&/on 4 pages/.test(r4.out)&&fs.readdirSync(path.join(T,'out/w1')).every(f=>hash(fs.readFileSync(path.join(T,'out/w1',f)))===hash(fs.readFileSync(path.join(T,'out/w4',f))));
+  ok('parallel pages write the same frames in the same order as one page',same,r4.out.trim().split('\n').pop());
   r=cli(['video','--scene=src/scene-cut.js','--out=out/frames/','--to=0.5']); ok('video to a folder writes a PNG sequence',r.code===0&&fs.readdirSync(path.join(T,'out/frames')).length===15);
   if(!ffBin){ console.log('skip  video/qa/audio checks: no full ffmpeg (pip install imageio-ffmpeg)'); }
   else {

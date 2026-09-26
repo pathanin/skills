@@ -24,6 +24,8 @@ window.PARAMS=Object.fromEntries((Q.get('set')||'').split(',').filter(Boolean).m
 (async()=>{
   await load(Q.get('scene')||'scene.js');
   const S=typeof SCENE!=='undefined'?SCENE:window.SCENE; if(!S) throw new Error('scene.js must define const SCENE={...}');
+  if(typeof S.render!=='function') throw new Error('SCENE.render(t,stage) is missing: it sets every animated property from t');
+  for(const k of ['width','height','fps','duration']) if(S[k]!==undefined&&!(S[k]>0)) throw new Error(`SCENE.${k} must be a positive number, not ${JSON.stringify(S[k])}`);
   const W=S.width||1920, H=S.height||1080, fps=S.fps||30, duration=S.duration||5, bg=S.background||'#000', frames=Math.round(duration*fps);
   const SV='http://www.w3.org/2000/svg', el=document.getElementById('stage');
   el.style.width=W+'px'; el.style.height=H+'px'; if(bg!=='transparent') el.style.background=bg;

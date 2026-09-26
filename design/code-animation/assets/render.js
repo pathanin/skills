@@ -12,6 +12,11 @@ const {chromium}=require('playwright'), fs=require('fs'), os=require('os'), path
 const argv=process.argv.slice(2), F={}, P=[];
 for(const a of argv){ if(a.startsWith('--')){ const [k,v]=a.slice(2).split(/=(.*)/s); F[k]=v===undefined?true:v; } else P.push(a); }
 const cmd=P[0]||'video', dir=path.resolve(F.dir||path.join(os.tmpdir(),'code-animation'));
+// typos fail loudly instead of being ignored: an unknown --flag, or a value given with a space (--size 1920x1080) instead of =
+const KNOWN={video:'out scale width size fps from to mblur audio qa loop workers',stills:'at scale width size ref ref-opacity ref-box',sheet:'n from to',study:'from to n track',
+  probe:'pick crop bbox colors',qa:'loop',audio:'',check:''}, COMMON='scene set dir timeout', TAKES={probe:1,qa:1,audio:1,sheet:1};
+if(KNOWN[cmd]!==undefined){ const ok=new Set((KNOWN[cmd]+' '+COMMON).split(' ').filter(Boolean)), bad=Object.keys(F).filter(k=>!ok.has(k)), extra=P.slice(1+(TAKES[cmd]||0));
+  if(bad.length||extra.length){ console.error(`${bad.length?`unknown option${bad.length>1?'s':''} for ${cmd}: ${bad.map(k=>'--'+k).join(' ')}. `:''}${extra.length?`unexpected argument${extra.length>1?'s':''}: ${extra.join(' ')} (options take =, as in --size=1920x1080). `:''}Options for ${cmd}: ${[...ok].map(k=>'--'+k).join(' ')}`); process.exit(1); } }
 const die=m=>{ console.error(m); process.exit(1); };
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const num=(v,d)=>v===undefined||v===true||v===''?d:+v;
@@ -44,7 +49,9 @@ async function openStage(br,srv,dsf,extra='',quiet=false){
   const meta=await page.evaluate(()=>{ const a=window.__anim; return a&&{W:a.W,H:a.H,fps:a.fps,duration:a.duration,frames:a.frames,background:a.background}; });
   if(err||!meta){ await br.close(); die('scene failed to load'+(err?'':' (no error thrown: is SCENE defined, and does setup() resolve?)')); }
   await page.setViewportSize({width:meta.W,height:meta.H});
-  const seek=async t=>{ try{ await page.evaluate(t=>window.__anim.seek(t),t); }catch(e){ err=err||e.message.split('\n')[0]; } if(err){ await br.close(); die(`scene threw at t=${fmt(t)}s (frame ${Math.round(t*meta.fps)}): ${err}`); } };
+  const limit=num(F.timeout,60)*1000; // one frame taking this long is a hang (an endless loop in render), not a slow frame
+  const seek=async t=>{ let timer; try{ await Promise.race([page.evaluate(t=>window.__anim.seek(t),t),new Promise((_,no)=>{ timer=setTimeout(()=>no(new Error(`render(t) did not return within ${limit/1000} s (an endless loop? raise --timeout=s for genuinely heavy frames)`)),limit); })]); }
+    catch(e){ err=err||e.message.split('\n')[0]; } finally{ clearTimeout(timer); } if(err){ await br.close(); die(`scene threw at t=${fmt(t)}s (frame ${Math.round(t*meta.fps)}): ${err}`); } };
   const shot=async(t,alpha)=>{ await seek(t); return page.screenshot({type:'png',omitBackground:!!alpha}); };
   await seek(0); await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   return {page,meta,seek,shot,ctx};
@@ -76,7 +83,7 @@ const NOFF='No full ffmpeg found. Install one: `pip install imageio-ffmpeg` (bun
   'Without it you can still write a PNG sequence (--out=output/frames/) or, with Playwright\'s ffmpeg, a VP8 .webm.';
 // a partial render (--from) starts the audio at the same point
 function encoderArgs(ext,fps,alpha,audio,from=0){ const i=['-y','-hide_banner','-loglevel','error','-f','image2pipe','-framerate',String(fps),'-c:v','png','-i','pipe:0'], a=audio?[...(from>0?['-ss',String(from)]:[]),'-i',audio]:[], m=audio?['-map','0:v','-map','1:a','-shortest']:[];
-  if(ext==='.mp4') return [...i,...a,...m,'-vf','scale=trunc(iw/2)*2:trunc(ih/2)*2','-c:v','libx264','-preset','slow','-crf','16','-pix_fmt','yuv420p','-movflags','+faststart',...(audio?['-c:a','aac','-b:a','192k']:[])];
+  if(ext==='.mp4') return [...i,...a,...m,'-vf','scale=trunc(iw/2)*2:trunc(ih/2)*2','-c:v','libx264','-preset','medium','-crf','16','-pix_fmt','yuv420p','-movflags','+faststart',...(audio?['-c:a','aac','-b:a','192k']:[])];
   if(ext==='.webm') return [...i,...a,...m,'-c:v','libvpx-vp9','-b:v','0','-crf','26','-row-mt','1','-pix_fmt',alpha?'yuva420p':'yuv420p',...(alpha?['-auto-alt-ref','0']:[]),...(audio?['-c:a','libopus','-b:a','160k']:[])];
   if(ext==='.mov') return [...i,...a,...m,'-c:v','prores_ks','-profile:v','4','-pix_fmt',alpha?'yuva444p10le':'yuv444p10le','-vendor','apl0',...(audio?['-c:a','pcm_s16le']:[])];
   if(ext==='.gif') return [...i,'-vf','split[a][b];[a]palettegen=stats_mode=diff'+(alpha?':reserve_transparent=1':'')+'[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle'+(alpha?':alpha_threshold=128':''),'-loop','0'];
@@ -86,8 +93,12 @@ async function video(){ const out=F.out; if(!out) die('video needs --out=output/
   const ext=path.extname(out).toLowerCase(), seq=!ext||out.endsWith('/'), ff=seq?null:findFfmpeg();
   if(!seq&&!ff) die(NOFF); if(!seq&&!ff.full&&ext!=='.webm') die(NOFF); if(F.audio&&!fs.existsSync(F.audio)) die('no audio file '+F.audio);
   const srv=await serve(), br=await launch(), meta=await sceneMeta(br,srv), {w,h,dsf}=outSize(meta), fps=num(F.fps,meta.fps);
-  const from=num(F.from,0), to=num(F.to,meta.duration), n=Math.max(1,Math.round((to-from)*fps)), alpha=meta.background==='transparent'&&(seq||['.webm','.mov','.gif'].includes(ext)), mb=Math.max(1,num(F.mblur,1)|0);
-  const st=await openStage(br,srv,dsf), comp=mb>1?await composer(br):null;
+  const from=num(F.from,0), to=Math.min(num(F.to,meta.duration),meta.duration); if(!(to>from)) die(`--from=${from} must be before --to=${to} (the scene lasts ${meta.duration} s)`);
+  if(num(F.to,0)>meta.duration) console.error(`--to=${F.to} is past the end of the scene; rendering to ${meta.duration} s`);
+  const n=Math.max(1,Math.round((to-from)*fps)), alpha=meta.background==='transparent'&&(seq||['.webm','.mov','.gif'].includes(ext)), mb=Math.max(1,num(F.mblur,1)|0);
+  // parallel pages: each renders every nth frame; the writer takes them in order and workers stay at most 2 rounds ahead
+  const nw=Math.max(1,Math.min(num(F.workers,Math.min(4,Math.max(1,os.cpus().length-1)))|0,Math.ceil(n/8)));
+  const workers=await Promise.all(Array.from({length:nw},async()=>({st:await openStage(br,srv,dsf,'',true),comp:mb>1?await composer(br):null})));
   fs.mkdirSync(seq?out:path.dirname(path.resolve(out)),{recursive:true});
   let proc=null, errTxt='';
   if(!seq){ const lite=!ff.full; const args=lite?['-y','-hide_banner','-loglevel','error','-f','image2pipe','-framerate',String(fps),'-c:v','mjpeg','-i','pipe:0','-c:v','libvpx','-b:v','12M','-crf','8','-deadline','good',out]:[...encoderArgs(ext,fps,alpha,F.audio,from),out];
@@ -96,25 +107,30 @@ async function video(){ const out=F.out; if(!out) die('video needs --out=output/
   let exited=null; if(proc) proc.on('close',c=>{ exited=c; });
   const write=b=>new Promise(r=>{ if(exited!==null) die('ffmpeg exited early:\n'+errTxt.slice(-3000)); if(proc.stdin.write(b)) return r();
     const dead=()=>die('ffmpeg exited early:\n'+errTxt.slice(-3000)); proc.once('close',dead); proc.stdin.once('drain',()=>{ proc.off('close',dead); r(); }); });
-  const t0=Date.now(); let last=0;
-  for(let i=0;i<n;i++){ const t=from+i/fps; let png;
-    if(mb>1){ const subs=[]; for(let j=0;j<mb;j++) { const ts=t+((j+.5)/mb-.5)*.5/fps; // 180-degree shutter centred on the frame; a loop (--loop) wraps instead of clamping
-        subs.push(dataUrl(await st.shot(F.loop?((ts%meta.duration)+meta.duration)%meta.duration:clamp(ts,0,meta.duration),alpha))); }
-      png=fromDataUrl(await comp.evaluate(async([urls,alpha])=>{ const imgs=await Promise.all(urls.map(load));
-        const c=document.createElement('canvas'); c.width=imgs[0].naturalWidth; c.height=imgs[0].naturalHeight; const g=c.getContext('2d'), N=c.width*c.height;
-        if(!alpha){ imgs.forEach((im,j)=>{ g.globalAlpha=1/(j+1); g.drawImage(im,0,0); }); return c.toDataURL('image/png'); } // opaque: running average on the GPU
-        const acc=new Float64Array(N*4); // transparent: average premultiplied colour so edges do not fringe
-        for(const im of imgs){ g.clearRect(0,0,c.width,c.height); g.drawImage(im,0,0); const d=g.getImageData(0,0,c.width,c.height).data; for(let p=0;p<N*4;p+=4){ const a=d[p+3]; acc[p]+=d[p]*a; acc[p+1]+=d[p+1]*a; acc[p+2]+=d[p+2]*a; acc[p+3]+=a; } }
-        const o=g.createImageData(c.width,c.height); for(let p=0;p<N*4;p+=4){ const a=acc[p+3]; if(a>0){ o.data[p]=acc[p]/a; o.data[p+1]=acc[p+1]/a; o.data[p+2]=acc[p+2]/a; } o.data[p+3]=a/imgs.length; }
-        g.putImageData(o,0,0); return c.toDataURL('image/png'); },[subs,alpha])); }
-    else if(proc&&!ff.full){ await st.seek(t); png=await st.page.screenshot({type:'jpeg',quality:95}); } // the limited ffmpeg only decodes JPEG
-    else png=await st.shot(t,alpha);
-    if(seq) fs.writeFileSync(path.join(out,`frame_${String(i).padStart(5,'0')}.png`),png); else await write(png);
-    const pct=Math.floor((i+1)/n*10); if(pct>last){ last=pct; console.error(`frame ${i+1}/${n}  ${((Date.now()-t0)/1000).toFixed(0)}s`); } }
+  const lite=proc&&!ff.full, t0=Date.now(); let last=0, written=0;
+  const frame=async({st,comp},t)=>{
+    if(lite){ await st.seek(t); return st.page.screenshot({type:'jpeg',quality:95}); } // the limited ffmpeg only decodes JPEG
+    if(mb<2) return st.shot(t,alpha);
+    const subs=[]; for(let j=0;j<mb;j++){ const ts=t+((j+.5)/mb-.5)*.5/fps; // 180-degree shutter centred on the frame; a loop (--loop) wraps instead of clamping
+      subs.push(dataUrl(await st.shot(F.loop?((ts%meta.duration)+meta.duration)%meta.duration:clamp(ts,0,meta.duration),alpha))); }
+    return fromDataUrl(await comp.evaluate(async([urls,alpha])=>{ const imgs=await Promise.all(urls.map(load));
+      const c=document.createElement('canvas'); c.width=imgs[0].naturalWidth; c.height=imgs[0].naturalHeight; const g=c.getContext('2d'), N=c.width*c.height;
+      if(!alpha){ imgs.forEach((im,j)=>{ g.globalAlpha=1/(j+1); g.drawImage(im,0,0); }); return c.toDataURL('image/png'); } // opaque: running average on the GPU
+      const acc=new Float64Array(N*4); // transparent: average premultiplied colour so edges do not fringe
+      for(const im of imgs){ g.clearRect(0,0,c.width,c.height); g.drawImage(im,0,0); const d=g.getImageData(0,0,c.width,c.height).data; for(let p=0;p<N*4;p+=4){ const a=d[p+3]; acc[p]+=d[p]*a; acc[p+1]+=d[p+1]*a; acc[p+2]+=d[p+2]*a; acc[p+3]+=a; } }
+      const o=g.createImageData(c.width,c.height); for(let p=0;p<N*4;p+=4){ const a=acc[p+3]; if(a>0){ o.data[p]=acc[p]/a; o.data[p+1]=acc[p+1]/a; o.data[p+2]=acc[p+2]/a; } o.data[p+3]=a/imgs.length; }
+      g.putImageData(o,0,0); return c.toDataURL('image/png'); },[subs,alpha])); };
+  const done=new Map(), wake=[]; let notify=()=>{};
+  const tick=()=>{ const w=wake.splice(0); w.forEach(f=>f()); };
+  const produce=async(k)=>{ for(let i=k;i<n;i+=nw){ while(i-written>=2*nw) await new Promise(r=>wake.push(r)); done.set(i,await frame(workers[k],from+i/fps)); notify(); } };
+  const consume=async()=>{ for(let i=0;i<n;i++){ while(!done.has(i)) await new Promise(r=>{ notify=r; }); const png=done.get(i); done.delete(i);
+      if(seq) fs.writeFileSync(path.join(out,`frame_${String(i).padStart(5,'0')}.png`),png); else await write(png);
+      written=i+1; tick(); const pct=Math.floor((i+1)/n*10); if(pct>last){ last=pct; console.error(`frame ${i+1}/${n}  ${((Date.now()-t0)/1000).toFixed(0)}s`); } } };
+  await Promise.all([consume(),...workers.map((_,k)=>produce(k))]);
   if(proc){ proc.stdin.end(); const code=exited!==null?exited:await new Promise(r=>proc.on('close',r)); if(code) die('ffmpeg failed:\n'+errTxt.slice(-3000)); }
   await br.close(); srv.close();
   const [ow,oh]=ext==='.mp4'&&ff&&ff.full?[w-w%2,h-h%2]:[w,h]; // H.264 4:2:0 needs even sizes
-  console.log(`wrote ${out}  ${ow}x${oh}${ow!==w||oh!==h?` (rounded down from ${w}x${h}: H.264 needs even sizes)`:''}  ${n} frames @ ${fps}fps  ${fmt(n/fps)}s${mb>1?'  mblur '+mb:''}${alpha?'  alpha':''}  in ${((Date.now()-t0)/1000).toFixed(1)}s`);
+  console.log(`wrote ${out}  ${ow}x${oh}${ow!==w||oh!==h?` (rounded down from ${w}x${h}: H.264 needs even sizes)`:''}  ${n} frames @ ${fps}fps  ${fmt(n/fps)}s${mb>1?'  mblur '+mb:''}${alpha?'  alpha':''}  in ${((Date.now()-t0)/1000).toFixed(1)}s on ${nw} page${nw>1?'s':''}`);
   if(F.qa&&!seq) qa(out); }
 
 async function stills(){ if(!F.at) die('stills needs --at=0,1.5,f90 (seconds, or f<frame>)');

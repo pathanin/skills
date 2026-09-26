@@ -196,12 +196,12 @@ Asset URLs resolve from `src/`, so the materials are at `../refs/<file>`.
 
 ### render.js
 
-Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a variant of this one, see `PARAMS`) and `--dir=`.
+Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a variant of this one, see `PARAMS`), `--dir=`, and `--timeout=s` (default 60: a single frame taking longer is reported as a hang). Options always take `=`; an unknown option or a stray argument stops the command and lists the valid options.
 
 | Command | What it does |
 |---|---|
 | `check` | Checks Playwright, the browser and ffmpeg |
-| `video --out=file` | Renders the video. The extension picks the format: `.mp4` (H.264), `.webm` (VP9, with alpha if the background is transparent), `.mov` (ProRes 4444 with alpha), `.gif` (palette + ordered dither), or `folder/` (PNG frames). Options: `--scale=k`, `--width=N` or `--size=WxH`; `--fps=N`; `--from=s --to=s`; `--mblur=N` (N subframes, 180° shutter); `--audio=file`; `--qa`; `--loop` for a loop (QA checks the seam, and motion-blur subframes wrap around it) |
+| `video --out=file` | Renders the video. The extension picks the format: `.mp4` (H.264), `.webm` (VP9, with alpha if the background is transparent), `.mov` (ProRes 4444 with alpha), `.gif` (palette + ordered dither), or `folder/` (PNG frames). Options: `--scale=k`, `--width=N` or `--size=WxH`; `--fps=N`; `--from=s --to=s`; `--mblur=N` (N subframes, 180° shutter); `--audio=file`; `--workers=N` (parallel pages, default CPU count − 1, at most 4; the frames are identical to one page's); `--qa`; `--loop` for a loop (QA checks the seam, and motion-blur subframes wrap around it) |
 | `stills --at=0,1.5,f90` | One PNG per time, given in seconds or as `f<frame>`. Options: `--scale`, `--ref=img --ref-opacity=.5 --ref-box=x,y,w,h` |
 | `sheet [<video>] [--n=12] [--from --to]` | A labelled contact sheet of evenly spaced frames, of the scene or of any video file (a reference, or your encoded output) |
 | `study --from --to [--n=8] [--track=#a,#b]` | Onion skin of the moving parts, plus a dot per frame for each tracked element, with the spacing listed in stage units |
@@ -210,7 +210,7 @@ Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a v
 | `audio <file>` | Duration, tempo and beat grid, the strongest hits, and energy jumps. It is an estimate; timings the user gives win |
 
 - The output size must keep the scene's aspect. For another aspect ratio, write a new scene (or branch on `W`) and recompose it; never stretch.
-- Speed: roughly 40 ms per frame at 720p, 100 ms at 1080p and 400 ms at 4K. `--mblur=N` multiplies that by N. A `PAGE ERROR` or `scene threw at t=… (frame N)` message names the failing frame; reproduce it with `stills --at=fN`.
+- Speed on 4 cores with 3 pages, encoding included: about 40 ms per frame at 720p, 70 ms at 1080p and 280 ms at 4K, plus 1–2 s of start-up, so a minute of 1080p30 takes about 2 minutes. `--mblur=N` multiplies that by N; heavy SVG filters and WebGL are slower. A `PAGE ERROR` or `scene threw at t=… (frame N)` message names the failing frame; reproduce it with `stills --at=fN`.
 
 ## Known problems
 
