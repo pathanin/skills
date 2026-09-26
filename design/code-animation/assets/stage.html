@@ -55,6 +55,12 @@ window.PARAMS=Object.fromEntries((Q.get('set')||'').split(',').filter(Boolean).m
     // camera over the world group: centre on (x,y), zoom, roll r (deg). Screen-space group and HTML layer do not move
     camera({x=W/2,y=H/2,zoom=1,r=0}={}){ world.setAttribute('transform',`translate(${W/2} ${H/2}) rotate(${r}) scale(${zoom}) translate(${-x} ${-y})`); },
     font(family,url,desc={}){ const f=new FontFace(family,`url("${url}")`,desc); document.fonts.add(f); return f.load(); },
+    // a Google Font by name, every listed weight loaded before the first frame (needs network). webfont('Inter',[400,700]), webfont('Fraunces',[400],'ital')
+    async webfont(family,weights=[400,700],ital=false){ const q=ital?`ital,wght@${[0,1].flatMap(i=>weights.map(w=>i+','+w)).join(';')}`:`wght@${weights.join(';')}`;
+      const r=await fetch(`https://fonts.googleapis.com/css2?family=${encodeURIComponent(family).replace(/%20/g,'+')}:${q}&display=block`); if(!r.ok) throw new Error(`webfont ${family}: ${r.status} (is the name right, and is there network access?)`);
+      const css=await r.text(), faces=[...css.matchAll(/@font-face\s*{([^}]*)}/g)].map(m=>{ const b=m[1], g=k=>(b.match(new RegExp(k+':\\s*([^;]+);'))||[])[1];
+        const f=new FontFace(family,`url(${(b.match(/url\(([^)]+)\)/)||[])[1]})`,{weight:g('font-weight')||'400',style:g('font-style')||'normal',unicodeRange:g('unicode-range')||'U+0-10FFFF'}); document.fonts.add(f); return f.load(); });
+      await Promise.all(faces); },
     image(url){ const i=new Image(); i.src=url; return i.decode().then(()=>i); },
   };
   window.stage=stage;
@@ -66,6 +72,11 @@ window.PARAMS=Object.fromEntries((Q.get('set')||'').split(',').filter(Boolean).m
   if(Q.get('ref')){ const r=layer('img',9); r.src=Q.get('ref'); const [x,y,w,h]=(Q.get('refbox')||`0,0,${W},${H}`).split(',').map(Number);
     r.style.cssText+=`;left:${x}px;top:${y}px;width:${w}px;height:${h}px;object-fit:contain;opacity:${Q.get('refop')||.5};z-index:9`; await r.decode().catch(()=>{}); }
   seek(+Q.get('t')||0);
+  // warn about fonts the scene names but the browser does not have: they silently render in a fallback face
+  { const g=document.createElement('canvas').getContext('2d'), w=f=>{ g.font=`40px ${f}`; return g.measureText('Hamburgefonstiv 0123 WMy').width; }, fams=new Set();
+    for(const e of el.querySelectorAll('*')){ if(![...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())) continue; fams.add(getComputedStyle(e).fontFamily.split(',')[0].trim().replace(/^["']|["']$/g,'')); }
+    const generic=['serif','sans-serif','monospace','cursive','fantasy','system-ui','ui-sans-serif','ui-serif','ui-monospace','math','emoji'];
+    for(const f of fams) if(!generic.includes(f)&&['monospace','serif','sans-serif'].every(b=>w(`"${f}", ${b}`)===w(b))) console.warn(`FONT FALLBACK: "${f}" is not available, so its text renders in a fallback face. Load it in setup with await stage.font(family,url) or await stage.webfont(family,[weights]), or name the substitute.`); }
   window.__anim={W,H,fps,duration,frames,background:bg,seek};
   if(RENDER){ document.body.classList.add('render'); document.documentElement.style.background=document.body.style.background=bg==='transparent'?'transparent':bg; window.READY=true; return; }
   // live preview: fit to window, play, scrub. Space play/pause, arrows step a frame (shift: 1 s), Home to start
@@ -80,7 +91,7 @@ window.PARAMS=Object.fromEntries((Q.get('set')||'').split(',').filter(Boolean).m
   addEventListener('keydown',e=>{ if(e.key===' '){ e.preventDefault(); setPlay(!playing); } else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){ setPlay(false);
       show(M.clamp(Math.round(cur*fps)/fps+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?1:1/fps),0,(frames-1)/fps)); } else if(e.key==='Home'){ show(0); setPlay(playing); } });
   const tick=()=>{ if(playing) show(((performance.now()-t0)/1000)%duration); requestAnimationFrame(tick); }; tick();
-})().catch(e=>{ if(!RENDER) showErr(e.stack||e.message); window.LOAD_ERROR=e.message; throw e; });
+})().catch(e=>{ if(!RENDER) showErr((location.protocol==='file:'?'Opened from file://, where fetch, fonts and modules are blocked. Serve the folder instead: python3 -m http.server, then open /src/stage.html\n\n':'')+(e.stack||e.message)); window.LOAD_ERROR=e.message; throw e; });
 }
 </script>
 </body></html>

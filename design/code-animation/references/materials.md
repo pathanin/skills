@@ -17,7 +17,7 @@ Turn each material into two lists in `plan.md` under **Reading**:
    - Use RGB or HEX values as given.
    - When only CMYK or Pantone values are given, convert them and mark the result as approximate in `plan.md`.
 4. Video references: you can't watch them, so sample them.
-   - Frame tiles: `ffmpeg -i ref.mp4 -vf "fps=2,scale=480:-2,tile=4x3" refs/ref-tiles-%02d.png`, then Read the tiles.
+   - Contact sheet: `render.js sheet refs/ref.mp4 --n=16`, then Read it. Zoom into one moment with `--from --to`.
    - Editing rhythm: `render.js qa ref.mp4`. Its holds and jumps are the reference's holds and cuts.
 5. Text briefs: pull out the platform, duration, must-show items, exact copy, CTA, audience and tone words.
 
@@ -29,6 +29,7 @@ Turn each material into two lists in `plan.md` under **Reading**:
   - Keep the proportions, colours, clear space and minimum size as specified.
 - **Palette** by role (primary, secondary, accent, background, text), with exact hex values.
 - **Typefaces.** Load supplied font files with `stage.font`.
+  - A Google Font named in the guidelines: `await stage.webfont(family,[weights])`.
   - Otherwise use the nearest local font (`fc-list : family`) and name the substitution.
 - **Don'ts.** The logo don'ts apply to motion too: no squash and stretch, recolouring, rotation or skew of the logo unless the guidelines allow it or the brand is plainly playful.
   - The logo's final frame must match the spec exactly, and hold for at least 1 s.

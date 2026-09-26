@@ -1,7 +1,7 @@
 // render.js: frame-exact capture of stage.html + scene.js in headless Chromium, plus review tools. Run from anywhere; paths resolve against the cwd.
 //   node src/render.js video  --out=output/name.mp4 [--scale=1|--width=N|--size=WxH] [--fps=N] [--from=s --to=s] [--mblur=N] [--audio=file] [--qa]
 //   node src/render.js stills --at=0,1.5,f90 [--scale=1] [--ref=refs/sheet.png --ref-opacity=.5 --ref-box=x,y,w,h]
-//   node src/render.js sheet  [--n=12] [--from=s --to=s]              contact sheet: n frames in one labelled grid
+//   node src/render.js sheet  [<video>] [--n=12] [--from=s --to=s]    contact sheet: n frames in one labelled grid, of the scene or of any video file
 //   node src/render.js study  --from=s --to=s [--n=8] [--track=#a,#b]  motion study: onion skin of the moving parts + per-frame spacing dots
 //   node src/render.js probe  <image> [--pick=x,y;x,y] [--bbox=x,y,w,h;…] [--crop=x,y,w,h]  size, palette, exact pixel colours, a figure's extent
 //   node src/render.js qa     <video> [--loop]                         holds (frozen spans) and jumps (hard frame changes) with timecodes; --loop also checks the seam
@@ -24,12 +24,21 @@ const serve=()=>new Promise(ok=>{ const s=http.createServer((q,r)=>{ const f=dec
   s.listen(0,'127.0.0.1',()=>ok(s)); });
 const urlOf=(srv,f)=>`http://127.0.0.1:${srv.address().port}${path.resolve(f).split(path.sep).map(encodeURIComponent).join('/').replace(/^([^/])/,'/$1')}`;
 
-const launch=()=>chromium.launch({args:['--force-color-profile=srgb','--font-render-hinting=none']}).catch(()=>{ console.error('bundled Chromium unavailable, using installed Chrome'); return chromium.launch({channel:'chrome'}); });
+// remote requests from the page (web fonts, CDN libraries, images) go through Node: it honours the system's proxy CA (NODE_EXTRA_CA_CERTS)
+// where Chromium may not, and one download is shared by every page of the run
+const REMOTE=new Map();
+async function routeRemote(ctx){ await ctx.route(u=>/^https?:/.test(u.href)&&!/^https?:\/\/(127\.0\.0\.1|localhost)[:/]/.test(u.href), async r=>{
+  const q=r.request(), key=q.method()==='GET'?q.url():null;
+  try{ if(key&&REMOTE.has(key)) return r.fulfill(REMOTE.get(key)); const res=await r.fetch(), v={status:res.status(),headers:res.headers(),body:await res.body()};
+    if(key&&res.ok()) REMOTE.set(key,v); await r.fulfill(v); }catch(e){ console.error(`remote request failed: ${q.url()} (${e.message.split('\n')[0]})`); await r.abort().catch(()=>{}); } }); }
+const NOISE=/GL Driver Message|GroupMarkerNotSet|swiftshader|WebGL-0x|Automatic fallback to software WebGL/i;
+const launch=()=>chromium.launch({args:['--force-color-profile=srgb','--font-render-hinting=none','--enable-unsafe-swiftshader']}).catch(()=>{ console.error('bundled Chromium unavailable, using installed Chrome'); return chromium.launch({channel:'chrome'}); });
 // open the stage at a device scale factor so the output is W*dsf x H*dsf pixels
-async function openStage(br,srv,dsf,extra=''){
+async function openStage(br,srv,dsf,extra='',quiet=false){
   const scene=path.resolve(F.scene||path.join(__dirname,'scene.js')); if(!fs.existsSync(scene)) die('no scene at '+scene);
-  const ctx=await br.newContext({viewport:{width:1280,height:720},deviceScaleFactor:dsf}), page=await ctx.newPage(); let err=null;
-  page.on('pageerror',e=>{ err=e.message; console.error('PAGE ERROR:',e.message); }); page.on('console',m=>{ if(m.type()==='error') console.error('console:',m.text()); });
+  const ctx=await br.newContext({viewport:{width:1280,height:720},deviceScaleFactor:dsf}); await routeRemote(ctx); const page=await ctx.newPage(); let err=null;
+  page.on('pageerror',e=>{ err=e.message; console.error('PAGE ERROR:',e.message); });
+  page.on('console',m=>{ const ty=m.type(); if(ty==='error'||(ty==='warning'&&!quiet&&!NOISE.test(m.text()))) console.error(ty==='error'?'console:':'warning:',m.text()); });
   await page.goto(urlOf(srv,path.join(__dirname,'stage.html'))+'?render&scene='+encodeURIComponent(urlOf(srv,scene))+(F.set?'&set='+encodeURIComponent(F.set):'')+extra);
   await page.waitForFunction(()=>window.READY||window.LOAD_ERROR,null,{timeout:180000}).catch(()=>{});
   const meta=await page.evaluate(()=>{ const a=window.__anim; return a&&{W:a.W,H:a.H,fps:a.fps,duration:a.duration,frames:a.frames,background:a.background}; });
@@ -40,7 +49,7 @@ async function openStage(br,srv,dsf,extra=''){
   await seek(0); await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
   return {page,meta,seek,shot,ctx};
 }
-async function sceneMeta(br,srv){ const s=await openStage(br,srv,1); await s.ctx.close(); return s.meta; }
+async function sceneMeta(br,srv){ const s=await openStage(br,srv,1,'',true); await s.ctx.close(); return s.meta; }
 // output size from --size / --width / --scale; the aspect must match the scene (compose a new scene for another aspect)
 function outSize(meta,defScale=1){ let w,h; if(F.size){ [w,h]=F.size.split('x').map(Number); } else if(F.width){ w=+F.width; h=Math.round(w*meta.H/meta.W); } else { const k=num(F.scale,defScale); w=Math.round(meta.W*k); h=Math.round(meta.H*k); }
   if(Math.abs(h-w*meta.H/meta.W)>1.5) die(`--size ${w}x${h} does not match the scene aspect ${meta.W}x${meta.H}; compose a scene for that aspect instead of stretching`); return {w,h,dsf:w/meta.W}; }
@@ -49,7 +58,7 @@ const lastT=meta=>(meta.frames-1)/meta.fps;
 const fmt=t=>(+t).toFixed(2);
 
 // ---- a blank page for compositing (contact sheets, onion skins, motion blur, image probes) ----
-async function composer(br){ const ctx=await br.newContext({deviceScaleFactor:1}), page=await ctx.newPage(); await page.setContent('<body style="margin:0"></body>'); await page.addScriptTag({content:HELP}); return page; }
+async function composer(br){ const ctx=await br.newContext({deviceScaleFactor:1}); await routeRemote(ctx); const page=await ctx.newPage(); await page.setContent('<body style="margin:0"></body>'); await page.addScriptTag({content:HELP}); return page; }
 const dataUrl=b=>'data:image/png;base64,'+b.toString('base64');
 const fromDataUrl=u=>Buffer.from(u.split(',')[1],'base64');
 const HELP=`window.load=u=>new Promise((ok,no)=>{ const i=new Image(); i.crossOrigin='anonymous'; i.onload=()=>ok(i); i.onerror=()=>no(new Error('cannot load image')); i.src=u; });
@@ -116,15 +125,23 @@ async function stills(){ if(!F.at) die('stills needs --at=0,1.5,f90 (seconds, or
     fs.writeFileSync(f,await st.shot(t,meta.background==='transparent')); console.log(f); }
   await br.close(); srv.close(); }
 
-async function sheet(){ const srv=await serve(), br=await launch(), meta=await sceneMeta(br,srv), n=Math.max(2,num(F.n,12)|0);
-  const from=num(F.from,0), to=Math.min(num(F.to,meta.duration),lastT(meta)), cell=meta.W>=meta.H?480:300, dsf=cell/meta.W;
-  const st=await openStage(br,srv,dsf), shots=[];
-  for(let k=0;k<n;k++){ const t=Math.round((from+(to-from)*k/(n-1))*meta.fps)/meta.fps; shots.push({t,f:Math.round(t*meta.fps),u:dataUrl(await st.shot(t))}); }
+// frames of a video file (a reference, or a finished render) as PNG buffers at the given times
+function videoInfo(ff,file){ const r=spawnSync(ff.bin,['-hide_banner','-i',file],{encoding:'utf8'}).stderr||'', d=(r.match(/Duration: (\d+):(\d+):([\d.]+)/)||[]).slice(1).map(Number), v=r.match(/Video: .*?, (\d{2,5})x(\d{2,5})[^\n]*?, ([\d.]+) (?:fps|tbr)/);
+  if(!d.length||!v) die(file+' is not a video ffmpeg can read'); return {duration:d[0]*3600+d[1]*60+d[2],W:+v[1],H:+v[2],fps:+v[3]}; }
+function videoFrame(ff,file,t,w){ const r=spawnSync(ff.bin,['-hide_banner','-loglevel','error','-ss',String(t),'-i',file,'-frames:v','1','-vf',`scale=${w}:-2`,'-f','image2pipe','-c:v','png','pipe:1'],{maxBuffer:256<<20});
+  if(r.status||!r.stdout.length) die('could not read a frame at '+fmt(t)+'s from '+file); return r.stdout; }
+async function sheet(){ const vid=P[1], srv=await serve(), br=await launch(), n=Math.max(2,num(F.n,12)|0), shots=[]; let meta, from, to, cell;
+  if(vid){ const ff=findFfmpeg(); if(!ff||!ff.full) die(NOFF); if(!fs.existsSync(vid)) die('no video '+vid); meta=videoInfo(ff,vid); cell=meta.W>=meta.H?480:300;
+    from=num(F.from,0); to=Math.min(num(F.to,meta.duration),meta.duration-1/meta.fps);
+    for(let k=0;k<n;k++){ const t=from+(to-from)*k/(n-1); shots.push({t,f:Math.round(t*meta.fps),u:dataUrl(videoFrame(ff,vid,t,cell))}); } }
+  else { meta=await sceneMeta(br,srv); from=num(F.from,0); to=Math.min(num(F.to,meta.duration),lastT(meta)); cell=meta.W>=meta.H?480:300;
+    const st=await openStage(br,srv,cell/meta.W);
+    for(let k=0;k<n;k++){ const t=Math.round((from+(to-from)*k/(n-1))*meta.fps)/meta.fps; shots.push({t,f:Math.round(t*meta.fps),u:dataUrl(await st.shot(t))}); } }
   const cols=Math.max(1,Math.min(n,Math.ceil(Math.sqrt(n*meta.H/meta.W*1.6)))), comp=await composer(br);
   await comp.setContent(`<body style="margin:0;background:#222;font:600 14px system-ui,sans-serif;color:#eee"><div id=g style="display:grid;grid-template-columns:repeat(${cols},${cell}px);gap:6px;padding:6px;width:max-content">`+
     shots.map(s=>`<div style="position:relative"><img src="${s.u}" style="display:block;width:${cell}px"><span style="position:absolute;left:4px;top:4px;background:#000b;padding:1px 5px">${fmt(s.t)}s · f${s.f}</span></div>`).join('')+'</div></body>');
   await comp.evaluate(()=>Promise.all([...document.images].map(i=>i.decode())));
-  fs.mkdirSync(dir,{recursive:true}); const f=path.join(dir,`sheet-${fmt(from)}-${fmt(to)}.png`); await (await comp.$('#g')).screenshot({path:f}); console.log(f);
+  fs.mkdirSync(dir,{recursive:true}); const f=path.join(dir,`sheet-${vid?path.basename(vid).replace(/\.\w+$/,'')+'-':''}${fmt(from)}-${fmt(to)}.png`); await (await comp.$('#g')).screenshot({path:f}); console.log(f);
   await br.close(); srv.close(); }
 
 async function study(){ const srv=await serve(), br=await launch(), meta=await sceneMeta(br,srv);

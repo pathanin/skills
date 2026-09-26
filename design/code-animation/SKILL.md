@@ -120,10 +120,10 @@ Tracking a joint needs a tiny marker at that point: `<circle id="trk-hand" r="1"
    - Add `--mblur=8` when there are fast moves: whip pans, spins, or objects crossing more than about 40 px per frame.
    - Add `--audio=refs/<track>` when there is sound.
    - Add a GIF with `video --out=output/<name>.gif --width=640 --fps=25`, and a `.mov` for alpha when needed.
-2. Run `qa` on the final render.
+2. Run `qa` on the final render, and `sheet output/<name>.mp4` to look at the encoded file itself.
 3. Deliver:
    - Give the paths with a one-line caption. Send the files too if a tool for sending files is available.
-   - Mention the live preview: `python3 -m http.server` in the working folder, then open `/src/stage.html`.
+   - Mention the live preview: `python3 -m http.server` in the working folder, then open `/src/stage.html` (it does not work from `file://`).
    - Delete the previews.
 4. Offer next steps: another aspect ratio (which needs a new composition), alternate timing or palette, a loop version, other formats, or a new pass on one beat.
 
@@ -144,7 +144,7 @@ Hard rules. Breaking any of them makes frames differ between the sheet, the prev
 
 1. `render(t)` sets every animated property from `t` on every call. Never carry state from one call to the next, such as `x+=v`. Frames render out of order: sheets, studies, motion-blur subframes and seeking back.
 2. Never use `Math.random`, `Date`, `performance.now`, timers, `requestAnimationFrame` or CSS transitions. For randomness, use `M.rng(seed)` in `setup` and `M.hash(i,seed)` or `M.noise` in `render`.
-3. CSS `@keyframes` and `element.animate()` are fine: the harness pauses them and sets `currentTime` to `t`. If you load GSAP yourself (it is not shipped), build its timelines paused and call `tl.seek(t)` in `render`.
+3. CSS `@keyframes` and `element.animate()` are fine: the harness pauses them and sets `currentTime` to `t`. Libraries are not shipped: install them with `(cd src && npm i <lib>)` and `await import('./node_modules/…')` in `setup`, rather than from a CDN, which sandboxed networks often block. GSAP: `({gsap}=await import('./node_modules/gsap/index.js'))`, build timelines paused, and call `tl.seek(t)` in `render`.
 4. Anything stateful, such as physics, flocking, particle collisions or cloth, is simulated in `setup` into arrays of samples (at the scene fps or finer, with substeps for stability). `render` reads them with `M.sample(samples,t,rate)`, which interpolates between samples, so motion-blur subframes and a higher `--fps` stay smooth.
 5. Create every element in `setup`, and hide it with opacity or `display` until it is needed. Creating elements inside `render` leaks. Canvas layers are the exception: clear them and redraw every frame.
 6. `M.tf` replaces an element's whole `transform`. So animate a wrapper `<g>`, and keep any transform the artwork has on the elements inside it.
@@ -158,7 +158,7 @@ Hard rules. Breaking any of them makes frames differ between the sheet, the prev
 | SVG (default): `stage.add(markup)` | Characters, logos, shapes, lines, masks, clip paths, gradients, filters. Sharp at any size, and groups nest into rigs. |
 | Canvas 2D: `stage.canvas(name,'under' or 'over')` | More than about 300 moving pieces (particles, rain, confetti), per-pixel texture and grain, generative trails. |
 | HTML: `stage.html` | Typography: real text layout, per-letter spans with `M.split`, CSS filters and blend modes. |
-| WebGL: `stage.canvas(name,'over','webgl2')` | Only when real 3D or shaders are the point. Get the context with `preserveDrawingBuffer:true`. three.js is not shipped: run `(cd src && npm i three)` and `await import('./node_modules/three/build/three.module.js')` in `setup`. |
+| WebGL: `stage.canvas(name,'over','webgl2')` | Only when real 3D or shaders are the point. Get the context with `preserveDrawingBuffer:true` (for three.js: `new THREE.WebGLRenderer({canvas, preserveDrawingBuffer:true, alpha:true})`, `setPixelRatio(stage.dpr)`, `setSize(W,H,false)`, and call `renderer.render` inside `render(t)`). three.js: `(cd src && npm i three)`, then `await import('./node_modules/three/build/three.module.js')`. Headless rendering is software WebGL, so keep scenes modest. |
 
 The stacking order, back to front: canvas `'under'`, SVG (`world`, then `screen`), canvas `'over'`, HTML, then the `--ref` overlay.
 
@@ -174,6 +174,7 @@ The stacking order, back to front: canvas `'under'`, SVG (`world`, then `screen`
 | `canvas(name, where='over', type='2d')` | A hi-DPI layer drawn in stage units, with `ctx.clear()` |
 | `camera({x,y,zoom,r})` | Centres `world` on (x, y). Neutral is `{x:W/2, y:H/2, zoom:1, r:0}` |
 | `font(family, url)` | Loads a font file supplied with the materials. Await it in `setup` |
+| `webfont(family, [weights], ital=false)` | Loads a Google Font by name before the first frame (needs network). Await it in `setup` |
 | `image(url)` | A decoded `Image`, for drawing to a canvas |
 
 Asset URLs resolve from `src/`, so the materials are at `../refs/<file>`.
@@ -202,7 +203,7 @@ Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a v
 | `check` | Checks Playwright, the browser and ffmpeg |
 | `video --out=file` | Renders the video. The extension picks the format: `.mp4` (H.264), `.webm` (VP9, with alpha if the background is transparent), `.mov` (ProRes 4444 with alpha), `.gif` (palette + ordered dither), or `folder/` (PNG frames). Options: `--scale=k`, `--width=N` or `--size=WxH`; `--fps=N`; `--from=s --to=s`; `--mblur=N` (N subframes, 180° shutter); `--audio=file`; `--qa`; `--loop` for a loop (QA checks the seam, and motion-blur subframes wrap around it) |
 | `stills --at=0,1.5,f90` | One PNG per time, given in seconds or as `f<frame>`. Options: `--scale`, `--ref=img --ref-opacity=.5 --ref-box=x,y,w,h` |
-| `sheet [--n=12] [--from --to]` | A labelled contact sheet of evenly spaced frames |
+| `sheet [<video>] [--n=12] [--from --to]` | A labelled contact sheet of evenly spaced frames, of the scene or of any video file (a reference, or your encoded output) |
 | `study --from --to [--n=8] [--track=#a,#b]` | Onion skin of the moving parts, plus a dot per frame for each tracked element, with the spacing listed in stage units |
 | `probe <image> [--pick=x,y;x,y] [--bbox=x,y,w,h;…] [--crop=x,y,w,h] [--colors=12]` | Size, palette with shares, exact pixel colours, the exact extent of a figure inside a region (the region must have background all around its edge), and a zoomed crop |
 | `qa <video> [--loop]` | Holds of 0.4 s or more, and jumps (a frame that changes far more than both its neighbours), with timecodes. `--loop` also checks the seam from the last frame back to the first |
@@ -220,7 +221,7 @@ Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a v
 | Gaps open at joints when limbs rotate | Overlap the parts by the joint radius, with round caps, and put each pivot at the centre of the joint circle. |
 | A transform in the markup is lost | `M.tf` overwrote it. Wrap the art in a `<g>` and animate the wrapper (hard rule 6). |
 | A morph snaps instead of blending | The two path strings differ in commands or number count, so `M.mix` switches at u = 0.5. Author both shapes with identical structure. |
-| Text renders in a fallback font, or pops in late | The font was not loaded before the first frame. Use `await stage.font(…)` in `setup` with a local file. Remote webfonts need network access, so check `document.fonts` and name any substitution. |
+| `warning: FONT FALLBACK: "X" is not available` | The scene names a font the browser does not have, so that text renders in a substitute. Load it in `setup` with `await stage.font(family,url)` (a supplied file) or `await stage.webfont(family,[weights])` (Google Fonts), or pick an installed font (`fc-list : family`) and name the substitution. |
 | Camera moves reveal the stage edge | The background has no bleed (hard rule 8). |
 | Motion looks mechanical | Linear spacing, everything starting at once, and no overlap. See `references/motion-craft.md`. |
 | Fast motion strobes | Add `--mblur=8` to the final render, or draw smear frames for a cartoon style. |

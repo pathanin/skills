@@ -29,6 +29,7 @@ const LOGO=c=>`<?xml version="1.0"?>\n<!-- Illustrator-style export: shared clas
 fs.writeFileSync(path.join(T,'refs','red.svg'),LOGO('#ff0000')); fs.writeFileSync(path.join(T,'refs','blue.svg'),LOGO('#0000ff'));
 W('scene-load.js',`const SCENE={ width:300, height:120, duration:1, background:PARAMS.bg||'#ffffff', async setup(stage){
   const a=await stage.load('../refs/red.svg'), b=await stage.load('../refs/blue.svg'), c=await stage.load('../refs/red.svg'); M.set(b,{x:100}); M.set(c,{x:200}); }, render(){} };`);
+W('scene-font.js',`const SCENE={ width:320, height:180, duration:1, setup(stage){ stage.add('<text x="10" y="90" font-family="NoSuchFont" font-size="30">hello</text>'); }, render(){} };`);
 W('scene-bad.js',`const SCENE={ width:320, height:180, fps:30, duration:2, render(t){ if(t>1) null.x; } };`);
 W('scene-alpha.js',`const SCENE={ width:320, height:180, fps:30, duration:1, background:'transparent', setup(stage){ stage.add('<circle id="c" cx="160" cy="90" r="40" fill="#ff8800"/>'); }, render(t,stage){ M.tf(stage.$('#c'),{x:50*t}); } };`);
 
@@ -113,12 +114,15 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
   r=cli(['stills','--at=0','--scene=src/scene-load.js','--set=bg=transparent']); r=cli(['probe',path.join(REV,'still-0.00s.png'),'--pick=150,50;150,110']);
   ok('--set reaches the scene as PARAMS; a transparent background is really transparent',/pick 150,50 #0000ff/.test(r.out)&&/pick 150,110 #\w+ alpha 0/.test(r.out),r.out.split('\n')[0]);
   r=cli(['probe',path.join(REV,'still-0.50s.png'),'--bbox=30,5,60,50']); ok('probe --bbox finds a figure\'s exact extent',/bbox 30,5,60,50: x 50\.\.69, y 20\.\.39/.test(r.out),r.out.split('\n').pop()||r.out.split('\n').slice(-2)[0]);
+  r=cli(['stills','--at=0','--scene=src/scene-font.js']); const r2=cli(['stills','--at=0']);
+  ok('a missing font is reported once; installed and generic fonts are not',(r.out.match(/FONT FALLBACK: "NoSuchFont"/g)||[]).length===1&&!/FONT FALLBACK/.test(r2.out),r.out.split('\n')[0].slice(0,80));
   r=cli(['sheet','--scene=src/scene-bad.js']); ok('a throwing scene names the time and frame',r.code!==0&&/scene threw at t=1\.\d+s \(frame \d+\)/.test(r.out),r.out.trim().split('\n').pop());
   r=cli(['video','--scene=src/scene-cut.js','--out=out/frames/','--to=0.5']); ok('video to a folder writes a PNG sequence',r.code===0&&fs.readdirSync(path.join(T,'out/frames')).length===15);
   if(!ffBin){ console.log('skip  video/qa/audio checks: no full ffmpeg (pip install imageio-ffmpeg)'); }
   else {
     r=cli(['video','--scene=src/scene-cut.js','--out=out/cut.mp4','--qa']); const info=spawnSync(ffBin,['-hide_banner','-i',path.join(T,'out/cut.mp4')],{encoding:'utf8'}).stderr;
     ok('video writes an H.264 MP4 of the right length',r.code===0&&/h264/.test(info)&&/Duration: 00:00:03\.00/.test(info),(info.match(/Duration: [^,]+/)||[''])[0]);
+    const vs=cli(['sheet','out/cut.mp4','--n=4']); ok('sheet reads a video file',vs.code===0&&/sheet-cut-0\.00-2\.97\.png/.test(vs.out),vs.out.trim());
     ok('qa finds the planned hold (1-2 s) and both pops (1 s, 2 s)',/holds[^\n]*1\.00–2\.00s/.test(r.out)&&/jumps[^\n]*1\.00s[^\n]*2\.00s/.test(r.out),r.out.split('\n').filter(l=>/^(holds|jumps)/.test(l)).join(' | '));
     r=cli(['video','--out=out/smooth.mp4','--scale=.5','--qa']); ok('qa reports no jumps on smooth motion',r.code===0&&/jumps[^\n]*none/.test(r.out),r.out.split('\n').filter(l=>/^jumps/.test(l)).join(''));
     W('scene-loop.js',`const SCENE={width:320,height:180,fps:30,duration:2,background:'#223',setup(s){s.add('<circle id="c" r="20" fill="#fc0"/>')},render(t,s){M.tf(s.$('#c'),{x:160+100*Math.sin(M.TAU*t/2),y:90})}};`);
