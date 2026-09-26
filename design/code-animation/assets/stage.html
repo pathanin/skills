@@ -1,0 +1,72 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>stage</title>
+<style>
+html,body{margin:0;height:100%;background:#16161a;overflow:hidden;font:13px/1.3 system-ui,sans-serif;color:#ddd}
+#stage{position:absolute;left:0;top:0;overflow:hidden;transform-origin:0 0}
+#stage>*{position:absolute;left:0;top:0}
+#ui{position:fixed;left:0;right:0;bottom:0;height:36px;display:flex;gap:10px;align-items:center;padding:0 12px;background:#000a}
+#ui input{flex:1} #ui button{width:64px} #err{position:fixed;left:12px;top:12px;right:12px;white-space:pre-wrap;color:#ff8a80;font:12px monospace;z-index:99}
+body.render #ui,body.clean #ui{display:none}
+</style></head><body>
+<div id="stage"></div>
+<div id="ui"><button id="play">pause</button><input id="scrub" type="range" min="0" step="1"><span id="tc"></span></div>
+<div id="err"></div>
+<script src="motion.js"></script>
+<script>
+'use strict';
+{ // block scope: scene.js may use any top-level name
+const Q=new URLSearchParams(location.search), RENDER=Q.has('render');
+const showErr=m=>{ document.getElementById('err').textContent+=m+'\n'; };
+if(!RENDER) addEventListener('error',e=>showErr(e.message));
+const load=src=>new Promise((ok,no)=>{ const s=document.createElement('script'); s.src=src; s.onload=ok; s.onerror=()=>no(new Error('cannot load '+src)); document.head.appendChild(s); });
+(async()=>{
+  await load(Q.get('scene')||'scene.js');
+  const S=typeof SCENE!=='undefined'?SCENE:window.SCENE; if(!S) throw new Error('scene.js must define const SCENE={...}');
+  const W=S.width||1920, H=S.height||1080, fps=S.fps||30, duration=S.duration||5, bg=S.background||'#000', frames=Math.round(duration*fps);
+  const SV='http://www.w3.org/2000/svg', el=document.getElementById('stage');
+  el.style.width=W+'px'; el.style.height=H+'px'; if(bg!=='transparent') el.style.background=bg;
+  const layer=(tag,z,ns)=>{ const e=ns?document.createElementNS(SV,tag):document.createElement(tag); e.style.zIndex=z; el.appendChild(e); return e; };
+  const svg=layer('svg',1,true); M.set(svg,{width:W,height:H,viewBox:`0 0 ${W} ${H}`,overflow:'hidden'});
+  const defs=M.svg('defs',{},svg), world=M.svg('g',{id:'world'},svg), screen=M.svg('g',{id:'screen'},svg);
+  const html=layer('div',3); html.style.cssText+=`;width:${W}px;height:${H}px;z-index:3`;
+  const dpr=window.devicePixelRatio||1;
+  const stage={ W,H,fps,duration,frames,svg,defs,world,screen,html,el,dpr,t:0,frame:0,render:RENDER,
+    $:s=>el.querySelector(s), $$:s=>[...el.querySelectorAll(s)],
+    // insert SVG markup (default into the camera-moved world group); returns the first element added
+    add(markup,parent=world){ const n=parent.children.length; parent.insertAdjacentHTML('beforeend',markup); return parent.children[n]; },
+    // hi-DPI canvas layer drawn in stage units. where: 'under' (behind the SVG) or 'over' (between SVG and HTML). type '2d' returns the context, others the canvas
+    canvas(name,where='over',type='2d'){ const c=layer('canvas',where==='under'?0:2); c.id=name; c.width=Math.round(W*dpr); c.height=Math.round(H*dpr); c.style.width=W+'px'; c.style.height=H+'px';
+      if(type!=='2d') return c; const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
+      g.clear=()=>{ g.save(); g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,c.width,c.height); g.restore(); }; return g; },
+    // camera over the world group: centre on (x,y), zoom, roll r (deg). Screen-space group and HTML layer do not move
+    camera({x=W/2,y=H/2,zoom=1,r=0}={}){ world.setAttribute('transform',`translate(${W/2} ${H/2}) rotate(${r}) scale(${zoom}) translate(${-x} ${-y})`); },
+    font(family,url,desc={}){ const f=new FontFace(family,`url("${url}")`,desc); document.fonts.add(f); return f.load(); },
+    image(url){ const i=new Image(); i.src=url; return i.decode().then(()=>i); },
+  };
+  window.stage=stage;
+  if(S.setup) await S.setup(stage);
+  await Promise.all([...el.querySelectorAll('img')].map(i=>i.decode().catch(()=>{})).concat([...svg.querySelectorAll('image')].map(i=>stage.image(i.href.baseVal).catch(()=>{}))));
+  await document.fonts.ready;
+  const seek=t=>{ t=M.clamp(+t||0,0,duration); stage.t=t; stage.frame=Math.round(t*fps); S.render(t,stage);
+    for(const a of document.getAnimations()){ a.pause(); a.currentTime=t*1000; } }; // CSS @keyframes and element.animate() follow the clock too
+  if(Q.get('ref')){ const r=layer('img',9); r.src=Q.get('ref'); const [x,y,w,h]=(Q.get('refbox')||`0,0,${W},${H}`).split(',').map(Number);
+    r.style.cssText+=`;left:${x}px;top:${y}px;width:${w}px;height:${h}px;object-fit:contain;opacity:${Q.get('refop')||.5};z-index:9`; await r.decode().catch(()=>{}); }
+  seek(+Q.get('t')||0);
+  window.__anim={W,H,fps,duration,frames,background:bg,seek};
+  if(RENDER){ document.body.classList.add('render'); document.body.style.background=bg==='transparent'?'transparent':bg; window.READY=true; return; }
+  // live preview: fit to window, play, scrub. Space play/pause, arrows step a frame (shift: 1 s), Home to start
+  if(Q.has('clean')) document.body.classList.add('clean');
+  const fit=()=>{ const k=Math.min(innerWidth/W,(innerHeight-(Q.has('clean')?0:36))/H); el.style.transform=`translate(${(innerWidth-W*k)/2}px,${Math.max(0,(innerHeight-36-H*k)/2)}px) scale(${k})`; };
+  fit(); addEventListener('resize',fit);
+  const scrub=document.getElementById('scrub'), tc=document.getElementById('tc'), btn=document.getElementById('play');
+  scrub.max=frames-1; let playing=true, t0=performance.now(), cur=0;
+  const show=t=>{ cur=t; seek(t); scrub.value=Math.round(t*fps); tc.textContent=`${t.toFixed(2)}s  f${Math.round(t*fps)}/${frames}`; };
+  const setPlay=p=>{ playing=p; btn.textContent=p?'pause':'play'; t0=performance.now()-cur*1000; };
+  btn.onclick=()=>setPlay(!playing); scrub.oninput=()=>{ setPlay(false); show(scrub.value/fps); };
+  addEventListener('keydown',e=>{ if(e.key===' '){ e.preventDefault(); setPlay(!playing); } else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){ setPlay(false);
+      show(M.clamp(Math.round(cur*fps)/fps+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?1:1/fps),0,(frames-1)/fps)); } else if(e.key==='Home'){ show(0); setPlay(playing); } });
+  const tick=()=>{ if(playing) show(((performance.now()-t0)/1000)%duration); requestAnimationFrame(tick); }; tick();
+})().catch(e=>{ if(!RENDER) showErr(e.stack||e.message); window.LOAD_ERROR=e.message; throw e; });
+}
+</script>
+</body></html>

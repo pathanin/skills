@@ -1,0 +1,7 @@
+{
+  "name": "code-animation",
+  "description": "Code-only animation studio. Turns brand concepts, character sheets, storyboards, themes and references into an SVG/Canvas/HTML scene driven by time, renders it frame-exact in headless Chromium, and exports MP4, GIF, WebM or ProRes with alpha, with contact-sheet, onion-skin and QA review built in.",
+  "author": {
+    "name": "oat"
+  }
+}
