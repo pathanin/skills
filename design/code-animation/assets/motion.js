@@ -78,6 +78,9 @@ M.spline=(t,keys)=>{ const n=keys.length; if(t<=keys[0][0]) return keys[0][1]; i
   const f=(a,b,ma,mb)=>h00*a+h10*h*(ma||0)+h01*b+h11*h*(mb||0);
   return Array.isArray(p0)?p0.map((v,k)=>f(v,p1[k],m0&&m0[k],m1&&m1[k])):f(p0,p1,m0,m1); };
 
+// value at time t from samples baked at `rate` per second (a simulation run in setup), interpolated so motion-blur subframes and a higher --fps stay smooth
+M.sample=(samples,t,rate)=>{ const f=M.clamp(t*rate,0,samples.length-1), i=Math.floor(f); return i>=samples.length-1?samples[samples.length-1]:M.mix(samples[i],samples[i+1],f-i); };
+
 // ---- physics without state (closed form, so any t can be sought directly) ----
 function springAt(t,w,z){ if(t<=0) return 0; if(z<1){ const wd=w*Math.sqrt(1-z*z); return 1-Math.exp(-z*w*t)*(Math.cos(wd*t)+z*w/wd*Math.sin(wd*t)); }
   if(z===1) return 1-Math.exp(-w*t)*(1+w*t); const r=Math.sqrt(z*z-1), r1=-w*(z-r), r2=-w*(z+r); return 1+(r2*Math.exp(r1*t)-r1*Math.exp(r2*t))/(r1-r2); }

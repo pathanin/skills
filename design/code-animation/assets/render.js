@@ -89,7 +89,8 @@ async function video(){ const out=F.out; if(!out) die('video needs --out=output/
     const dead=()=>die('ffmpeg exited early:\n'+errTxt.slice(-3000)); proc.once('close',dead); proc.stdin.once('drain',()=>{ proc.off('close',dead); r(); }); });
   const t0=Date.now(); let last=0;
   for(let i=0;i<n;i++){ const t=from+i/fps; let png;
-    if(mb>1){ const subs=[]; for(let j=0;j<mb;j++) subs.push(dataUrl(await st.shot(clamp(t+((j+.5)/mb-.5)*.5/fps,0,meta.duration),alpha))); // 180-degree shutter centred on the frame
+    if(mb>1){ const subs=[]; for(let j=0;j<mb;j++) { const ts=t+((j+.5)/mb-.5)*.5/fps; // 180-degree shutter centred on the frame; a loop (--loop) wraps instead of clamping
+        subs.push(dataUrl(await st.shot(F.loop?((ts%meta.duration)+meta.duration)%meta.duration:clamp(ts,0,meta.duration),alpha))); }
       png=fromDataUrl(await comp.evaluate(async([urls,alpha])=>{ const imgs=await Promise.all(urls.map(load));
         const c=document.createElement('canvas'); c.width=imgs[0].naturalWidth; c.height=imgs[0].naturalHeight; const g=c.getContext('2d'), N=c.width*c.height;
         if(!alpha){ imgs.forEach((im,j)=>{ g.globalAlpha=1/(j+1); g.drawImage(im,0,0); }); return c.toDataURL('image/png'); } // opaque: running average on the GPU
@@ -103,7 +104,8 @@ async function video(){ const out=F.out; if(!out) die('video needs --out=output/
     const pct=Math.floor((i+1)/n*10); if(pct>last){ last=pct; console.error(`frame ${i+1}/${n}  ${((Date.now()-t0)/1000).toFixed(0)}s`); } }
   if(proc){ proc.stdin.end(); const code=exited!==null?exited:await new Promise(r=>proc.on('close',r)); if(code) die('ffmpeg failed:\n'+errTxt.slice(-3000)); }
   await br.close(); srv.close();
-  console.log(`wrote ${out}  ${w}x${h}  ${n} frames @ ${fps}fps  ${fmt(n/fps)}s${mb>1?'  mblur '+mb:''}${alpha?'  alpha':''}  in ${((Date.now()-t0)/1000).toFixed(1)}s`);
+  const [ow,oh]=ext==='.mp4'&&ff&&ff.full?[w-w%2,h-h%2]:[w,h]; // H.264 4:2:0 needs even sizes
+  console.log(`wrote ${out}  ${ow}x${oh}${ow!==w||oh!==h?` (rounded down from ${w}x${h}: H.264 needs even sizes)`:''}  ${n} frames @ ${fps}fps  ${fmt(n/fps)}s${mb>1?'  mblur '+mb:''}${alpha?'  alpha':''}  in ${((Date.now()-t0)/1000).toFixed(1)}s`);
   if(F.qa&&!seq) qa(out); }
 
 async function stills(){ if(!F.at) die('stills needs --at=0,1.5,f90 (seconds, or f<frame>)');

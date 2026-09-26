@@ -145,7 +145,7 @@ Hard rules. Breaking any of them makes frames differ between the sheet, the prev
 1. `render(t)` sets every animated property from `t` on every call. Never carry state from one call to the next, such as `x+=v`. Frames render out of order: sheets, studies, motion-blur subframes and seeking back.
 2. Never use `Math.random`, `Date`, `performance.now`, timers, `requestAnimationFrame` or CSS transitions. For randomness, use `M.rng(seed)` in `setup` and `M.hash(i,seed)` or `M.noise` in `render`.
 3. CSS `@keyframes` and `element.animate()` are fine: the harness pauses them and sets `currentTime` to `t`. If you load GSAP yourself (it is not shipped), build its timelines paused and call `tl.seek(t)` in `render`.
-4. Anything stateful, such as physics, flocking, particle collisions or cloth, is simulated in `setup` at the scene fps (or finer) into arrays. `render` then indexes them by `Math.round(t*fps)`.
+4. Anything stateful, such as physics, flocking, particle collisions or cloth, is simulated in `setup` into arrays of samples (at the scene fps or finer, with substeps for stability). `render` reads them with `M.sample(samples,t,rate)`, which interpolates between samples, so motion-blur subframes and a higher `--fps` stay smooth.
 5. Create every element in `setup`, and hide it with opacity or `display` until it is needed. Creating elements inside `render` leaks. Canvas layers are the exception: clear them and redraw every frame.
 6. `M.tf` replaces an element's whole `transform`. So animate a wrapper `<g>`, and keep any transform the artwork has on the elements inside it.
 7. For a loop, make every motion periodic in `duration` (`M.loop`, or `Math.sin(M.TAU*t/duration)`), so the frame at 0 equals the frame at `duration`.
@@ -186,7 +186,7 @@ Asset URLs resolve from `src/`, so the materials are at `../refs/<file>`.
 | Easing (`M.ease`) | `linear`, then `in` / `out` / `inOut` + `Quad Cubic Quart Quint Sine Expo Circ Back Elastic Bounce`. Factories: `back(s)`, `elastic(amp,period)`, `bezier(x1,y1,x2,y2)`, `steps(n)`, `spring(z)`. Presets: `css`, `material`, `snappy`, `anticipate` |
 | Time | `seg(t,t0,t1,ease)` gives progress 0..1. `stagger(t,i,start,each,dur,ease)`. `shots(t,[durs])` gives `{i,t,u}`. `quantize(t,12)` steps the drawings. `loop` and `pingpong` |
 | Values | `kf(t,[[time,value,ease?],…])` for pose-to-pose (a key's ease shapes the segment arriving at it). `spline(t,keys)` passes smoothly through the keys. `mix(a,b,u)` handles numbers, arrays, objects, `#hex` (blended in OKLab) and same-shape path strings (morphs). `color(a,b,u)` |
-| Physics | `spring(t,freq,z)` for a damped settle 0 to 1. `arc(u,p0,p1,h)` for a thrown arc. `squash(k)` gives `[along,across]` with the area kept |
+| Physics | `sample(samples,t,rate)` reads a simulation baked in `setup`. `spring(t,freq,z)` for a damped settle 0 to 1. `arc(u,p0,p1,h)` for a thrown arc. `squash(k)` gives `[along,across]` with the area kept |
 | Random | `rng(seed)`, with `.range .int .pick`. `hash(n,seed)`. `noise(x,seed)`. `wiggle(t,freq,amp,seed)` |
 | DOM | `svg(tag,attrs,parent)`, `html(…)`, `set(el,attrs)` |
 | Rig | `tf(el,{x,y,r,s,sx,sy,sa,skx,ox,oy,o})` transforms about the pivot `(ox,oy)`, with `sa` as the squash axis and `o` as opacity. `ik2(ax,ay,tx,ty,l1,l2,bend)` is two-bone IK. `pointIn(el,x,y,target)` maps a local point through the rig |
@@ -200,7 +200,7 @@ Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a v
 | Command | What it does |
 |---|---|
 | `check` | Checks Playwright, the browser and ffmpeg |
-| `video --out=file` | Renders the video. The extension picks the format: `.mp4` (H.264), `.webm` (VP9, with alpha if the background is transparent), `.mov` (ProRes 4444 with alpha), `.gif` (palette + ordered dither), or `folder/` (PNG frames). Options: `--scale=k`, `--width=N` or `--size=WxH`; `--fps=N`; `--from=s --to=s`; `--mblur=N` (N subframes, 180° shutter); `--audio=file`; `--qa` (add `--loop` to check the seam) |
+| `video --out=file` | Renders the video. The extension picks the format: `.mp4` (H.264), `.webm` (VP9, with alpha if the background is transparent), `.mov` (ProRes 4444 with alpha), `.gif` (palette + ordered dither), or `folder/` (PNG frames). Options: `--scale=k`, `--width=N` or `--size=WxH`; `--fps=N`; `--from=s --to=s`; `--mblur=N` (N subframes, 180° shutter); `--audio=file`; `--qa`; `--loop` for a loop (QA checks the seam, and motion-blur subframes wrap around it) |
 | `stills --at=0,1.5,f90` | One PNG per time, given in seconds or as `f<frame>`. Options: `--scale`, `--ref=img --ref-opacity=.5 --ref-box=x,y,w,h` |
 | `sheet [--n=12] [--from --to]` | A labelled contact sheet of evenly spaced frames |
 | `study --from --to [--n=8] [--track=#a,#b]` | Onion skin of the moving parts, plus a dot per frame for each tracked element, with the spacing listed in stage units |

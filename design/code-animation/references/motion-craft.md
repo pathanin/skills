@@ -114,7 +114,7 @@ End every reveal on the exact logo, and hold it.
 - Make each particle a closed-form function of `(t-birth)`, using position = p0 + v·age + ½·g·age², plus a `wiggle` for drift, and lifetime-based opacity and size.
 - Seed the birth times and velocities in `setup` with `M.rng`.
 - Draw them on a canvas layer when there are more than about 300.
-- If they must collide or interact, simulate them in `setup` and index the results by frame.
+- If they must collide or interact, simulate them in `setup` and read the results with `M.sample`.
 
 **Hand-drawn feel.**
 - Animate on twos: `const tq=M.quantize(t,12)`, and feed `tq` to the character's motion while the camera stays smooth.

@@ -82,7 +82,7 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
     const arcP=[M.arc(0,[0,100],[200,100],50),M.arc(.5,[0,100],[200,100],50),M.arc(1,[0,100],[200,100],50)], bz=E.bezier(.25,.1,.25,1);
     return {endsBad, kf, sp, smooth, col, path, bad, spr, se:[se(0),se(1),Math.max(...Array.from({length:100},(_,i)=>se(i/100)))], ikErr:Math.hypot(ex-120,ey-50), far:far.a1, seqA, seqB,
       hash:[M.hash(5,1),M.hash(5,1),M.hash(6,1)], noise:Math.max(...Array.from({length:500},(_,i)=>Math.abs(M.noise(i*.037,2)))), arcP, bz:[bz(0),bz(.5),bz(1)],
-      shots:M.shots(2.5,[1,2,3]), q:M.quantize(.49,12), loop:M.loop(-1,3), stag:M.stagger(1.3,2,1,.1,.2), sq:M.squash(1.25) }; });
+      samp:[M.sample([[0,0],[10,20]],.05,10),M.sample([1,2,3],5,10)], shots:M.shots(2.5,[1,2,3]), q:M.quantize(.49,12), loop:M.loop(-1,3), stag:M.stagger(1.3,2,1,.1,.2), sq:M.squash(1.25) }; });
   ok('every easing starts at 0 and ends at 1',m.endsBad.length===0,m.endsBad.join(','));
   ok('M.kf holds before, hits keys, eases between, holds after',m.kf[0]===0&&m.kf[1]===10&&m.kf[2]===5&&m.kf[3]===10,m.kf.join(','));
   ok('M.spline passes through every key without stopping',m.sp.join()==='0,10,-4,2'&&m.smooth,m.sp.join(','));
@@ -95,6 +95,7 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
   ok('M.noise stays in [-1,1]',m.noise<=1,m.noise.toFixed(3));
   ok('M.arc starts, peaks and lands where asked',m.arcP[0][1]===100&&Math.abs(m.arcP[1][1]-50)<1e-9&&m.arcP[2][0]===200&&m.arcP[2][1]===100,JSON.stringify(m.arcP));
   ok('ease.bezier matches CSS ease at the ends and midpoint',m.bz[0]===0&&m.bz[2]===1&&Math.abs(m.bz[1]-.8024)<.01,m.bz.map(v=>v.toFixed(4)).join(','));
+  ok('M.sample interpolates baked samples and holds the last one',JSON.stringify(m.samp)==='[[5,10],3]',JSON.stringify(m.samp));
   ok('time helpers: shots, quantize, loop, stagger, squash',m.shots.i===1&&m.shots.t===1.5&&Math.abs(m.q-5/12)<1e-9&&m.loop===2&&Math.abs(m.stag-.5)<1e-9&&m.sq[0]*m.sq[1]===1,JSON.stringify(m.shots));
   await br.close(); srv.close();
 
