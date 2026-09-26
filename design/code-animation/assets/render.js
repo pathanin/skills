@@ -24,7 +24,7 @@ const num=(v,d)=>v===undefined||v===true||v===''?d:+v;
 // ---- local http server over the filesystem: fonts, canvas pixel reads and ES modules all fail from file:// ----
 const MIME={'.html':'text/html','.js':'text/javascript','.mjs':'text/javascript','.json':'application/json','.css':'text/css','.svg':'image/svg+xml','.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg',
   '.webp':'image/webp','.gif':'image/gif','.avif':'image/avif','.woff':'font/woff','.woff2':'font/woff2','.ttf':'font/ttf','.otf':'font/otf','.mp3':'audio/mpeg','.wav':'audio/wav','.glb':'model/gltf-binary','.gltf':'model/gltf+json'};
-const serve=()=>new Promise(ok=>{ const s=http.createServer((q,r)=>{ const f=decodeURIComponent(new URL(q.url,'http://x').pathname);
+const serve=()=>new Promise(ok=>{ const s=http.createServer((q,r)=>{ const f=decodeURIComponent(new URL(q.url,'http://x').pathname).replace(/^\/([A-Za-z]:)/,'$1'); // /C:/… on Windows
   fs.readFile(f,(e,d)=>{ if(e){ r.writeHead(404); r.end(); return; } r.writeHead(200,{'content-type':MIME[path.extname(f).toLowerCase()]||'application/octet-stream','access-control-allow-origin':'*'}); r.end(d); }); });
   s.listen(0,'127.0.0.1',()=>ok(s)); });
 const urlOf=(srv,f)=>`http://127.0.0.1:${srv.address().port}${path.resolve(f).split(path.sep).map(encodeURIComponent).join('/').replace(/^([^/])/,'/$1')}`;

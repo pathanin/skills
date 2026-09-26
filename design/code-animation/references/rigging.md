@@ -21,6 +21,8 @@
 
 Combine rigs freely. A cut-out body with rubber-hose arms and a morphing mouth is common.
 
+Raster parts (per-layer PNG exports of painted art) rig the same way: put each `<image href="../refs/arm.png" x y width height>` inside its own `<g>` and pivot the group. They load before the first frame. Supply them at 2× their size on stage, or they soften in the final render.
+
 ## 3. Build the hierarchy
 
 ```

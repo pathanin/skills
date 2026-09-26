@@ -20,6 +20,7 @@ Turn each material into two lists in `plan.md` under **Reading**:
    - Contact sheet: `render.js sheet refs/ref.mp4 --n=16`, then Read it. Zoom into one moment with `--from --to`.
    - Editing rhythm: `render.js qa ref.mp4`. Its holds and jumps are the reference's holds and cuts.
 5. Text briefs: pull out the platform, duration, must-show items, exact copy, CTA, audience and tone words.
+6. Layered source files you can't open (PSD, AI, Figma, Procreate, Lottie): use any flat export as the reference, and rebuild the parts as SVG. If the parts must stay pixel-identical to the artwork (painted textures, photos), ask for per-layer PNG exports at 2× the size they will appear on stage.
 
 ## Brand concept and brand guidelines
 
