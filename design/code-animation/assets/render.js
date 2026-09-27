@@ -13,7 +13,7 @@ const argv=process.argv.slice(2), F={}, P=[];
 for(const a of argv){ if(a.startsWith('--')){ const [k,v]=a.slice(2).split(/=(.*)/s); F[k]=v===undefined?true:v; } else P.push(a); }
 const cmd=P[0]||'video', dir=path.resolve(F.dir||path.join(os.tmpdir(),'code-animation'));
 // typos fail loudly instead of being ignored: an unknown --flag, or a value given with a space (--size 1920x1080) instead of =
-const KNOWN={video:'out scale width size fps from to mblur audio qa loop workers',stills:'at scale width size ref ref-opacity ref-box',sheet:'n from to',study:'from to n track',
+const KNOWN={video:'out scale width size fps from to mblur audio qa loop workers codec colors',stills:'at scale width size ref ref-opacity ref-box',sheet:'n from to',study:'from to n track',
   probe:'pick crop bbox bg colors',qa:'loop',audio:'json fps',check:''}, COMMON='scene set dir timeout', TAKES={probe:1,qa:1,audio:1,sheet:1};
 if(KNOWN[cmd]!==undefined){ const ok=new Set((KNOWN[cmd]+' '+COMMON).split(' ').filter(Boolean)), bad=Object.keys(F).filter(k=>!ok.has(k)), extra=P.slice(1+(TAKES[cmd]||0));
   if(bad.length||extra.length){ console.error(`${bad.length?`unknown option${bad.length>1?'s':''} for ${cmd}: ${bad.map(k=>'--'+k).join(' ')}. `:''}${extra.length?`unexpected argument${extra.length>1?'s':''}: ${extra.join(' ')} (options take =, as in --size=1920x1080). `:''}Options for ${cmd}: ${[...ok].map(k=>'--'+k).join(' ')}`); process.exit(1); } }
@@ -46,7 +46,7 @@ async function openStage(br,srv,dsf,extra='',quiet=false){
   page.on('console',m=>{ const ty=m.type(); if(ty==='error'||(ty==='warning'&&!quiet&&!NOISE.test(m.text()))) console.error(ty==='error'?'console:':'warning:',m.text()); });
   await page.goto(urlOf(srv,path.join(__dirname,'stage.html'))+'?render&scene='+encodeURIComponent(urlOf(srv,scene))+(F.set?'&set='+encodeURIComponent(F.set):'')+extra);
   await page.waitForFunction(()=>window.READY||window.LOAD_ERROR,null,{timeout:180000}).catch(()=>{});
-  const meta=await page.evaluate(()=>{ const a=window.__anim; return a&&{W:a.W,H:a.H,fps:a.fps,duration:a.duration,frames:a.frames,background:a.background}; });
+  const meta=await page.evaluate(()=>{ const a=window.__anim; return a&&{W:a.W,H:a.H,fps:a.fps,duration:a.duration,frames:a.frames,background:a.background,audio:a.audio}; });
   if(err||!meta){ await br.close(); die('scene failed to load'+(err?'':' (no error thrown: is SCENE defined, and does setup() resolve?)')); }
   await page.setViewportSize({width:meta.W,height:meta.H});
   const limit=num(F.timeout,60)*1000; // one frame taking this long is a hang (an endless loop in render), not a slow frame
@@ -90,14 +90,19 @@ const NOFF='No full ffmpeg found. Install one: `pip install imageio-ffmpeg` (bun
 function encoderArgs(ext,fps,alpha,audio,from=0){ const i=['-y','-hide_banner','-loglevel','error','-f','image2pipe','-framerate',String(fps),'-c:v','png','-i','pipe:0'], a=audio?[...(from>0?['-ss',String(from)]:[]),'-i',audio]:[], m=audio?['-map','0:v','-map','1:a','-shortest']:[];
   if(ext==='.mp4') return [...i,...a,...m,'-vf','scale=trunc(iw/2)*2:trunc(ih/2)*2','-c:v','libx264','-preset','medium','-crf','16','-pix_fmt','yuv420p','-movflags','+faststart',...(audio?['-c:a','aac','-b:a','192k']:[])];
   if(ext==='.webm') return [...i,...a,...m,'-c:v','libvpx-vp9','-b:v','0','-crf','26','-row-mt','1','-pix_fmt',alpha?'yuva420p':'yuv420p',...(alpha?['-auto-alt-ref','0']:[]),...(audio?['-c:a','libopus','-b:a','160k']:[])];
-  if(ext==='.mov') return [...i,...a,...m,'-c:v','prores_ks','-profile:v','4','-pix_fmt',alpha?'yuva444p10le':'yuv444p10le','-vendor','apl0',...(audio?['-c:a','pcm_s16le']:[])];
-  if(ext==='.gif') return [...i,'-vf','split[a][b];[a]palettegen=stats_mode=diff'+(alpha?':reserve_transparent=1':'')+'[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle'+(alpha?':alpha_threshold=128':''),'-loop','0'];
+  if(ext==='.mov') return [...i,...a,...m,...(F.codec==='png'?['-c:v','png','-pix_fmt',alpha?'rgba':'rgb24']:['-c:v','prores_ks','-profile:v','4','-pix_fmt',alpha?'yuva444p10le':'yuv444p10le','-vendor','apl0']),...(audio?['-c:a','pcm_s16le']:[])];
+  if(ext==='.gif') return [...i,'-vf',`split[a][b];[a]palettegen=stats_mode=diff:max_colors=${clamp(num(F.colors,256)|0,2,256)}`+(alpha?':reserve_transparent=1':'')+'[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle'+(alpha?':alpha_threshold=128':''),'-loop','0'];
   die('unsupported output '+ext+' (use .mp4 .webm .mov .gif or a folder/)'); }
 
 async function video(){ const out=F.out; if(!out) die('video needs --out=output/name.mp4 (or a folder/ for PNG frames)');
   const ext=path.extname(out).toLowerCase(), seq=!ext||out.endsWith('/'), ff=seq?null:findFfmpeg();
-  if(!seq&&!ff) die(NOFF); if(!seq&&!ff.full&&ext!=='.webm') die(NOFF); if(F.audio&&!fs.existsSync(F.audio)) die('no audio file '+F.audio);
+  if(F.codec&&(ext!=='.mov'||!['png','prores'].includes(F.codec))) die('--codec is for .mov only: --codec=prores (default, ProRes 4444) or --codec=png (lossless, several times smaller)');
+  if(F.colors&&ext!=='.gif') die('--colors is for .gif only');
+  if(!seq&&!ff) die(NOFF); if(!seq&&!ff.full&&ext!=='.webm') die(NOFF); if(F.audio&&F.audio!=='none'&&!fs.existsSync(F.audio)) die('no audio file '+F.audio);
   const srv=await serve(), br=await launch(), meta=await sceneMeta(br,srv), {w,h,dsf}=outSize(meta), fps=num(F.fps,meta.fps);
+  // SCENE.audio is the default soundtrack (served from the filesystem, so its URL path is its file path); --audio=none renders silent
+  if(F.audio==='none') delete F.audio; else if(!F.audio&&meta.audio&&!['.gif'].includes(ext)&&!seq){ F.audio=decodeURIComponent(new URL(meta.audio).pathname).replace(/^\/([A-Za-z]:)/,'$1');
+    if(!fs.existsSync(F.audio)) die('SCENE.audio points at a missing file: '+F.audio); console.error('soundtrack from SCENE.audio: '+F.audio); }
   const from=num(F.from,0), to=Math.min(num(F.to,meta.duration),meta.duration); if(!(to>from)) die(`--from=${from} must be before --to=${to} (the scene lasts ${meta.duration} s)`);
   if(num(F.to,0)>meta.duration) console.error(`--to=${F.to} is past the end of the scene; rendering to ${meta.duration} s`);
   const n=Math.max(1,Math.round((to-from)*fps)), alpha=meta.background==='transparent'&&(seq||['.webm','.mov','.gif'].includes(ext)), mb=Math.max(1,num(F.mblur,1)|0);
@@ -218,7 +223,7 @@ function qa(file,loop=F.loop){ const ff=findFfmpeg(); if(!ff||!ff.full) die(NOFF
     else if((m=l.match(/pts_time:([\d.]+)/))) d.push(cur={t:+m[1],v:0}); else if(cur&&(m=l.match(/signalstats\.YAVG=([\d.]+)/))) cur.v=+m[1]; } // luma only: tblend's chroma difference wraps around on near-identical frames
   const dur=(r.match(/Duration: (\d+):(\d+):([\d.]+)/)||[]).slice(1).map(Number), total=dur.length?dur[0]*3600+dur[1]*60+dur[2]:null; if(open!==null) holds.push([open,total]);
   // a jump: one frame changes far more than both neighbours (a cut, a pop, a visibility toggle, a motion that starts at full speed)
-  const jumps=d.filter((f,i)=>{ const n=Math.max(i>0?d[i-1].v:0,i<d.length-1?d[i+1].v:0); return f.v>=.1&&f.v>=2.5*n; });
+  const jumps=d.filter((f,i)=>{ const n=Math.max(i>0?d[i-1].v:0,i<d.length-1?d[i+1].v:0); return f.v>=.5&&f.v>=2.5*n; }); // under 0.5 (mean luma change at 480 px) is sub-pixel stepping, not a visible pop
   const fps=+(r.match(/, ([\d.]+) fps/)||[])[1]||30, gap=1.5/fps;
   // holds split only by single-frame flashes (a blinking element) read as one hold
   const hm=[]; for(const h of holds){ const l=hm[hm.length-1]; if(l&&l[1]!=null&&h[0]-l[1]<=gap){ l[1]=h[1]; l[2]=true; } else hm.push([h[0],h[1],false]); }

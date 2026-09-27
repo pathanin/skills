@@ -89,7 +89,7 @@ Load `references/motion-craft.md`.
 
 1. Write `render(t)` pose to pose. Put key poses at the beat-sheet times with `M.kf`, and hold them.
 2. Get the timing right before you polish anything.
-3. Review the whole piece with `sheet --n=12`, or `--n=16` when it runs over 10 s. Check that each beat reads at its time and that one thing leads the eye at a time.
+3. Review the whole piece with `sheet --n=12`, or `--n=16` when it runs over 10 s. Check that each beat reads at its time, that one thing leads the eye at a time, and that nothing moves across or covers text while it has to be read.
 
 ### 5. Polish
 
@@ -119,8 +119,9 @@ Tracking a joint needs a tiny marker at that point: `<circle id="trk-hand" r="1"
    - `video --out=output/<name>.mp4`
    - Add `--mblur=8` when there are fast moves: whip pans, spins, or objects crossing more than about 40 px per frame.
    - Add `--audio=refs/<track>` when there is sound.
-   - Add a GIF with `video --out=output/<name>.gif --width=640 --fps=25`, and a `.mov` for alpha when needed.
+   - Add a GIF with `video --out=output/<name>.gif --width=640 --fps=25` (add `--colors=64` if it is over about 5 MB), and a `.mov` for alpha when needed. ProRes 4444 runs to about 60 MB per second at 1080p; when the file has to travel by chat or email, add `--codec=png`.
 2. Run `qa` on the final render, and `sheet output/<name>.mp4` to look at the encoded file itself.
+   - Social platforms and chat previews show the first frame as the thumbnail. If frame 0 is empty or dark, either open on a readable frame or export a poster: `stills --at=<hero moment> --dir=output`, and say which it is.
 3. Deliver:
    - Give the paths with a one-line caption. Send the files too if a tool for sending files is available.
    - Mention the live preview: `python3 -m http.server` in the working folder, then open `/src/stage.html` (it does not work from `file://`).
@@ -202,7 +203,7 @@ Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a v
 | Command | What it does |
 |---|---|
 | `check` | Checks Playwright, the browser and ffmpeg |
-| `video --out=file` | Renders the video. The extension picks the format: `.mp4` (H.264), `.webm` (VP9, with alpha if the background is transparent), `.mov` (ProRes 4444 with alpha), `.gif` (palette + ordered dither), or `folder/` (PNG frames). Options: `--scale=k`, `--width=N` or `--size=WxH`; `--fps=N`; `--from=s --to=s`; `--mblur=N` (N subframes, 180° shutter); `--audio=file`; `--workers=N` (parallel pages, default CPU count − 1, at most 4; the frames are identical to one page's); `--qa`; `--loop` for a loop (QA checks the seam, and motion-blur subframes wrap around it) |
+| `video --out=file` | Renders the video. The extension picks the format: `.mp4` (H.264), `.webm` (VP9, with alpha if the background is transparent), `.mov` (ProRes 4444 with alpha; `--codec=png` makes a lossless PNG-in-MOV several times smaller, which every editor also reads), `.gif` (palette + ordered dither; `--colors=N` caps the palette to shrink the file), or `folder/` (PNG frames). Options: `--scale=k`, `--width=N` or `--size=WxH`; `--fps=N`; `--from=s --to=s`; `--mblur=N` (N subframes, 180° shutter); `--audio=file`; `--workers=N` (parallel pages, default CPU count − 1, at most 4; the frames are identical to one page's); `--qa`; `--loop` for a loop (QA checks the seam, and motion-blur subframes wrap around it) |
 | `stills --at=0,1.5,f90` | One PNG per time, given in seconds or as `f<frame>`. Options: `--scale`, `--ref=img --ref-opacity=.5 --ref-box=x,y,w,h` |
 | `sheet [<video>] [--n=12] [--from --to]` | A labelled contact sheet of evenly spaced frames, of the scene or of any video file (a reference, or your encoded output) |
 | `study --from --to [--n=8] [--track=#a,#b]` | Onion skin of the moving parts, plus a dot per frame for each tracked element, with the spacing listed in stage units |
@@ -226,7 +227,7 @@ Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a v
 | Camera moves reveal the stage edge | The background has no bleed (hard rule 8). |
 | Motion looks mechanical | Linear spacing, everything starting at once, and no overlap. See `references/motion-craft.md`. |
 | Fast motion strobes | Add `--mblur=8` to the final render, or draw smear frames for a cartoon style. |
-| A GIF is huge or banded | Keep it at 640–800 px wide, 20–25 fps and under about 10 s, and use fewer colours in the art. Gradients band in GIF, so prefer flat fills. |
+| A GIF is huge or banded | Keep it at 640–800 px wide, 20–25 fps and under about 10 s, and cap the palette with `--colors=64` (or 32). Glows and gradients cost the most, so prefer flat fills in art meant for GIF. |
 | A raster logo or character is blurry in the render | You scaled up a small bitmap. Rebuild it as SVG (see `references/rigging.md`), or ask for the vector source when it's a logo. |
 
 ## Notes

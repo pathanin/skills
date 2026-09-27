@@ -89,20 +89,27 @@ seedRandom(0x2545f491);
     for(const e of el.querySelectorAll('*')){ if(![...e.childNodes].some(n=>n.nodeType===3&&n.textContent.trim())) continue; fams.add(getComputedStyle(e).fontFamily.split(',')[0].trim().replace(/^["']|["']$/g,'')); }
     const generic=['serif','sans-serif','monospace','cursive','fantasy','system-ui','ui-sans-serif','ui-serif','ui-monospace','math','emoji'];
     for(const f of fams) if(!generic.includes(f)&&['monospace','serif','sans-serif'].every(b=>w(`"${f}", ${b}`)===w(b))) console.warn(`FONT FALLBACK: "${f}" is not available, so its text renders in a fallback face. Load it in setup with await stage.font(family,url) or await stage.webfont(family,[weights]), or name the substitute.`); }
-  window.__anim={W,H,fps,duration,frames,background:bg,seek};
+  const audioUrl=S.audio?new URL(S.audio,location.href).href:null; // the soundtrack: render.js muxes it, the live preview plays it
+  window.__anim={W,H,fps,duration,frames,background:bg,audio:audioUrl,seek};
   if(RENDER){ document.body.classList.add('render'); document.documentElement.style.background=document.body.style.background=bg==='transparent'?'transparent':bg; window.READY=true; return; }
   // live preview: fit to window, play, scrub. Space play/pause, arrows step a frame (shift: 1 s), Home to start
   if(Q.has('clean')) document.body.classList.add('clean');
   const fit=()=>{ const k=Math.min(innerWidth/W,(innerHeight-(Q.has('clean')?0:36))/H); el.style.transform=`translate(${(innerWidth-W*k)/2}px,${Math.max(0,(innerHeight-36-H*k)/2)}px) scale(${k})`; };
   fit(); addEventListener('resize',fit);
   const scrub=document.getElementById('scrub'), tc=document.getElementById('tc'), btn=document.getElementById('play');
-  scrub.max=frames-1; let playing=true, t0=performance.now(), cur=0;
-  const show=t=>{ cur=t; seek(t); scrub.value=Math.round(t*fps); tc.textContent=`${t.toFixed(2)}s  f${Math.round(t*fps)}/${frames}`; };
-  const setPlay=p=>{ playing=p; btn.textContent=p?'pause':'play'; t0=performance.now()-cur*1000; };
+  // with a soundtrack the preview starts paused (browsers only play sound after a click) and the audio clock drives the picture
+  const au=audioUrl?Object.assign(new Audio(audioUrl),{preload:'auto'}):null;
+  scrub.max=frames-1; let playing=!au, t0=performance.now(), cur=0;
+  const show=t=>{ cur=t; seek(t); scrub.value=Math.round(t*fps); tc.textContent=`${t.toFixed(2)}s  f${Math.round(t*fps)}/${frames}${au&&!playing?'  (play for sound)':''}`; };
+  const setPlay=p=>{ playing=p; btn.textContent=p?'pause':'play'; t0=performance.now()-cur*1000; if(au){ if(p){ au.currentTime=cur; au.play().catch(()=>{}); } else au.pause(); } };
+  btn.textContent=playing?'pause':'play'; show(0);
   btn.onclick=()=>setPlay(!playing); scrub.oninput=()=>{ setPlay(false); show(scrub.value/fps); };
   addEventListener('keydown',e=>{ if(e.key===' '){ e.preventDefault(); setPlay(!playing); } else if(e.key==='ArrowRight'||e.key==='ArrowLeft'){ setPlay(false);
       show(M.clamp(Math.round(cur*fps)/fps+(e.key==='ArrowRight'?1:-1)*(e.shiftKey?1:1/fps),0,(frames-1)/fps)); } else if(e.key==='Home'){ show(0); setPlay(playing); } });
-  const tick=()=>{ if(playing) show(((performance.now()-t0)/1000)%duration); requestAnimationFrame(tick); }; tick();
+  const tick=()=>{ if(playing){ let t=((performance.now()-t0)/1000)%duration;
+      if(au&&!au.paused){ t=au.currentTime; if(t>=duration||au.ended){ au.currentTime=0; au.play().catch(()=>{}); t=0; } }
+      else if(au&&t<cur){ au.currentTime=t; au.play().catch(()=>{}); } // wrapped around the loop
+      show(t); } requestAnimationFrame(tick); }; tick();
 })().catch(e=>{ if(!RENDER) showErr((location.protocol==='file:'?'Opened from file://, where fetch, fonts and modules are blocked. Serve the folder instead: python3 -m http.server, then open /src/stage.html\n\n':'')+(e.stack||e.message)); window.LOAD_ERROR=e.message; throw e; });
 }
 </script>

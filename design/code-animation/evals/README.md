@@ -59,6 +59,16 @@ Runs go to `$TMPDIR/code-animation-evals/<case>/`, with the agent's files in `wo
 
 The traces are also the best source of engine improvements: every time a fresh agent writes a helper script, the pipeline is missing a tool.
 
+## Results
+
+Fresh `claude -p` sessions via `run-local.sh`, 1 run per case, 2026-09-27:
+
+| Case | Automatic graders | Judge | Turns, cost | Notes |
+|---|---|---|---|---|
+| `logo-sting` | 6/6 | pass | 41, $1.15 | Loaded the real SVG and font, used `--set=alpha`, tuned the end hold after QA. The ProRes master was 266 MB, too big to send |
+| `boxo-walk` | 6/6 | pass | 66, $2.38 | Faithful to the sheet (exact expressions, antenna lag, motion blur on the wave); frame 0 was empty, which is the thumbnail on Instagram |
+| `radio-loop` | 6/6 | pass | 54, $1.37 | Exactly 12 beats, seam verified; the equalizer bars crossed a line of copy; the GIF was 13 MB at 640 px |
+
 ## Findings so far
 
 Fresh sessions on these cases (2026-09-27) led to these changes:
@@ -66,3 +76,7 @@ Fresh sessions on these cases (2026-09-27) led to these changes:
 - `radio-loop`: to make visuals pulse with the track, the agent wrote its own Python envelope extractor. `render.js audio --json` now writes per-frame `level`, `low` and `high` curves plus the beat grid.
 - `boxo-walk`: the agent measured the head, torso and legs by slicing the front view with `--bbox`, and got the whole slice back. `--bbox` now takes the image's dominant colour as the background, so slices measure their part.
 - All three: the skill fired from the natural prompt, without being named.
+- `logo-sting`: ProRes 4444 is about 60 MB per second at 1080p. `video --codec=png` now writes a lossless PNG-in-MOV several times smaller.
+- `radio-loop`: `video --colors=N` now caps a GIF's palette (13 MB → 6 MB at 32 colours); the sheet review now checks that nothing crosses text while it must be read.
+- `boxo-walk`: delivery now covers the poster frame, because platforms use frame 0 as the thumbnail.
+- `logo-sting`: QA reported two sub-pixel "jumps" (0.3) that the agent rightly dismissed; the jump floor is now 0.5.
