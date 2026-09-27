@@ -222,8 +222,8 @@ function qa(file,loop=F.loop){ const ff=findFfmpeg(); if(!ff||!ff.full) die(NOFF
   // freezedetect finds holds; the mean absolute difference between neighbouring frames (at 480 px wide) finds jumps
   const r=spawnSync(ff.bin,['-hide_banner','-nostats',...(loop?['-stream_loop','1']:[]),'-i',file,'-an','-vf','freezedetect=n=-60dB:d=0.4,scale=480:-2,format=gray,tblend=all_mode=difference,signalstats,metadata=mode=print:key=lavfi.signalstats.YAVG','-f','null','-'],{encoding:'utf8',maxBuffer:256<<20}).stderr||'';
   const holds=[], d=[]; let open=null, cur=null;
-  for(const l of r.split('\n')){ let m; if((m=l.match(/freeze_start: ([\d.]+)/))) open=+m[1]; else if((m=l.match(/freeze_end: ([\d.]+)/))){ holds.push([open,+m[1]]); open=null; }
-    else if((m=l.match(/pts_time:([\d.]+)/))) d.push(cur={t:+m[1],v:0}); else if(cur&&(m=l.match(/signalstats\.YAVG=([\d.]+)/))) cur.v=+m[1]; } // luma only: tblend's chroma difference wraps around on near-identical frames
+  for(const l of r.split('\n')){ let m; if((m=l.match(/freeze_start: ([\d.]+(?:e[-+]?\d+)?)/i))) open=+m[1]; else if((m=l.match(/freeze_end: ([\d.]+(?:e[-+]?\d+)?)/i))){ holds.push([open,+m[1]]); open=null; }
+    else if((m=l.match(/pts_time:([\d.]+)/))) d.push(cur={t:+m[1],v:0}); else if(cur&&(m=l.match(/signalstats\.YAVG=([-\d.]+(?:e[-+]?\d+)?)/i))) cur.v=+m[1]; /* ffmpeg prints tiny values as 4.879e-06 */ } // luma only: tblend's chroma difference wraps around on near-identical frames
   const dur=(r.match(/Duration: (\d+):(\d+):([\d.]+)/)||[]).slice(1).map(Number), total=dur.length?dur[0]*3600+dur[1]*60+dur[2]:null; if(open!==null) holds.push([open,total]);
   // a jump: one frame changes far more than both neighbours (a cut, a pop, a visibility toggle, a motion that starts at full speed)
   const jumps=d.filter((f,i)=>{ const n=Math.max(i>0?d[i-1].v:0,i<d.length-1?d[i+1].v:0); return f.v>=.5&&f.v>=2.5*n; }); // under 0.5 (mean luma change at 480 px) is sub-pixel stepping, not a visible pop

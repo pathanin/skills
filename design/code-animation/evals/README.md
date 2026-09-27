@@ -78,6 +78,13 @@ Round 2, after the first round's fixes, with a fourth case (`storyboard-ad`):
 | `radio-loop` | 6/6 (after the grader fix) | pass | 43, $1.15 | Used `SCENE.audio` and `audio --json`; the old grader only accepted `--audio=` |
 | `storyboard-ad` | 7/7 (after the grader fix) | fail | 85, $3.81 | Copy, palette and drop timing right, but it forced `--workers=1` with `--mblur=8`, the render outlived the Bash tool's 2-minute wait, and the session ended with the MP4 truncated at 8 s |
 
+Round 3, re-running the two cases that fell short in round 2:
+
+| Case | Automatic graders | Judge | Notes |
+|---|---|---|---|
+| `boxo-walk` | 6/6 (after the grader fix) | pass | With the done-checklist it ran the `--ref` trace check and `study`; chose a 1:1 frame, written as `W = 1080`, which the old grader missed |
+| `storyboard-ad` | 7/7 | pass | Full 12 s render, the mug lands on the drop at 6.0 s, end card held about 2 s. It reported two QA jumps on the still end card as encoder noise, correctly: they were a QA parsing bug (ffmpeg printed `4.879e-06` and the parser read 4.879), now fixed |
+
 ## Findings so far
 
 Fresh sessions on these cases (2026-09-27) led to these changes:
