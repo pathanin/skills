@@ -160,7 +160,7 @@ Hard rules. Breaking any of them makes frames differ between the sheet, the prev
 | HTML: `stage.html` | Typography: real text layout, per-letter spans with `M.split`, CSS filters and blend modes. |
 | WebGL: `stage.canvas(name,'over','webgl2')` | Only when real 3D or shaders are the point. Get the context with `preserveDrawingBuffer:true` (for three.js: `new THREE.WebGLRenderer({canvas, preserveDrawingBuffer:true, alpha:true})`, `setPixelRatio(stage.dpr)`, `setSize(W,H,false)`, and call `renderer.render` inside `render(t)`). three.js: `(cd src && npm i three)`, then `await import('./node_modules/three/build/three.module.js')`. Headless rendering is software WebGL, so keep scenes modest. |
 
-The stacking order, back to front: canvas `'under'`, SVG (`world`, then `screen`), canvas `'over'`, HTML, then the `--ref` overlay.
+The stacking order, back to front: canvas `'under'`, SVG (parallax layers deeper than 1, `world`, nearer layers, then `screen`), canvas `'over'`, HTML, then the `--ref` overlay.
 
 ### stage
 
@@ -173,6 +173,7 @@ The stacking order, back to front: canvas `'under'`, SVG (`world`, then `screen`
 | `$(sel)` `$$(sel)` | `querySelector` and `querySelectorAll` inside the stage |
 | `canvas(name, where='over', type='2d')` | A hi-DPI layer drawn in stage units, with `ctx.clear()` |
 | `camera({x,y,zoom,r})` | Centres `world` on (x, y). Neutral is `{x:W/2, y:H/2, zoom:1, r:0}` |
+| `layer(depth, name?)` | A parallax group the camera moves at 1/depth of its pan, zoom and roll: `depth` 3 for far hills (behind the world), 0.5 for foreground leaves (in front). Pass it as the `parent` of `add` |
 | `font(family, url, {weight, style})` | Loads a font file supplied with the materials. Await it in `setup`. Pass the file's weight (`{weight:'700'}` for a Bold file), or text set in that weight gets a faux-bold |
 | `webfont(family, [weights], ital=false)` | Loads a Google Font by name before the first frame (needs network). Await it in `setup` |
 | `image(url)` | A decoded `Image`, for drawing to a canvas |

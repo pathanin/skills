@@ -106,7 +106,7 @@ End every reveal on the exact logo, and hold it.
 
 **Camera.**
 - Use `stage.camera({x,y,zoom,r})` with `inOutSine` or a spline path.
-- Parallax: layers at depth d move at 1/d of the camera's speed. Put layers in separate groups outside `world`, or counter-transform them.
+- Parallax: `const far=stage.layer(3), near=stage.layer(.6);` then `stage.add(markup, far)`. `stage.camera` moves each layer at 1/depth of its pan and zoom, so one camera call drives the whole depth stack.
 - Shake: `x+=M.wiggle(t,10,amp*decay)` and the same for `y`, with `r` at about a third of the amplitude in degrees. Let it decay over 0.3–0.6 s.
 - Handheld drift: `M.wiggle(t,.3,4)`.
 

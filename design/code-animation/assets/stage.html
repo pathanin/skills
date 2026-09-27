@@ -37,7 +37,7 @@ seedRandom(0x2545f491);
   const svg=layer('svg',1,true); M.set(svg,{width:W,height:H,viewBox:`0 0 ${W} ${H}`,overflow:'hidden'});
   const defs=M.svg('defs',{},svg), world=M.svg('g',{id:'world'},svg), screen=M.svg('g',{id:'screen'},svg);
   const html=layer('div',3); html.style.cssText+=`;width:${W}px;height:${H}px;z-index:3`;
-  const dpr=window.devicePixelRatio||1; let loads=0;
+  const dpr=window.devicePixelRatio||1, layers=new Map(); let loads=0;
   const stage={ W,H,fps,duration,frames,svg,defs,world,screen,html,el,dpr,t:0,frame:0,render:RENDER,
     $:s=>el.querySelector(s), $$:s=>[...el.querySelectorAll(s)],
     // insert SVG markup (default into the camera-moved world group); returns the first element added
@@ -59,7 +59,13 @@ seedRandom(0x2545f491);
       if(type!=='2d') return c; const g=c.getContext('2d'); g.setTransform(dpr,0,0,dpr,0,0);
       g.clear=()=>{ g.save(); g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,c.width,c.height); g.restore(); }; return g; },
     // camera over the world group: centre on (x,y), zoom, roll r (deg). Screen-space group and HTML layer do not move
-    camera({x=W/2,y=H/2,zoom=1,r=0}={}){ world.setAttribute('transform',`translate(${W/2} ${H/2}) rotate(${r}) scale(${zoom}) translate(${-x} ${-y})`); },
+    camera({x=W/2,y=H/2,zoom=1,r=0}={}){ const cam=(g,d)=>g.setAttribute('transform',`translate(${W/2} ${H/2}) rotate(${r/d}) scale(${1+(zoom-1)/d}) translate(${-(W/2+(x-W/2)/d)} ${-(H/2+(y-H/2)/d)})`);
+      cam(world,1); for(const [g,d] of layers) cam(g,d); },
+    // parallax: a group the camera moves at 1/depth of its pan, zoom and roll. depth > 1 sits behind the world (far hills), < 1 in front (foreground leaves)
+    layer(depth,name){ if(!(depth>0)) throw new Error('stage.layer(depth): depth must be > 0'); const g=M.svg('g',{id:name||`layer-${depth}`,'data-depth':depth});
+      // back to front by depth: deeper layers first, the world at depth 1, then nearer layers, then the screen group
+      const d=c=>layers.get(c), next=[...svg.children].find(depth>1?c=>c===world||d(c)>1&&d(c)<depth:c=>c===screen||d(c)<1&&d(c)<depth);
+      svg.insertBefore(g,next); layers.set(g,depth); return g; },
     font(family,url,desc={}){ const f=new FontFace(family,`url("${url}")`,desc); document.fonts.add(f); return f.load(); },
     // a Google Font by name, every listed weight loaded before the first frame (needs network). webfont('Inter',[400,700]), webfont('Fraunces',[400],'ital')
     async webfont(family,weights=[400,700],ital=false){ const q=ital?`ital,wght@${[0,1].flatMap(i=>weights.map(w=>i+','+w)).join(';')}`:`wght@${weights.join(';')}`;

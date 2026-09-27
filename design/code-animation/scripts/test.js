@@ -35,6 +35,8 @@ W('scene-norender.js',`const SCENE={ width:320, height:180, duration:1 };`);
 W('scene-state.js',`let x=0; const SCENE={ width:320, height:180, duration:1, setup(stage){ stage.add('<rect id="r" width="20" height="20" fill="#f00"/>'); }, render(t,stage){ x+=5; M.tf(stage.$('#r'),{x:x%300}); } };`);
 W('scene-rnd.js',`const SCENE={ width:320, height:180, duration:1, setup(stage){ this.p=Array.from({length:30},()=>stage.add('<circle r="4" fill="#00f"/>')); this.xy=this.p.map(()=>[Math.random()*320,Math.random()*180]); },
   render(t,stage){ this.p.forEach((c,i)=>M.tf(c,{x:this.xy[i][0]+Math.random()*3,y:this.xy[i][1]})); } };`);
+W('scene-par.js',`const SCENE={ width:400, height:200, duration:1, background:'#fff', setup(stage){ this.L=[4,.5,2].map(d=>stage.layer(d)); this.L.forEach((g,i)=>M.svg('rect',{id:'p'+i,x:190,y:90,width:20,height:20},g)); stage.add('<rect id="w" x="190" y="90" width="20" height="20"/>'); },
+  render(t,stage){ stage.camera({x:200+100*t,y:100}); } };`);
 W('scene-bad.js',`const SCENE={ width:320, height:180, fps:30, duration:2, render(t){ if(t>1) null.x; } };`);
 W('scene-alpha.js',`const SCENE={ width:320, height:180, fps:30, duration:1, background:'transparent', setup(stage){ stage.add('<circle id="c" cx="160" cy="90" r="40" fill="#ff8800"/>'); }, render(t,stage){ M.tf(stage.$('#c'),{x:50*t}); } };`);
 
@@ -76,6 +78,9 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
   const {p:p2}=await open(2); await p2.evaluate(()=>window.__anim.seek(0)); px=await pixels(p2,[[1199,599],[1201,601],[1218,618],[1221,621]]);
   ok('canvas layers are hi-DPI and drawn in stage units (10 units = 20 px at 2x)',px[0][0]>200&&px[1][0]<60&&px[2][0]<60&&px[3][0]>200,JSON.stringify(px));
 
+  { const {p:pp}=await open(1,'scene-par.js'); await pp.setViewportSize({width:400,height:200});
+    const par=await pp.evaluate(()=>{ window.__anim.seek(1); const x=id=>stage.$('#'+id).getBoundingClientRect().x; return {order:[...stage.svg.children].map(c=>c.getAttribute('data-depth')||c.id||c.tagName).join(','),w:x('w'),d4:x('p0'),d05:x('p1'),d2:x('p2')}; });
+    ok('stage.layer: parallax pans at 1/depth and stacks by depth',par.order==='defs,4,2,world,0.5,screen'&&Math.abs(par.w-90)<.01&&Math.abs(par.d4-165)<.01&&Math.abs(par.d2-140)<.01&&Math.abs(par.d05-(-10))<.01,JSON.stringify(par)); }
   // ---- motion.js maths ----
   const m=await p.evaluate(()=>{ const E=M.ease, names=Object.keys(E).filter(k=>typeof E[k]==='function'&&E[k].length===1&&!['back','elastic','steps','spring','bezier'].includes(k));
     const endsBad=names.filter(k=>Math.abs(E[k](0))>1e-6||Math.abs(E[k](1)-1)>1e-6);
