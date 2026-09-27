@@ -32,7 +32,7 @@
     },
     {
       "name": "code-animation",
-      "description": "Manual-only code animation studio, invoked with /code-animation. Turns brand concepts, character sheets, storyboards, themes and references into an SVG/Canvas/HTML scene driven by time, renders it frame-exact in headless Chromium, and exports MP4, GIF, WebM or ProRes with alpha, with contact-sheet, onion-skin and QA review built in.",
+      "description": "Manual-only code animation, invoked with /code-animation. Turns your source materials (brand, character sheet, storyboard, music) into a scene written in code, renders it frame-exact in headless Chromium, and exports MP4, GIF, WebM or ProRes with alpha.",
       "author": {
         "name": "oat"
       },
