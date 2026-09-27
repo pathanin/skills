@@ -31,6 +31,14 @@
       "source": "./design/chart-viz"
     },
     {
+      "name": "code-animation",
+      "description": "Code-only animation studio. Turns brand concepts, character sheets, storyboards, themes and references into an SVG/Canvas/HTML scene driven by time, renders it frame-exact in headless Chromium, and exports MP4, GIF, WebM or ProRes with alpha, with contact-sheet, onion-skin and QA review built in.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/code-animation"
+    },
+    {
       "name": "code-wallpaper",
       "description": "Manual-only code-drawn wallpaper render, invoked with /code-wallpaper. Paints a landscape entirely in code, as oil on linen or as layered paper cut, and exports a PNG at any resolution — 4K, ultrawide, or phone.",
       "author": {
