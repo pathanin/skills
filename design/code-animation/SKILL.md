@@ -118,7 +118,7 @@ Tracking a joint needs a tiny marker at that point: `<circle id="trk-hand" r="1"
 1. Render into `output/`, named `<project>-<W>x<H>.<ext>`:
    - `video --out=output/<name>.mp4`
    - Add `--mblur=8` when there are fast moves: whip pans, spins, or objects crossing more than about 40 px per frame.
-   - Add `--audio=refs/<track>` when there is sound.
+   - Sound comes from `SCENE.audio`, or `--audio=refs/<track>` to override it.
    - Add a GIF with `video --out=output/<name>.gif --width=640 --fps=25` (add `--colors=64` if it is over about 5 MB), and a `.mov` for alpha when needed. ProRes 4444 runs to about 60 MB per second at 1080p; when the file has to travel by chat or email, add `--codec=png`.
 2. Run `qa` on the final render, and `sheet output/<name>.mp4` to look at the encoded file itself.
    - Social platforms and chat previews show the first frame as the thumbnail. If frame 0 is empty or dark, either open on a readable frame or export a poster: `stills --at=<hero moment> --dir=output`, and say which it is.
@@ -134,6 +134,7 @@ Tracking a joint needs a tiny marker at that point: `<circle id="trk-hand" r="1"
 const SCENE={
   width:1920, height:1080, fps:30, duration:8,
   background:'#f4efe6',                  // or 'transparent' for alpha output (.webm .mov .gif, PNG frames)
+  audio:'../refs/track.wav',             // optional soundtrack: plays in sync in the live preview; video muxes it (--audio=none to skip)
   async setup(stage){ /* build once: stage.add(svgMarkup), stage.canvas(), stage.html, stage.font(), refs from ../refs/ */ },
   render(t,stage){ /* set every animated property from t */ },
 };
