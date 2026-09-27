@@ -236,9 +236,9 @@ function audio(){ const file=P[1], ff=findFfmpeg(); if(!ff||!ff.full) die(NOFF);
   const r=spawnSync(ff.bin,['-hide_banner','-loglevel','error','-i',file,'-ac','1','-ar','22050','-f','f32le','pipe:1'],{maxBuffer:1<<30}); if(r.status) die('ffmpeg could not decode '+file+'\n'+r.stderr);
   const sr=22050, hop=256, n=Math.floor(r.stdout.length/4), x=new Float32Array(n); for(let i=0;i<n;i++) x[i]=r.stdout.readFloatLE(i*4);
   const fr=hop/sr, nf=Math.floor(n/hop), le=new Float64Array(nf); for(let f=0;f<nf;f++){ let e=0; for(let i=f*hop;i<(f+1)*hop;i++) e+=x[i]*x[i]; le[f]=10*Math.log10(e/hop+1e-10); }
-  const on=new Float64Array(nf); for(let f=1;f<nf;f++) on[f]=Math.max(0,le[f]-le[f-1]);
+  const floor=Math.min(...le), on=new Float64Array(nf); for(let f=0;f<nf;f++) on[f]=Math.max(0,le[f]-(f?le[f-1]:floor)); // a track that starts on a hit has an onset at 0
   const mean=on.reduce((a,b)=>a+b,0)/nf, sd=Math.sqrt(on.reduce((a,b)=>a+(b-mean)**2,0)/nf), peaks=[];
-  for(let f=6;f<nf-6;f++){ if(on[f]<mean+1.5*sd) continue; let top=true; for(let k=-6;k<=6;k++) if(on[f+k]>on[f]) top=false; if(top) peaks.push([f*fr,on[f]]); }
+  for(let f=0;f<nf;f++){ if(on[f]<mean+1.5*sd) continue; let top=true; for(let k=Math.max(-6,-f);k<=6&&f+k<nf;k++) if(on[f+k]>on[f]) top=false; if(top) peaks.push([f*fr,on[f]]); }
   const strong=[]; for(const p of [...peaks].sort((a,b)=>b[1]-a[1])){ if(strong.length>=24) break; if(strong.every(q=>Math.abs(q[0]-p[0])>=.1)) strong.push(p); } strong.sort((a,b)=>a[0]-b[0]);
   const ac=L=>{ let c=0; for(let f=0;f+L<nf;f++) c+=on[f]*on[f+L]; return c/(nf-L); }, prior=L=>Math.exp(-.5*Math.log2(60/(L*fr)/120)**2); // mild prior toward 120 BPM breaks half/double ties
   let best=0, lag=0; for(let L=Math.round(60/180/fr);L<=Math.round(60/60/fr);L++){ const c=ac(L)*prior(L); if(c>best){ best=c; lag=L; } }
@@ -251,8 +251,9 @@ function audio(){ const file=P[1], ff=findFfmpeg(); if(!ff||!ff.full) die(NOFF);
   jumps.sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)); const jtxt=jumps.filter((j,i,a)=>!a.slice(0,i).some(k=>Math.abs(k.s-j.s)<=1)).slice(0,6).sort((a,b)=>a.s-b.s).map(j=>{ // snap to the onset that starts the change
     let bi=-1, bv=0; for(let f=Math.max(0,Math.round((j.s-.7)/fr));f<Math.min(nf,Math.round((j.s+1)/fr));f++) if(on[f]>bv){ bv=on[f]; bi=f; }
     return `${bi>=0?fmt(bi*fr):j.s}s (${j.what} ${j.d>0?'+':''}${j.d.toFixed(0)} dB)`; });
-  const bpm=lag?60/(lag*fr):0;
-  console.log(`audio ${file}  ${fmt(n/sr)}s\ntempo ≈ ${bpm.toFixed(1)} BPM (beat every ${fmt(lag*fr)}s, first beat ${fmt(ph*fr)}s; half or double may be the felt tempo)`+
+  const bpm=lag?60/(lag*fr):0, bt=lag*fr, onGrid=q=>{ const d=((q-ph*fr)%bt+bt)%bt; return Math.min(d,bt-d)<=.12*bt; };
+  const first=(peaks.map(p=>p[0]).filter(onGrid).sort((a,b)=>a-b)[0])??ph*fr; // the earliest hit that sits on the grid, not the grid's phase
+  console.log(`audio ${file}  ${fmt(n/sr)}s\ntempo ≈ ${bpm.toFixed(1)} BPM (beat every ${fmt(lag*fr)}s, first beat ${fmt(first)}s; half or double may be the felt tempo)`+
     `\nstrongest hits: ${strong.map(p=>fmt(p[0])).join(' ')}\nloudness per ${bucket>1?bucket+' s':'second'} (dB): ${lv.join(' ')}\nenergy jumps (sections start or drop): ${jtxt.join(', ')||'none'}`); }
 
 // one-shot environment check before the first render
