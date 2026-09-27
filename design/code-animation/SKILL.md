@@ -41,7 +41,7 @@ Load `references/materials.md` and follow it for every material the user gave:
 - View each image with Read.
 - Run `render.js probe <image>` for its exact size and palette, `--pick=x,y` for exact swatch colours, `--bbox=x,y,w,h` for a figure's exact extent, and `--crop=x,y,w,h` to zoom in on details.
 - Read PDFs page by page.
-- Turn video references into frame tiles, and run `qa` on them for their cut rhythm.
+- Run `render.js sheet <video>` on video references to see them, and `qa` on them for their cut rhythm.
 - Run `render.js audio <file>` on music or voice-over.
 
 Write the findings into `plan.md` under **Reading**. For each material, list the hard facts to honour (hex values, proportions, fonts, beats, mandatory copy) and what they imply for motion. This step is the input for everything after it, so don't skip it or skim it.
@@ -173,7 +173,7 @@ The stacking order, back to front: canvas `'under'`, SVG (`world`, then `screen`
 | `$(sel)` `$$(sel)` | `querySelector` and `querySelectorAll` inside the stage |
 | `canvas(name, where='over', type='2d')` | A hi-DPI layer drawn in stage units, with `ctx.clear()` |
 | `camera({x,y,zoom,r})` | Centres `world` on (x, y). Neutral is `{x:W/2, y:H/2, zoom:1, r:0}` |
-| `font(family, url)` | Loads a font file supplied with the materials. Await it in `setup` |
+| `font(family, url, {weight, style})` | Loads a font file supplied with the materials. Await it in `setup`. Pass the file's weight (`{weight:'700'}` for a Bold file), or text set in that weight gets a faux-bold |
 | `webfont(family, [weights], ital=false)` | Loads a Google Font by name before the first frame (needs network). Await it in `setup` |
 | `image(url)` | A decoded `Image`, for drawing to a canvas |
 
@@ -207,7 +207,7 @@ Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a v
 | `study --from --to [--n=8] [--track=#a,#b]` | Onion skin of the moving parts, plus a dot per frame for each tracked element, with the spacing listed in stage units |
 | `probe <image> [--pick=x,y;x,y] [--bbox=x,y,w,h;…] [--crop=x,y,w,h] [--colors=12]` | Size, palette with shares, exact pixel colours, the exact extent of a figure inside a region (the region must have background all around its edge), and a zoomed crop |
 | `qa <video> [--loop]` | Holds of 0.4 s or more, and jumps (a frame that changes far more than both its neighbours), with timecodes. `--loop` also checks the seam from the last frame back to the first |
-| `audio <file>` | Duration, tempo and beat grid, the strongest hits, and energy jumps. It is an estimate; timings the user gives win |
+| `audio <file> [--json=src/audio.json] [--fps=30]` | Duration, tempo and beat grid, the strongest hits, loudness per second, and energy jumps. `--json` also writes per-frame `level`, `low` (bass) and `high` (brightness) curves from 0 to 1, plus `beats` and `hits`, for motion that reacts to the sound. It is an estimate; timings the user gives win |
 
 - The output size must keep the scene's aspect. For another aspect ratio, write a new scene (or branch on `W`) and recompose it; never stretch.
 - Speed on 4 cores with 3 pages, encoding included: about 40 ms per frame at 720p, 70 ms at 1080p and 280 ms at 4K, plus 1–2 s of start-up, so a minute of 1080p30 takes about 2 minutes. `--mblur=N` multiplies that by N; heavy SVG filters and WebGL are slower. A `PAGE ERROR` or `scene threw at t=… (frame N)` message names the failing frame; reproduce it with `stills --at=fN`.
@@ -231,3 +231,4 @@ Every command takes `--scene=src/other.js` (another scene), `--set=k=v,…` (a v
 ## Notes
 
 - `scripts/test.js` checks the shipped assets end to end: `NODE_PATH=$(npm root -g) node scripts/test.js`. Its video, QA and audio checks need a full ffmpeg. Run it after any change to `assets/`.
+- `evals/` holds a `claude plugin eval` suite (a brand logo sting, a raster mascot, a music loop). See `evals/README.md` before changing this file.

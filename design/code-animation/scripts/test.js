@@ -154,6 +154,8 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
     const wav=path.join(T,'click.wav'); spawnSync(ffBin,['-y','-loglevel','error','-f','lavfi','-i',"aevalsrc='if(lt(mod(t-0.25\\,0.5)\\,0.03)*gte(t\\,0.25)\\,0.6*sin(2*PI*880*t)\\,0)':s=44100:d=6",wav]);
     r=cli(['audio',wav]); const bpm=+(r.out.match(/tempo ≈ ([\d.]+)/)||[])[1];
     ok('audio finds a 120 BPM click track and its hits',r.code===0&&Math.abs(bpm-120)<2&&/strongest hits: 0\.2\d 0\.7\d/.test(r.out),r.out.split('\n').slice(1,3).join(' | '));
+    r=cli(['audio',wav,'--json=src/audio.json','--fps=25']); const A=r.code===0&&JSON.parse(fs.readFileSync(path.join(SRC,'audio.json')));
+    ok('audio --json writes per-frame curves and an exact beat grid',A&&A.rate===25&&A.level.length===150&&A.low.every(v=>v>=0&&v<=1)&&Math.abs(A.beats[1]-A.beats[0]-.5)<1e-9&&A.bpm===120,A&&JSON.stringify({bpm:A.bpm,n:A.level.length,beats:A.beats.slice(0,3)}));
     r=cli(['video','--scene=src/scene-cut.js','--out=out/aud.mp4','--audio='+wav]); ok('video muxes audio',r.code===0&&/Audio: aac/.test(spawnSync(ffBin,['-hide_banner','-i',path.join(T,'out/aud.mp4')],{encoding:'utf8'}).stderr));
   }
   console.log(fails?`${fails} FAILED`:'ALL PASSED','  tmp:',T); process.exit(fails?1:0); })();

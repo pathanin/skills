@@ -29,7 +29,7 @@ Turn each material into two lists in `plan.md` under **Reading**:
   - If you only have a raster, rebuild the logo as SVG paths, then check it with `stills --ref`. Never scale up a raster logo.
   - Keep the proportions, colours, clear space and minimum size as specified.
 - **Palette** by role (primary, secondary, accent, background, text), with exact hex values.
-- **Typefaces.** Load supplied font files with `stage.font`.
+- **Typefaces.** Load supplied font files with `stage.font(family,url,{weight})`, giving each file's weight.
   - A Google Font named in the guidelines: `await stage.webfont(family,[weights])`.
   - Otherwise use the nearest local font (`fc-list : family`) and name the substitution.
 - **Don'ts.** The logo don'ts apply to motion too: no squash and stretch, recolouring, rotation or skew of the logo unless the guidelines allow it or the brand is plainly playful.
@@ -109,7 +109,8 @@ Prefer a single specific image over a generic loop. "Autumn" could be one leaf's
 
 - Run `render.js audio refs/track.mp3` for the duration, tempo and beat grid, the strongest hits, loudness per second, and energy jumps (where a section starts or the track drops, snapped to the onset).
 - Put the grid in the scene and time everything in beats: `const BEAT=60/bpm, B0=<first beat>, beat=n=>B0+n*BEAT;`. Snap shot lengths to beats and feed them to `M.shots`.
-- The piece lasts as long as the audio unless the user says otherwise.
+- For motion that reacts to the sound (pulses, meters, glow that breathes with the bass), write the curves with `render.js audio refs/track.wav --json=src/audio.json --fps=<scene fps>`, load them in `setup` with `this.A=await (await fetch('audio.json')).json();`, and read them in `render` with `M.sample(this.A.low,t,this.A.rate)`. Shape the raw curve before using it (`Math.pow(v,2)` for punchier peaks, or ease between hits) rather than mapping it straight onto size.
+- The piece lasts as long as the audio unless the user says otherwise. A loop set to music lasts a whole number of bars, so the picture and the music repeat together.
 - Place events on the audio:
   - Land cuts on beats, or 1 frame early so they feel in sync.
   - Put accents on the strongest hits.

@@ -5,7 +5,7 @@
 //   node src/render.js study  --from=s --to=s [--n=8] [--track=#a,#b]  motion study: onion skin of the moving parts + per-frame spacing dots
 //   node src/render.js probe  <image> [--pick=x,y;x,y] [--bbox=x,y,w,h;…] [--crop=x,y,w,h]  size, palette, exact pixel colours, a figure's extent
 //   node src/render.js qa     <video> [--loop]                         holds (frozen spans) and jumps (hard frame changes) with timecodes; --loop also checks the seam
-//   node src/render.js audio  <file>                                   duration, tempo + beat grid, strongest hits, energy jumps (for syncing to music)
+//   node src/render.js audio  <file> [--json=src/audio.json [--fps=30]] duration, tempo + beat grid, strongest hits, energy jumps; --json writes per-frame curves
 //   node src/render.js check                                           is playwright, a browser and a full ffmpeg available?
 // Common: --scene=src/scene.js  --set=k=v,k2=v2 (global PARAMS in scene.js, for variants)  --dir=<review folder, default $TMPDIR/code-animation>. Output formats by extension: .mp4 .webm .mov (ProRes 4444, alpha) .gif, or a folder/ for PNGs.
 const {chromium}=require('playwright'), fs=require('fs'), os=require('os'), path=require('path'), http=require('http'), {spawn,spawnSync,execFileSync}=require('child_process');
@@ -14,7 +14,7 @@ for(const a of argv){ if(a.startsWith('--')){ const [k,v]=a.slice(2).split(/=(.*
 const cmd=P[0]||'video', dir=path.resolve(F.dir||path.join(os.tmpdir(),'code-animation'));
 // typos fail loudly instead of being ignored: an unknown --flag, or a value given with a space (--size 1920x1080) instead of =
 const KNOWN={video:'out scale width size fps from to mblur audio qa loop workers',stills:'at scale width size ref ref-opacity ref-box',sheet:'n from to',study:'from to n track',
-  probe:'pick crop bbox colors',qa:'loop',audio:'',check:''}, COMMON='scene set dir timeout', TAKES={probe:1,qa:1,audio:1,sheet:1};
+  probe:'pick crop bbox colors',qa:'loop',audio:'json fps',check:''}, COMMON='scene set dir timeout', TAKES={probe:1,qa:1,audio:1,sheet:1};
 if(KNOWN[cmd]!==undefined){ const ok=new Set((KNOWN[cmd]+' '+COMMON).split(' ').filter(Boolean)), bad=Object.keys(F).filter(k=>!ok.has(k)), extra=P.slice(1+(TAKES[cmd]||0));
   if(bad.length||extra.length){ console.error(`${bad.length?`unknown option${bad.length>1?'s':''} for ${cmd}: ${bad.map(k=>'--'+k).join(' ')}. `:''}${extra.length?`unexpected argument${extra.length>1?'s':''}: ${extra.join(' ')} (options take =, as in --size=1920x1080). `:''}Options for ${cmd}: ${[...ok].map(k=>'--'+k).join(' ')}`); process.exit(1); } }
 const die=m=>{ console.error(m); process.exit(1); };
@@ -251,9 +251,20 @@ function audio(){ const file=P[1], ff=findFfmpeg(); if(!ff||!ff.full) die(NOFF);
   jumps.sort((a,b)=>Math.abs(b.d)-Math.abs(a.d)); const jtxt=jumps.filter((j,i,a)=>!a.slice(0,i).some(k=>Math.abs(k.s-j.s)<=1)).slice(0,6).sort((a,b)=>a.s-b.s).map(j=>{ // snap to the onset that starts the change
     let bi=-1, bv=0; for(let f=Math.max(0,Math.round((j.s-.7)/fr));f<Math.min(nf,Math.round((j.s+1)/fr));f++) if(on[f]>bv){ bv=on[f]; bi=f; }
     return `${bi>=0?fmt(bi*fr):j.s}s (${j.what} ${j.d>0?'+':''}${j.d.toFixed(0)} dB)`; });
-  const bpm=lag?60/(lag*fr):0, bt=lag*fr, onGrid=q=>{ const d=((q-ph*fr)%bt+bt)%bt; return Math.min(d,bt-d)<=.12*bt; };
+  let bpm=lag?60/(lag*fr):0; if(bpm&&Math.abs(bpm-Math.round(bpm))<.35) bpm=Math.round(bpm); // most music sits on a whole BPM: snapping removes drift over long tracks
+  const bt=bpm?60/bpm:0, onGrid=q=>{ const d=((q-ph*fr)%bt+bt)%bt; return Math.min(d,bt-d)<=.12*bt; };
   const first=(peaks.map(p=>p[0]).filter(onGrid).sort((a,b)=>a-b)[0])??ph*fr; // the earliest hit that sits on the grid, not the grid's phase
-  console.log(`audio ${file}  ${fmt(n/sr)}s\ntempo ≈ ${bpm.toFixed(1)} BPM (beat every ${fmt(lag*fr)}s, first beat ${fmt(first)}s; half or double may be the felt tempo)`+
+  if(F.json){ // per-frame curves for audio-reactive motion: M.sample(A.level, t, A.rate). 0..1, normalised to the track's own range
+    const rate=num(F.fps,30), nfr=Math.ceil(n/sr*rate), lvl=[], low=[], high=[]; let lp=0;
+    const lpc=1-Math.exp(-2*Math.PI*150/sr); // one-pole low-pass at 150 Hz for the bass band
+    for(let k=0;k<nfr;k++){ let e=0, eb=0, eh=0; const a=Math.floor(k*sr/rate), b=Math.min(n,Math.floor((k+1)*sr/rate));
+      for(let i=a;i<b;i++){ lp+=lpc*(x[i]-lp); e+=x[i]*x[i]; eb+=lp*lp; if(i) eh+=(x[i]-x[i-1])**2; } const m=Math.max(1,b-a); lvl.push(Math.sqrt(e/m)); low.push(Math.sqrt(eb/m)); high.push(Math.sqrt(eh/m)); }
+    const norm=v=>{ const s=[...v].sort((p,q)=>p-q), lo=s[Math.floor(s.length*.02)], hi=s[Math.floor(s.length*.98)]||1; return v.map(q=>+clamp((q-lo)/((hi-lo)||1),0,1).toFixed(3)); };
+    const beats=[]; if(bt) for(let q=first;q<n/sr-1e-6;q+=bt) beats.push(+q.toFixed(3));
+    fs.mkdirSync(path.dirname(path.resolve(F.json)),{recursive:true});
+    fs.writeFileSync(F.json,JSON.stringify({file:path.basename(file),duration:+(n/sr).toFixed(3),rate,bpm:+bpm.toFixed(2),beat:+bt.toFixed(4),beats,hits:peaks.map(p=>+p[0].toFixed(3)),level:norm(lvl),low:norm(low),high:norm(high)}));
+    console.error(`wrote ${F.json}: level, low (bass), high (brightness) at ${rate} per second, 0..1; beats and hits in seconds`); }
+  console.log(`audio ${file}  ${fmt(n/sr)}s\ntempo ≈ ${+bpm.toFixed(1)} BPM (beat every ${bt.toFixed(3)}s, first beat ${fmt(first)}s; half or double may be the felt tempo)`+
     `\nstrongest hits: ${strong.map(p=>fmt(p[0])).join(' ')}\nloudness per ${bucket>1?bucket+' s':'second'} (dB): ${lv.join(' ')}\nenergy jumps (sections start or drop): ${jtxt.join(', ')||'none'}`); }
 
 // one-shot environment check before the first render
