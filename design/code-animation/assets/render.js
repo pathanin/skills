@@ -10,7 +10,10 @@
 // Common: --scene=src/scene.js  --set=k=v,k2=v2 (global PARAMS in scene.js, for variants)  --dir=<review folder, default $TMPDIR/code-animation>. Output formats by extension: .mp4 .webm .mov (ProRes 4444, alpha) .gif, or a folder/ for PNGs.
 const {chromium}=require('playwright'), fs=require('fs'), os=require('os'), path=require('path'), http=require('http'), {spawn,spawnSync,execFileSync}=require('child_process');
 const argv=process.argv.slice(2), F={}, P=[];
-for(const a of argv){ if(a.startsWith('--')){ const [k,v]=a.slice(2).split(/=(.*)/s); F[k]=v===undefined?true:v; } else P.push(a); }
+// a list option given twice (--bbox=a --bbox=b) accumulates; any other option given twice is an error rather than silently keeping the last
+const LISTS={bbox:';',pick:';',at:',',track:',',set:','};
+for(const a of argv){ if(a.startsWith('--')){ const [k,v]=a.slice(2).split(/=(.*)/s), val=v===undefined?true:v;
+    if(k in F){ if(LISTS[k]&&typeof val==='string') F[k]+=LISTS[k]+val; else { console.error(`--${k} is given twice`); process.exit(1); } } else F[k]=val; } else P.push(a); }
 const cmd=P[0]||'video', dir=path.resolve(F.dir||path.join(os.tmpdir(),'code-animation'));
 // typos fail loudly instead of being ignored: an unknown --flag, or a value given with a space (--size 1920x1080) instead of =
 const KNOWN={video:'out scale width size fps from to mblur audio qa loop workers codec colors',stills:'at scale width size ref ref-opacity ref-box',sheet:'n from to',study:'from to n track',
@@ -136,7 +139,7 @@ async function video(){ const out=F.out; if(!out) die('video needs --out=output/
   const produce=async(k)=>{ for(let i=k;i<n;i+=nw){ while(i-written>=2*nw) await new Promise(r=>wake.push(r)); done.set(i,await frame(workers[k],from+i/fps)); notify(); } };
   const consume=async()=>{ for(let i=0;i<n;i++){ while(!done.has(i)) await new Promise(r=>{ notify=r; }); const png=done.get(i); done.delete(i);
       if(seq) fs.writeFileSync(path.join(out,`frame_${String(i).padStart(5,'0')}.png`),png); else await write(png);
-      written=i+1; tick(); const pct=Math.floor((i+1)/n*10); if(pct>last){ last=pct; console.error(`frame ${i+1}/${n}  ${((Date.now()-t0)/1000).toFixed(0)}s`); } } };
+      written=i+1; tick(); const pct=Math.floor((i+1)/n*10); if(pct>last){ last=pct; const el=(Date.now()-t0)/1000; console.error(`frame ${i+1}/${n}  ${el.toFixed(0)}s${i+1<n?`, about ${Math.ceil(el/(i+1)*(n-i-1))}s to go`:''}`); } } };
   await Promise.all([consume(),...workers.map((_,k)=>produce(k))]);
   if(proc){ proc.stdin.end(); const code=exited!==null?exited:await new Promise(r=>proc.on('close',r)); if(code) die('ffmpeg failed:\n'+errTxt.slice(-3000)); }
   await br.close(); srv.close();

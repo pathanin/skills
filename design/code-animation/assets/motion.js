@@ -143,5 +143,9 @@ M.split=(el,by='chars')=>{ const out=[], ib='display:inline-block;white-space:pr
     ch.replaceWith(frag); } };
   walk(el); return out; };
 
-window.M=M;
+// a misspelt or guessed name (M.ease.inOut.Sine, M.keyframes) throws with the real names instead of failing later as "not a function"
+const strict=(o,label)=>new Proxy(o,{get(t,k){ if(typeof k!=='string'||k in t||k==='then'||k==='toJSON'||k.startsWith('__')) return t[k];
+  throw new Error(`${label}.${k} does not exist. ${label==='M.ease'?'Easings are single names: inQuad, outCubic, inOutSine, outBack, outElastic, linear, css, snappy… ':''}Available: ${Object.keys(t).join(' ')}`); }});
+M.ease=strict(E,'M.ease');
+window.M=strict(M,'M');
 })();

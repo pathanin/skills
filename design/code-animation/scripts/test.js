@@ -107,6 +107,8 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
   ok('M.arc starts, peaks and lands where asked',m.arcP[0][1]===100&&Math.abs(m.arcP[1][1]-50)<1e-9&&m.arcP[2][0]===200&&m.arcP[2][1]===100,JSON.stringify(m.arcP));
   ok('ease.bezier matches CSS ease at the ends and midpoint',m.bz[0]===0&&m.bz[2]===1&&Math.abs(m.bz[1]-.8024)<.01,m.bz.map(v=>v.toFixed(4)).join(','));
   ok('M.sample interpolates baked samples and holds the last one',JSON.stringify(m.samp)==='[[5,10],3]',JSON.stringify(m.samp));
+  const strictErr=await p.evaluate(()=>{ try{ M.ease.inOut; return 'no error'; }catch(e){ return e.message; } }), strictM=await p.evaluate(()=>{ try{ M.keyframes; return 'no error'; }catch(e){ return e.message; } });
+  ok('a guessed M or M.ease name throws with the real names',/M\.ease\.inOut does not exist[\s\S]*inOutSine/.test(strictErr)&&/M\.keyframes does not exist[\s\S]* kf /.test(strictM),strictErr.slice(0,70));
   ok('time helpers: shots, quantize, loop, stagger, squash',m.shots.i===1&&m.shots.t===1.5&&Math.abs(m.q-5/12)<1e-9&&m.loop===2&&Math.abs(m.stag-.5)<1e-9&&m.sq[0]*m.sq[1]===1,JSON.stringify(m.shots));
   await br.close(); srv.close();
 
@@ -126,6 +128,8 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
   r=cli(['probe',path.join(REV,'still-0.50s.png'),'--bbox=30,5,60,50']); ok('probe --bbox finds a figure\'s exact extent',/bbox 30,5,60,50: x 50\.\.69, y 20\.\.39/.test(r.out),r.out.split('\n').pop()||r.out.split('\n').slice(-2)[0]);
   r=cli(['stills','--at=0','--scene=src/scene-font.js']); const r2=cli(['stills','--at=0']);
   ok('a missing font is reported once; installed and generic fonts are not',(r.out.match(/FONT FALLBACK: "NoSuchFont"/g)||[]).length===1&&!/FONT FALLBACK/.test(r2.out),r.out.split('\n')[0].slice(0,80));
+  r=cli(['probe',path.join(REV,'still-0.50s.png'),'--bbox=30,5,60,50','--bbox=30,25,60,5']); ok('a repeated list option accumulates',(r.out.match(/^bbox /gm)||[]).length===2);
+  r=cli(['stills','--at=0','--scale=1','--scale=2']); ok('a repeated single option is refused',r.code!==0&&/--scale is given twice/.test(r.out));
   r=cli(['probe',path.join(REV,'still-0.50s.png'),'--bbox=30,25,60,5']); ok('probe --bbox measures a slice through a figure',/bbox 30,25,60,5: x 50\.\.69, y 25\.\.29/.test(r.out),r.out.trim().split('\n').pop());
   r=cli(['sheet','--scene=src/scene-bad.js']); ok('a throwing scene names the time and frame',r.code!==0&&/scene threw at t=(1\.\d+|2\.00)s \(frame \d+\)/.test(r.out),r.out.trim().split('\n').pop());
   r=cli(['video','--scene=src/scene-hang.js','--out=out/h/','--timeout=3']); ok('a render that never returns is stopped and named',r.code!==0&&/did not return within 3 s/.test(r.out)&&/scene threw at t=0\.[5-9]\d*s \(frame (1[6-9]|2\d)\)/.test(r.out),r.out.trim().split('\n').pop());

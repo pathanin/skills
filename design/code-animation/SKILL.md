@@ -115,6 +115,21 @@ Tracking a joint needs a tiny marker at that point: `<circle id="trk-hand" r="1"
 
 ### 7. Final render and delivery
 
+Don't start the final render until each of these that applies has been done. These steps are what stand in for watching the video, so skipping one means shipping unseen work:
+
+- `plan.md` has the Reading, the treatment and the beat sheet.
+- Style frames were reviewed with `stills`.
+- Anything rebuilt from a reference image (a character, a logo) passed a `stills --ref` trace check.
+- Each key action (a walk, a jump, a wave, a reveal) was reviewed with `study`, and planted feet read `0.0` while planted.
+- The whole piece was reviewed with `sheet`.
+- The preview passed `qa` (with `--loop` for a loop), or each reported hold and jump is one you planned.
+
+Plan the render's time before starting it: frames × the per-frame cost in the Speed note × the `--mblur` factor. Leave `--workers` at its default; parallel pages produce frames identical to a single page's.
+
+- The Bash tool gives up waiting after 2 minutes by default. For a render estimated at up to about 9 minutes, pass the tool's `timeout` at its maximum (600000 ms) and run it in the foreground.
+- For a longer render, run it in the background, then keep checking it within this same reply until it exits. The progress lines include the time remaining.
+- Never end your reply while a render is still running. Its file is truncated until it finishes, and nothing brings you back to deliver it.
+
 1. Render into `output/`, named `<project>-<W>x<H>.<ext>`:
    - `video --out=output/<name>.mp4`
    - Add `--mblur=8` when there are fast moves: whip pans, spins, or objects crossing more than about 40 px per frame.
@@ -187,7 +202,7 @@ Asset URLs resolve from `src/`, so the materials are at `../refs/<file>`.
 | Area | Functions |
 |---|---|
 | Maths | `clamp lerp invLerp remap smoothstep deg rad TAU` |
-| Easing (`M.ease`) | `linear`, then `in` / `out` / `inOut` + `Quad Cubic Quart Quint Sine Expo Circ Back Elastic Bounce`. Factories: `back(s)`, `elastic(amp,period)`, `bezier(x1,y1,x2,y2)`, `steps(n)`, `spring(z)`. Presets: `css`, `material`, `snappy`, `anticipate` |
+| Easing (`M.ease`) | Single names: `linear`, and `in`, `out` or `inOut` joined to `Quad Cubic Quart Quint Sine Expo Circ Back Elastic Bounce`, as in `M.ease.inOutSine` or `M.ease.outBack`. Factories: `back(s)`, `elastic(amp,period)`, `bezier(x1,y1,x2,y2)`, `steps(n)`, `spring(z)`. Presets: `css`, `material`, `snappy`, `anticipate`. A name that does not exist throws and lists the real ones |
 | Time | `seg(t,t0,t1,ease)` gives progress 0..1. `stagger(t,i,start,each,dur,ease)`. `shots(t,[durs])` gives `{i,t,u}`. `quantize(t,12)` steps the drawings. `loop` and `pingpong` |
 | Values | `kf(t,[[time,value,ease?],…])` for pose-to-pose (a key's ease shapes the segment arriving at it). `spline(t,keys)` passes smoothly through the keys. `mix(a,b,u)` handles numbers, arrays, objects, `#hex` (blended in OKLab) and same-shape path strings (morphs). `color(a,b,u)` |
 | Physics | `sample(samples,t,rate)` reads a simulation baked in `setup`. `spring(t,freq,z)` for a damped settle 0 to 1. `arc(u,p0,p1,h)` for a thrown arc. `squash(k)` gives `[along,across]` with the area kept |
