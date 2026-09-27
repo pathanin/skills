@@ -1,7 +1,8 @@
 ---
 name: code-animation
-description: Make an animation entirely in code from the user's source materials (brand concept, character design or character sheet, storyboard or beat sheet, script, theme, music, visual references) using a shipped pipeline. The scene is SVG, Canvas and HTML written as a pure function of time; it is rendered frame-exact in headless Chromium, exported to MP4, GIF, WebM or ProRes, and reviewed with contact sheets and automatic QA. Use when asked to create, animate or render an animation, motion graphic, animated logo or logo reveal, character animation, explainer, title or intro sequence, kinetic typography, looping GIF, or animated short. Skip UI micro-interactions or CSS transitions inside an existing app's codebase, editing or converting an existing video, Blender or After Effects work, and static images.
+description: Manual-only, invoked with /code-animation. Makes an animation entirely in code from the user's source materials (brand concept, character design or character sheet, storyboard or beat sheet, script, theme, music, visual references) using a shipped pipeline. The scene is SVG, Canvas and HTML written as a pure function of time; it is rendered frame-exact in headless Chromium, exported to MP4, GIF, WebM or ProRes, and reviewed with contact sheets and automatic QA. Use when asked to create, animate or render an animation, motion graphic, animated logo or logo reveal, character animation, explainer, title or intro sequence, kinetic typography, looping GIF, or animated short. Skip UI micro-interactions or CSS transitions inside an existing app's codebase, editing or converting an existing video, Blender or After Effects work, and static images.
 argument-hint: "[brief and/or paths to source materials; optional duration, aspect, format]"
+disable-model-invocation: true
 ---
 
 # Code animation
