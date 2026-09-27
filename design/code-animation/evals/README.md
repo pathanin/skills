@@ -69,6 +69,15 @@ Fresh `claude -p` sessions via `run-local.sh`, 1 run per case, 2026-09-27:
 | `boxo-walk` | 6/6 | pass | 66, $2.38 | Faithful to the sheet (exact expressions, antenna lag, motion blur on the wave); frame 0 was empty, which is the thumbnail on Instagram |
 | `radio-loop` | 6/6 | pass | 54, $1.37 | Exactly 12 beats, seam verified; the equalizer bars crossed a line of copy; the GIF was 13 MB at 640 px |
 
+Round 2, after the first round's fixes, with a fourth case (`storyboard-ad`):
+
+| Case | Automatic graders | Judge | Turns, cost | Notes |
+|---|---|---|---|---|
+| `logo-sting` | 6/6 | pass | 48, $1.46 | Chose `--codec=png` itself: a 35 MB lossless alpha master instead of 266 MB |
+| `boxo-walk` | 4/6 | pass | 69, $2.28 | Exported a poster frame for the empty first frame, but skipped the `--ref` trace check and the `study`; guessed `M.ease.inOut.Sine`; passed `--bbox` twice and lost the first |
+| `radio-loop` | 6/6 (after the grader fix) | pass | 43, $1.15 | Used `SCENE.audio` and `audio --json`; the old grader only accepted `--audio=` |
+| `storyboard-ad` | 7/7 (after the grader fix) | fail | 85, $3.81 | Copy, palette and drop timing right, but it forced `--workers=1` with `--mblur=8`, the render outlived the Bash tool's 2-minute wait, and the session ended with the MP4 truncated at 8 s |
+
 ## Findings so far
 
 Fresh sessions on these cases (2026-09-27) led to these changes:
@@ -80,3 +89,5 @@ Fresh sessions on these cases (2026-09-27) led to these changes:
 - `radio-loop`: `video --colors=N` now caps a GIF's palette (13 MB → 6 MB at 32 colours); the sheet review now checks that nothing crosses text while it must be read.
 - `boxo-walk`: delivery now covers the poster frame, because platforms use frame 0 as the thumbnail.
 - `logo-sting`: QA reported two sub-pixel "jumps" (0.3) that the agent rightly dismissed; the jump floor is now 0.5.
+- `boxo-walk` (round 2): a done-checklist now precedes the final render (trace check, `study` per key action, `sheet`, `qa`); unknown `M` and `M.ease` names throw with the real names listed; repeated list options accumulate.
+- `storyboard-ad` (round 2): the final-render step now has you estimate the render time, keep the default workers, raise the Bash timeout, and never reply while a render runs; progress lines show the time remaining.
