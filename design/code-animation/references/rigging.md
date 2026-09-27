@@ -3,7 +3,7 @@
 ## 1. Read the sheet into numbers
 
 - Run `probe` with `--pick` on the fills, shadows, line colour and eye colour, and `--crop` on the face and hands.
-- Measure with `probe --bbox=x,y,w,h` around each view (leave background all around the figure): it prints the exact extent and bottom centre. Measure the head the same way with a box around the head alone, or read it off a `--crop`.
+- Measure with `probe --bbox=x,y,w,h` around each view: it prints the exact extent and bottom centre. Measure parts with slices of the same view, several at once: `--bbox="x,yHead,w,hHead;x,yBody,w,hBody;x,yLegs,w,hLegs"`. Anything that is not the sheet's paper colour counts; pass `--bg=#hex` when the paper is not the most common colour.
 - Draw the character in the sheet's own pixel units, with the origin at a landmark you measured, usually the bottom centre between the feet of the front view. Then every number you read off the sheet goes straight into the markup, and scale comes from one `s` on the root group.
 - Pick the unit: the head height. Every proportion note ("3.2 heads tall") becomes a pixel length on the sheet.
 - Line weight is a fraction of the head height on the sheet. Use the same fraction on stage, with `stroke-linejoin="round"` and `stroke-linecap="round"` unless the style is sharp.

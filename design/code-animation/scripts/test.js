@@ -121,6 +121,7 @@ const ffBin=(()=>{ for(const c of [process.env.FFMPEG,'ffmpeg']) if(c&&spawnSync
   r=cli(['probe',path.join(REV,'still-0.50s.png'),'--bbox=30,5,60,50']); ok('probe --bbox finds a figure\'s exact extent',/bbox 30,5,60,50: x 50\.\.69, y 20\.\.39/.test(r.out),r.out.split('\n').pop()||r.out.split('\n').slice(-2)[0]);
   r=cli(['stills','--at=0','--scene=src/scene-font.js']); const r2=cli(['stills','--at=0']);
   ok('a missing font is reported once; installed and generic fonts are not',(r.out.match(/FONT FALLBACK: "NoSuchFont"/g)||[]).length===1&&!/FONT FALLBACK/.test(r2.out),r.out.split('\n')[0].slice(0,80));
+  r=cli(['probe',path.join(REV,'still-0.50s.png'),'--bbox=30,25,60,5']); ok('probe --bbox measures a slice through a figure',/bbox 30,25,60,5: x 50\.\.69, y 25\.\.29/.test(r.out),r.out.trim().split('\n').pop());
   r=cli(['sheet','--scene=src/scene-bad.js']); ok('a throwing scene names the time and frame',r.code!==0&&/scene threw at t=(1\.\d+|2\.00)s \(frame \d+\)/.test(r.out),r.out.trim().split('\n').pop());
   r=cli(['video','--scene=src/scene-hang.js','--out=out/h/','--timeout=3']); ok('a render that never returns is stopped and named',r.code!==0&&/did not return within 3 s/.test(r.out)&&/scene threw at t=0\.[5-9]\d*s \(frame (1[6-9]|2\d)\)/.test(r.out),r.out.trim().split('\n').pop());
   r=cli(['stills','--at=0','--scene=src/scene-norender.js']); ok('a scene without render() is refused with the reason',r.code!==0&&/SCENE.render\(t,stage\) is missing/.test(r.out));
