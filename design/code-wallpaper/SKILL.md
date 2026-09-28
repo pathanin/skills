@@ -1,7 +1,7 @@
 ---
 name: code-wallpaper
-description: Manual-only code-drawn wallpaper render, invoked with /code-wallpaper. Paints a landscape entirely in code, as oil on linen (multi-bristle and palette-knife stroke engine) or as layered paper cut (shadowed, hand-cut paper pieces), from one polygon scene in headless Chromium, and exports a PNG at any resolution — 4K, ultrawide, or phone.
-argument-hint: "[scene, style (oil | paper cut), resolution, number of variations]"
+description: Manual-only code-drawn wallpaper render, invoked with /code-wallpaper. Paints a landscape entirely in code, as oil on linen (multi-bristle and palette-knife stroke engine) or as layered paper cut (shadowed, hand-cut paper pieces), from one polygon scene in headless Chromium — or oil-paints over the user's own image — and exports a PNG at any resolution — 4K, ultrawide, or phone.
+argument-hint: "[scene or image to paint over, style (oil | paper cut), resolution, number of variations]"
 disable-model-invocation: true
 ---
 
@@ -12,11 +12,12 @@ Draw a landscape entirely in code and export it as a PNG at the size the user as
 - **Oil** (default): a stroke engine paints over the scene with thousands of directional brush strokes on a woven linen ground, from broad brush and palette-knife slabs in open areas down to liner strokes on thin detail. It then lights the paint's relief (bristle grooves, knife ridges, impasto, gloss) as if photographing a real canvas.
 - **Paper cut**: every region becomes a sheet of cut paper with a rough edge and a soft drop shadow, stacked back to front.
 
-Both styles use the same scene, a list of flat-coloured polygons, rendered in headless Chromium through Playwright.
+Both styles use the same scene, a list of flat-coloured polygons, rendered in headless Chromium through Playwright. **Paint-over** (oil only) replaces the scene with the user's own image: the same stroke engine paints over it (see **Paint-over**).
 
 ## Inputs to settle first
 
 - **Style**: `oil` unless the user asks for paper cut (or cut paper, papercraft, layered paper). Do not ask about style.
+- **Paint-over**: when the user gives an image and asks to paint over it, or to turn it into an oil painting, follow **Paint-over** instead of writing a scene. It is oil only; if they ask for paper cut of their image, treat the image as a reference photo.
 - **Scene**: the subject, time of day, mood and any must-have elements. If the user gives only a theme ("a beach"), pick the palette and composition yourself. If the user gives a reference photo, see **Reference photos** below.
 - **Resolution**: default 3840 x 2160 (4K UHD). Common alternatives: 2560 x 1440, 5120 x 2160 (ultrawide), 1170 x 2532 or 1080 x 1920 (phone), 6016 x 3384 (6K). Stay at or below about 8000 px per side, because Chromium's canvas limit is roughly 16384 px per side and 268M px in total.
 - **How many variations**: default 1. Make each variation a new scene (palette, time of day, focal side, horizon height), not only a new seed: a new `tseed` changes only the cut edges or brushwork, which is barely visible at wallpaper size.
@@ -42,16 +43,16 @@ Take these from the text after `/code-wallpaper`. Ask only when the scene is mis
 Work in this layout inside the working folder:
 
 ```
-src/      engine.html, render.js, helpers.js (copied from the skill), scene.js (you write it), node_modules/ (if installed)
+src/      engine.html, render.js, helpers.js, bake.js (copied from the skill), scene.js (you write it), img.js (paint-over only, from bake.js), node_modules/ (if installed)
 output/   finished wallpapers only
 ```
 
 1. Copy the assets from this skill's base directory. That is `${CLAUDE_SKILL_DIR}`; if that is not an absolute path, or the `cp` fails, use the "Base directory for this skill" path shown when the skill loads.
    ```bash
-   mkdir -p src output && cp "${CLAUDE_SKILL_DIR}"/assets/{engine.html,render.js,helpers.js} src/
+   mkdir -p src output && cp "${CLAUDE_SKILL_DIR}"/assets/{engine.html,render.js,helpers.js,bake.js} src/
    ```
-   If `src/` already exists from an earlier run, copy the three files again (never overwrite `scene.js`), then delete any helper definitions that an older `scene.js` declares itself (see **Helpers**).
-2. Use `engine.html`, `render.js` and `helpers.js` as they are. The one allowed edit is raising the oil stroke counts when the polishing loop says so.
+   If `src/` already exists from an earlier run, copy the four files again (never overwrite `scene.js` or `img.js`), then delete any helper definitions that an older `scene.js` declares itself (see **Helpers**).
+2. Use `engine.html`, `render.js`, `helpers.js` and `bake.js` as they are. The one allowed edit is raising the oil stroke counts when the polishing loop says so.
 3. Run renders from the working folder: `NODE_PATH=$(npm root -g) node src/render.js 0 3840 2160 output/<name>.png`.
    - `Cannot find module 'playwright'`: run `(cd src && npm i playwright)` and retry without `NODE_PATH`.
    - `render.js` launches Playwright's bundled Chromium and falls back to the installed Google Chrome by itself. Run `npx playwright install chromium` only when both fail, and not when `PLAYWRIGHT_BROWSERS_PATH` is set (browsers are preinstalled there, as in Claude Code on the web, so the error is something else).
@@ -76,15 +77,24 @@ node src/render.js <scene_index> <width> <height> <out.png|out.jpg> [seed] [crop
 1. A linen ground: an irregular plain weave (uneven threads, slubs, wavy paths), stained with a thin wash of the scene's colour so gaps between strokes read as canvas, not specks. The wash is heavier where the scene is far from the linen's value (night skies), so gaps never pop as bright confetti.
 2. A broad underpainting pass: thin, opaque lay-in.
 3. A slab pass: big brush and palette-knife strokes, 7 to 28 units wide (most near 10), only in open regions (see `bs`). A slab shrinks until its region's colour is nearly flat across it, so fast gradients and halos get smaller slabs.
-4. A mid pass, thinned out on top of slabs so they stay visible; the gaps between slabs get the full count.
+4. A mid pass, thinned out on top of slabs so they stay visible; the gaps between slabs get the full count, and a mid stroke also lands wherever the canvas still misses the scene (rule 2 below).
 5. A fine detail pass, thinned out the same way.
 6. Edge strokes on the front side of region borders.
 7. Extra strokes inside small regions such as windows and stars.
-8. Lighting: raking light from the upper left over the height buffer. It gives diffuse shading of the relief, darker cavities in grooves, and an oily sheen on the ridges that is strongest on thick impasto; bare linen stays matte. The weave shows through thin paint, and a faint falloff runs across the whole canvas as in a photograph.
+8. Highlight dots, only on a region that asks for them (`paintOver(C,{dots:true})`).
+9. Lighting: raking light from the upper left over the height buffer. It gives diffuse shading of the relief, darker cavities in grooves, and an oily sheen on the ridges that is strongest on thick impasto; bare linen stays matte. The weave shows through thin paint, and a faint falloff runs across the whole canvas as in a photograph.
 
 Every pass is laid in painter's order, back to front by region, so a region's strokes land on top of every region listed before it. A stroke may overlap the soft 0.5-unit edge of a region in front of its own, but never paints across its core, so cables, masts and hangers stay unbroken. A stroke stops only where it would cross into a region *behind* its own (overhanging it by 2.2 units at most), so sky slabs run on under a bridge's hangers, which are painted over them later. The brush fits the subject: where a region is narrower than the brush (a cable, a hanger, a window), the stroke is centred across it, narrowed to its width and held straight along it, like a liner brush.
 
-Each stroke is a row of bristles, each with its own paint load, tone, share of a second nearby pigment, and lift-off point. Together they give streaky, imperfect mixing and ragged tails, some trailing past the end. Paint runs out along the stroke, so starved bristles skip and break up, catching the weave's high points first (dry brush). Toward the tail the brush drags the wet paint beneath it along. Lights are laid on thicker than darks, paint piles up along the stroke edges, and a blob marks where the brush touched down. A new stroke mostly flattens the texture under it. A palette-knife slab has no bristles: a flat plateau with faint drag streaks, one colour smeared into the other across it, a sharp raised ridge on the side the blade pushed paint to and a feathered edge on the other, thick where it lands and scraped thin toward a ridge where the knife lifts off, with ends cut at a slant. All of this is drawn from the texture seed, so `--tseed` changes the brushwork and never the composition.
+Each stroke is a row of bristles, each with its own paint load, tone, share of a second nearby pigment, and lift-off point. Together they give streaky, imperfect mixing and ragged tails, some trailing past the end. Paint runs out along the stroke, so starved bristles skip and break up, catching the weave's high points first (dry brush). Toward the tail the brush drags the wet paint beneath it along. Lights are laid on thicker than darks, paint piles up along the stroke edges, and a blob marks where the brush touched down. A new stroke flattens the texture under it, less so for the light touch of small strokes. A palette-knife slab has no bristles: a flat plateau with faint drag streaks, one colour smeared into the other across it, a sharp raised ridge on the side the blade pushed paint to and a feathered edge on the other, thick where it lands and scraped thin toward a ridge where the knife lifts off, with ends cut at a slant. All of this is drawn from the texture seed, so `--tseed` changes the brushwork and never the composition.
+
+The brushwork follows five painter's rules:
+
+1. **Mass drawing**: a brush sees the subject simplified to its own size. In a scene the regions are the masses. In paint-over each stroke takes its colour from the image simplified by an edge-preserving filter at the brush's scale, so big brushes see only big shapes. A stroke picks its second pigment only from its own mass, and deposits no paint where the image is clearly another colour. Image edges then act as region borders do in a scene. The thin underpainting is the exception: its soft lay-in keeps edges from looking cut out.
+2. **The largest brush that makes sense**: a smaller stroke lands only where the canvas still misses the scene at its scale (threshold `T`). This is judged on a logical model of the canvas that holds each stroke's intended colour, so the preview stays faithful and deliberate value variation is never 'repaired'. An edge within 1 to 2 units of its place counts as right, so small brushes don't hem every edge with a halo.
+3. **Broom to needle**: later, smaller strokes press lighter. They drag less of the wet paint beneath them and flatten less of its relief.
+4. **Thin paint in small brushes**: below 6 units wide, paint thickness scales down with the brush, so small strokes don't outline themselves under the raking light.
+5. **Value, not hue**: each stroke's colour varies in lightness only, so a flat grey stays grey instead of turning into green and pink confetti.
 
 **Paper cut** (`style:'papercut'`) lays each region down as one sheet of cut paper, back to front. The first region fills the whole canvas. Every later piece gets:
 
@@ -122,8 +132,11 @@ Each region is `{pts:[[x,y],...], dir, jit?, ...colour}`:
   - `roof` + `rx`: the two slopes of a roof.
   - `pine` + `tx`: drooping pine branches.
   - `swirl` + `cx,cy`: foliage.
+  - `fn` + `af(x,y)`: any angle function; `paintOver` uses it to follow the image's edges.
 - **`jit`** (paper cut only): the cut-edge jitter in units, overriding the automatic value.
 - **`bs`** (oil only): how open the region is, 0 to 1, which decides how many slabs it gets and how far the mid and fine strokes thin out over them. By default it comes from the region's size: 0 at about 6 units thick (2 x area / perimeter) and below, 1 at 30 and above, so skies, sea and broad hills get slabs and detail keeps small strokes. Set `bs:0` on a focal shape a slab would break, such as a sun or moon disc or a sign; `bs` .3 to .5 on water or a field for medium, choppy dabs; `bs:1` to slab a smaller region.
+- **`T`** (oil only): the error, 0 to 255, above which the mid and fine passes add a smaller stroke to fix the canvas (rule 2). The default is 16; lower it on a region whose detail gets lost, never below about 8, where small strokes start to hem its edges.
+- `cfs`, `bsf` and `hl` are set by `paintOver`. Don't write them by hand.
 - **The first region must cover the entire canvas**, usually the sky. It is the fallback for every pixel.
 
 ### Helpers
@@ -146,6 +159,7 @@ Each region is `{pts:[[x,y],...], dir, jit?, ...colour}`:
   - `t=0` is at screen `x0` at full size; `t=1` is at `x1`, where the depth is `Z` times greater.
   - It returns `{x(t), t(X), s(X), z(t)}`. `x(t)` places evenly spaced world points on screen, `t(X)` inverts it, and `s(X)` is the size scale at screen `X`.
   - Space posts, hangers or truss panels evenly in `t`. Scale their widths by `s`.
+- `paintOver(C,{detail=11,mass=.6,angle,dots=false})`: oil only. Returns the whole scene for a paint-over of the baked image (see **Paint-over**).
 
 Here is an example scene entry, a lighthouse cove at sunset for W = 711:
 
@@ -187,7 +201,7 @@ For paper cut, also:
 
 ### Reference photos
 
-When the user supplies a photo, take from it these things and nothing else:
+This section is for a new scene based on a photo. If the user wants the photo itself painted, use **Paint-over** instead. Take from the photo these things and nothing else:
 - the focal element and its position
 - the horizon height
 - the key silhouettes and landmark proportions
@@ -196,9 +210,28 @@ When the user supplies a photo, take from it these things and nothing else:
 
 Recompose for W instead of stretching: a 4:3 photo becomes a 16:9 wallpaper by widening the scene around the focal element, not by scaling it. Keep landmarks recognisable by their silhouettes, for example a bridge's tower shape, cable sag and deck angle. Leave out anything that won't read at paper-cut or brush scale.
 
+## Paint-over
+
+Oil-paints over the user's image instead of a scene. It uses the same engine, and follows its edges and masses.
+
+1. **Resolution**: if the user gives only a size class ("4K"), keep the whole image: use that width at the image's own aspect (3840 x 2761 for a 1196 x 860 image). State this in your first message and offer a 16:9 crop. If the user gives an exact resolution, use it. The image then covers the canvas at one scale, centred, and the overflow is cropped, never stretched.
+2. **Bake** the image after setup: `node src/bake.js <image>`. It writes `src/img.js`, capped at 1600 px on the long side, with transparency composited over white (`--bg=#hex` to change it). It fails with `image not found` on a bad path. Bake again whenever the image changes.
+3. **Scene**: write `src/scene.js` as exactly this, with nothing added to the region list:
+   ```js
+   const SCENES=[{ name:'<subject>-paintover', seed:1, build(C){ return paintOver(C,{detail:11}); } }];
+   ```
+   - `detail` (default 11) is how far the canvas may drift from the image before a smaller brush repairs it. 14 is looser, and 8 keeps more detail. Below 8, small strokes start to crowd the edges.
+   - `mass` (default .6) sets how simplified the big brushes' colours are. Raise it toward .8 for bolder masses.
+   - `angle` sets the stroke direction where the image is flat; by default it's the image's dominant edge direction. `dots:true` adds highlight dots, which can read as confetti.
+4. **Preview and review** as in the workflow below. Judge the looseness on the **full frame**, never on a crop alone: the busiest area (usually the face) stays readable long after the rest of the figure has dissolved.
+   - **An outline around small details or along edges**: raise `detail` toward 14.
+   - **The subject dissolves**: lower `detail` toward 8.
+   - **Facial features are lost**: expected at brush scale; eyes next to hair of a similar value merge into it. Offer a lower `detail` rather than adding a separate fine pass.
+5. Name the output `oil-<subject>-paintover-<width>x<height>.png`.
+
 ## Workflow, including the polishing loop
 
-1. Settle the style, the scene, the resolution and the number of variations, then compute W. Set up `src/` and `output/` (see **Project layout and setup**).
+1. Settle the style, the scene, the resolution and the number of variations, then compute W. Set up `src/` and `output/` (see **Project layout and setup**). For paint-over, do steps 1 to 3 of **Paint-over** here and in step 2.
 2. Write `src/scene.js`, one entry per wallpaper.
 3. Render a preview of each wallpaper at (s x W) by (s x 400) px, with s = 2 for landscape and s = 3 for portrait (for example 1422 x 800 for W = 711), into your scratchpad or temp directory. This keeps the same W, so the preview shows the composition and colours of the final render exactly; oil texture looks coarser in it (see **Coordinate system**). A paper-cut render takes under a second up to 4K and about 2 seconds at 8K. An oil render takes about 10 to 20 seconds at 4K, depending on the scene, and about 30 seconds at 8K.
 4. **Review each preview visually** with the Read tool. Fix what you see, re-render only the changed scenes, and review again. Repeat until clean.

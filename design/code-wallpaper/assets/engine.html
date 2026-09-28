@@ -1,9 +1,11 @@
 <!doctype html><html><body style="margin:0;background:#000">
 <canvas id="cv"></canvas>
 <script src="helpers.js"></script>
+<script src="img.js"></script><!-- paint-over only (bake.js writes it); absent otherwise, which is fine -->
 <script src="scene.js"></script>
 <script>
 'use strict';
+const EM=75; // paint-over mask: colour distance (sum over RGB) past which a stroke deposits no paint
 { // block scope, so scene.js can use any top-level names without clashing with the engine's
 const Q=new URLSearchParams(location.search);
 const PX=+Q.get('w')||3840, PY=+Q.get('h')||2160, H=400, W=Math.round(H*PX/PY), k=PX/W;
@@ -31,9 +33,10 @@ const inR=(r,x,y)=>{ const b=REG[r].box; return x>=b[0]&&x<=b[2]&&y>=b[1]&&y<=b[
 const GS=.5, GX=W/GS|0, GY=H/GS|0, ID=new Uint16Array(GX*GY);
 if(SC.style!=='papercut') for(let gy=0;gy<GY;gy++) for(let gx=0;gx<GX;gx++){ const x=(gx+.5)*GS, y=(gy+.5)*GS; let r=REG.length-1; while(r>0&&!inR(r,x,y)) r--; ID[gy*GX+gx]=r; }
 const gi=(x,y)=>clamp(Math.floor(y/GS),0,GY-1)*GX+clamp(Math.floor(x/GS),0,GX-1), idAt=(x,y)=>ID[gi(x,y)];
+const cdist=(a,b)=>Math.abs(a[0]-b[0])+Math.abs(a[1]-b[1])+Math.abs(a[2]-b[2]);
 const regCol=(r,x,y)=>r.cf?r.cf(x,y):r.grad?gradAt(r.grad,y):r.rgb, colorAt=(x,y)=>regCol(REG[idAt(x,y)],x,y);
 
-function angleAt(x,y,r){ const g=REG[r], d=g.dir||'horiz';
+function angleAt(x,y,r){ const g=REG[r], d=g.dir||'horiz'; if(d==='fn') return g.af(x,y); // fn: the region supplies af(x,y) (paint-over follows the image's edges)
   if(d==='sky') return .28*Math.sin(y*.045+x*.012)+.18*Math.sin(x*.03);
   if(d==='radial') return Math.atan2(y-g.cy,x-g.cx)+Math.PI/2;
   if(d==='ray') return Math.atan2(y-g.cy,x-g.cx);
@@ -50,6 +53,8 @@ function angleAt(x,y,r){ const g=REG[r], d=g.dir||'horiz';
 const sstep=(a,c,v)=>{ const t=clamp((v-a)/(c-a)); return t*t*(3-2*t); };
 // a stroke: centred on (x,y), clipped along its length where it meets a region behind its own (regions in front are painted later). rnd() draws are the same for every stroke and resolution,
 // so a preview places exactly the strokes the final render does. col2 is a second pigment from nearby in the same region (streaky, imperfect mix)
+// mass drawing (paint-over): a region with cfs(x,y,w) gives each brush its colour simplified to the brush's size, so big brushes see only big shapes
+const scol=(r,x,y,w)=>REG[r].cfs?REG[r].cfs(x,y,w):colorAt(x,y);
 function oilStroke(x,y,L,w,thick,dry=1,knife=false){ const r=idAt(x,y), tn=Math.min(1,(REG[r].thick/12)**2), a=angleAt(x,y,r)+rnd(-.3,.3)*tn, dx=Math.cos(a), dy=Math.sin(a), st=.5; let l0=0, l1=0;
   // a region narrower than the brush here (a cable, a hanger) gets a brush that fits: centred across it and no wider than it,
   // held straight along it (tn fades the tilt and bend out below ~12 units thick, as a liner brush follows a line)
@@ -59,10 +64,14 @@ function oilStroke(x,y,L,w,thick,dry=1,knife=false){ const r=idAt(x,y), tn=Math.
   // the length clip checks the stroke's sides too, so a tilted wide stroke stops before its corners cross into a region behind
   const hs2=Math.max(0,w/2-2.2), fits=t=>{ const px=x+dx*t, py=y+dy*t; return idAt(px,py)>=r&&(!hs2||idAt(px+dy*hs2,py-dx*hs2)>=r&&idAt(px-dy*hs2,py+dx*hs2)>=r); };
   while(l0<L/2&&fits(-l0-st)) l0+=st; while(l1<L/2&&fits(l1+st)) l1+=st;
-  const js=w>=7?.5:1, jit=c=>c.map(v=>clamp(v*(1+js*rnd(-.1,.1))+js*rnd(-8,8),0,255)), x2=clamp(x+rnd(-6,6),0,W-.01), y2=clamp(y+rnd(-6,6),0,H-.01), c0=colorAt(x,y), c2=colorAt(x2,y2);
-  const col=jit(c0), col2=jit(idAt(x2,y2)===r?c2:c0), lum=(.3*col[0]+.59*col[1]+.11*col[2])/255;
-  return {p0:[x-dx*l0,y-dy*l0],p1:[x+dx*l1,y+dy*l1],w:Math.min(w,1.2+(l0+l1)*.8),col,col2,dx,dy,bend:rnd(-.3,.3)*tn,id:R()*4294967296>>>0,
-    op:rnd(.85,1), depl:rnd(.1,.7)*(knife?.1:dry), wet:rnd(.1,.4), thick:thick*(.7+.6*lum), knife, r}; } // lights are laid on thicker (impasto); a knife lays its full load
+  const js=w>=7?.5:1, f=1+js*rnd(-.1,.1), dv=js*rnd(-8,8), jit=c=>c.map(v=>clamp(v*f+dv+js*rnd(-2.5,2.5),0,255)), // strokes vary in value, not hue: a flat grey stays grey, not green/pink confetti
+    x2=clamp(x+rnd(-1,1)*Math.min(6,1.5*w),0,W-.01), y2=clamp(y+rnd(-1,1)*Math.min(6,1.5*w),0,H-.01), c0=scol(r,x,y,w), c2=scol(idAt(x2,y2),x2,y2,w); // the second pigment comes from within the brush's reach
+  // the second pigment must come from the stroke's own mass: its own region, and in paint-over a colour near its own (else strokes blend across an edge)
+  const c2u=idAt(x2,y2)===r&&(!REG[r].cfs||cdist(c2,c0)<=60)?c2:c0, base=c0.map((v,i)=>.7*v+.3*c2u[i]);
+  const col=jit(c0), col2=jit(c2u), lum=(.3*col[0]+.59*col[1]+.11*col[2])/255;
+  const wf=Math.min(w,1.2+(l0+l1)*.8);
+  return {p0:[x-dx*l0,y-dy*l0],p1:[x+dx*l1,y+dy*l1],w:wf,col,col2,dx,dy,bend:rnd(-.3,.3)*tn,id:R()*4294967296>>>0,
+    op:rnd(.85,1), depl:rnd(.1,.7)*(knife?.1:dry), wet:rnd(.1,.4), thick:thick*(.7+.6*lum)*Math.min(1,wf/6)**.8, press:1, base, mk:REG[r].cfs?(X,Y)=>REG[r].cfs(X,Y,1.5):null, knife, r}; } // small brushes carry thinner paint, so their edges aren't steeper than a big brush's // lights are laid on thicker (impasto); a knife lays its full load
 
 const cv=document.getElementById('cv'); cv.width=PX; cv.height=PY; const b=cv.getContext('2d');
 b.setTransform(k,0,0,k,0,0);
@@ -124,36 +133,57 @@ function paint(s){ const {col,col2,dx,dy,w,id,knife}=s, nx=-dy, ny=dx, cap=knife
       const uc=u>1?1:u, ul=u*len/cap, half=w*.5*(ul<1?Math.sqrt(ul*(2-ul)):1)*(1-.12*sstep(.5,1.1,u)), vn=(rx*nx+ry*ny-bw*4*uc*(1-uc))/half;
       if(vn<=-1||vn>=1) continue;
       const x=(px+.5)/k, y=(py+.5)/k; if(idAt(x,y)>s.r&&idAt(x+.5,y)>s.r&&idAt(x-.5,y)>s.r&&idAt(x,y+.5)>s.r&&idAt(x,y-.5)>s.r) continue; // in front: only the edge margin may be overlapped
+      if(s.mk&&cdist(s.mk(x,y),s.base)>EM) continue; // paint-over: no paint where the image is clearly another colour, as a region border would stop it
       const bj=(vn+1)*.5*NB, j=bj|0, fb=bj-j, bs=BS[j]+t0*(vn>0?vn:0), be=BE[j]-t1*(vn<0?-vn:0); if(u<bs||u>be) continue;
       const ni=uc*(NS-2), i0=ni|0, f=ni-i0, nz=NZ[j*64+i0]*(1-f)+NZ[j*64+i0+1]*f, q=py*PX+px, hq=HT[q], m=BL[j]*(1-s.depl*rs*uc);
       const cov=sstep(.06,.3,m+(.5*(nz-.5)+.4*(WV[q]/255-.5)/(1+3*hq))*(1.1-m)); // a starved bristle skips; tooth only shows through thin paint
       const a=cov*s.op*clamp(Math.min((1-(vn<0?-vn:vn))*half*k,(be-u)*len*k,(u-bs)*len*k+.5)); if(a<.003) continue;
-      const t=BM[j], tn=1+.16*BT[j], pk=s.wet*uc, o=q*4; // wet-into-wet: toward the tail the brush drags the paint beneath along
+      const t=BM[j], tn=1+.16*BT[j], pk=s.wet*uc*s.press, o=q*4; // wet-into-wet: toward the tail the brush drags the paint beneath along
       for(let c=0;c<3;c++){ let pc=(col[c]+(col2[c]-col[c])*t)*tn; pc+=(D[o+c]-pc)*pk; D[o+c]+=(pc-D[o+c])*a; }
       // height: bristle ridges, paint shoved to the stroke's edges, a blob where the brush touched down; new paint half-flattens what's under it
       // edges and bristle tips slope off instead of ending in a cliff; new paint mostly flattens what's under it
       const av=vn<0?-vn:vn, g=.5+.5*Math.cos(TAU*fb), side=knife&&vn<0, th=s.thick*m*(knife?1.25-.6*uc:1)*((1+(side?.25:1)*rg*m*sstep(.45,.85,av))*BH[j]*(1-gd*g)+bb*(1-sstep(0,.12,u))+lr*sstep(.8,.98,u))*sstep(1,side?.6:ke,av)*sstep(0,te,be-u);
-      HT[q]=hq+(th-hq*.7)*a; if(a>.5) TW[q]=Math.min(255,Math.round(w*4)); } } }
+      HT[q]=hq+(th-hq*.7*s.press)*a; /* a light touch (press < 1) flattens less of the relief beneath */ if(a>.5) TW[q]=Math.min(255,Math.round(w*4)); } } }
 const A=W*H/(400*400);
 // painter's order: each pass is laid back to front, so a region's strokes land on everything behind it and nothing behind it lands on them
-let P=[]; const add=s=>P.push(s), lay=()=>{ P.sort((a,b)=>a.r-b.r).forEach(s=>{ paint(s); n++; }); P=[]; }; // stable sort: generation order within a region
-for(let i=0,N=Math.round(2400*A);i<N;i++) add(oilStroke(rnd(W),rnd(H),rnd(14,24),rnd(8,11),.35,.3)); lay();
+// foot: the logical grid cells a stroke's body covers. LC is a model of the canvas on that grid: each laid stroke stamps its colour, in painter's order.
+// It depends only on the scene, seeds and W, so the passes that consult it place the same strokes at every resolution (the preview stays faithful)
+const foot=(s,hw,f)=>{ const [ax,ay]=s.p0, [bx,by]=s.p1, L=Math.hypot(bx-ax,by-ay);
+  for(let gy=Math.max(0,Math.floor((Math.min(ay,by)-hw)/GS)),g1=Math.min(GY-1,Math.floor((Math.max(ay,by)+hw)/GS));gy<=g1;gy++)
+    for(let gx=Math.max(0,Math.floor((Math.min(ax,bx)-hw)/GS)),x1=Math.min(GX-1,Math.floor((Math.max(ax,bx)+hw)/GS));gx<=x1;gx++){ const x=(gx+.5)*GS-ax, y=(gy+.5)*GS-ay, u=x*s.dx+y*s.dy, v=y*s.dx-x*s.dy;
+      if(u>=0&&u<=L&&v>=-hw&&v<=hw) f(gy*GX+gx); } };
+// the model holds each stroke's intended colour (base, before its value jitter), so need() never 'repairs' deliberate variation; it honours the paint-over mask
+const LC=new Float32Array(GX*GY*3).fill(-1), stamp=s=>{ const c=s.base; foot(s,Math.max(.3,s.w*.4),i=>{ if(s.mk&&cdist(s.mk((i%GX+.5)*GS,((i/GX|0)+.5)*GS),c)>EM) return; LC[i*3]=c[0]; LC[i*3+1]=c[1]; LC[i*3+2]=c[2]; }); };
+// need: does the canvas still miss the scene here, at this brush's scale? Mean abs error (0..255) over a 3x3 patch, where each sample takes the best match
+// within t units of it: an edge a bigger brush put slightly off is left alone (else small brushes hem every edge with a halo), a missing shape still counts
+const need=(x,y,w,T)=>{ const r=REG[idAt(x,y)], d=w*.35, t=clamp(w*.5,1,2); let e=0;
+  for(let j=-1;j<=1;j++) for(let i=-1;i<=1;i++){ const sx=clamp(x+i*d,0,W-.01), sy=clamp(y+j*d,0,H-.01), q=gi(sx,sy)*3; if(LC[q]<0) return true; let m=1e9;
+    for(const [ox,oy] of [[0,0],[t,0],[-t,0],[0,t],[0,-t]]){ const X=clamp(sx+ox,0,W-.01), Y=clamp(sy+oy,0,H-.01), c=r.cfs?r.cfs(X,Y,w):colorAt(X,Y);
+      m=Math.min(m,Math.abs(LC[q]-c[0])+Math.abs(LC[q+1]-c[1])+Math.abs(LC[q+2]-c[2])); } e+=m; } return e/27>T; };
+const lt=(s,p)=>(s.press=p,s); // start with a broom, end with a needle: later, smaller strokes press lighter
+let P=[]; const add=s=>P.push(s), lay=()=>{ P.sort((a,b)=>a.r-b.r).forEach(s=>{ paint(s); stamp(s); n++; }); P=[]; }; // stable sort: generation order within a region
+// the underpainting is never masked: its soft, broken lay-in is what keeps paint-over edges from looking cut out
+for(let i=0,N=Math.round(2400*A);i<N;i++) add(Object.assign(oilStroke(rnd(W),rnd(H),rnd(14,24),rnd(8,11),.35,.3),{mk:null})); lay();
 // slabs: big brush and knife strokes where the region is open (sky, sea, broad hills). Sizes are heavy-tailed, 7..28 units, most near 10;
 // a slab shrinks until the region's own colour is near-flat across it, so gradients and halos get smaller strokes where they change fast
 // SL marks the logical grid cells a slab's body covers, so the later passes know where the slabs landed
-const SL=new Uint8Array(GX*GY), cover=s=>{ const [ax,ay]=s.p0, [bx,by]=s.p1, L=Math.hypot(bx-ax,by-ay), hw=s.w*.4;
-  for(let gy=Math.max(0,Math.floor((Math.min(ay,by)-hw)/GS)),g1=Math.min(GY-1,Math.floor((Math.max(ay,by)+hw)/GS));gy<=g1;gy++)
-    for(let gx=Math.max(0,Math.floor((Math.min(ax,bx)-hw)/GS)),x1=Math.min(GX-1,Math.floor((Math.max(ax,bx)+hw)/GS));gx<=x1;gx++){ const x=(gx+.5)*GS-ax, y=(gy+.5)*GS-ay, u=x*s.dx+y*s.dy, v=y*s.dx-x*s.dy;
-      if(u>=0&&u<=L&&v>=-hw&&v<=hw) SL[gy*GX+gx]=1; } };
+// bsf(x,y): a region's openness per point, so brush size can blend smoothly instead of switching at a region border (paint-over)
+const SL=new Uint8Array(GX*GY), cover=s=>foot(s,s.w*.4,i=>SL[i]=1), opn=(r,x,y)=>REG[r].bsf?REG[r].bsf(x,y):REG[r].open;
 for(let i=0,N=Math.round(1000*A);i<N;i++){ const x=rnd(W), y=rnd(H), r=idAt(x,y), g=R(), u=R(), kn=R(); let w=7*4**(u*u);
-  if(g>=REG[r].open) continue; const c=regCol(REG[r],x,y), far=(ox,oy)=>{ const d=regCol(REG[r],clamp(x+ox,0,W),clamp(y+oy,0,H)); return Math.max(...d.map((v,i)=>Math.abs(v-c[i]))); };
+  if(g>=opn(r,x,y)) continue; const c=regCol(REG[r],x,y), far=(ox,oy)=>{ const d=regCol(REG[r],clamp(x+ox,0,W),clamp(y+oy,0,H)); return Math.max(...d.map((v,i)=>Math.abs(v-c[i]))); };
   while(w>7&&Math.max(far(w/2,0),far(-w/2,0),far(0,w/2),far(0,-w/2))>26) w*=.8;
   const knife=w>=11&&kn<.45, st=oilStroke(x,y,w*(knife?rnd(1.2,2):rnd(1.6,2.6)),w,knife?1.1:.9,1,knife); add(st); cover(st); } lay();
-// mid and fine strokes thin out on top of slabs, so the slabs stay visible and the brushwork varies in size; the gaps between slabs get the full count
-for(let i=0,N=Math.round(5200*A);i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(g>=.85*SL[gi(x,y)]*REG[idAt(x,y)].open) add(oilStroke(x,y,rnd(7,12),rnd(3.5,5.5),.7)); } lay();
-for(let i=0,N=Math.round(3500*A);i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(g>=.9*SL[gi(x,y)]*REG[idAt(x,y)].open) add(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1)); } lay();
-let e=0, tries=0; const N3=Math.round(1050*A*1.4); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r>idAt(x+3,y)||r>idAt(x,y+3)||r>idAt(x-3,y)||r>idAt(x,y-3)){ add(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1)); e++; } } lay();
-REG.forEach((r,ri)=>{ if(r.area<900){ const m=r.area<30?12:40; for(let q=0;q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)===ri) add(oilStroke(x,y,rnd(2,6),r.area<30?rnd(.8,1.4):rnd(1.2,2),1.1)); } } }); lay();
+// mid and fine strokes thin out on top of slabs, so the slabs stay visible and the brushwork varies in size; the gaps between slabs get the full count.
+// Use the largest brush that makes sense: a smaller stroke also lands wherever the canvas still misses the scene at its scale (need, threshold T: region's T, else 16).
+// Paint-over (a region with cfs) places mid and fine strokes only there, from more candidates, so a big stroke that got it right is never painted over
+const PO=REG.some(r=>r.cfs), TA=(x,y)=>REG[idAt(x,y)].T??16;
+for(let i=0,N=Math.round(5200*A*(PO?1.4:1));i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(PO?need(x,y,4.5,TA(x,y)):g>=.85*SL[gi(x,y)]*opn(idAt(x,y),x,y)||need(x,y,4.5,TA(x,y))) add(lt(oilStroke(x,y,rnd(7,12),rnd(3.5,5.5),.7),.7)); } lay();
+for(let i=0,N=Math.round(3500*A*(PO?1.6:1));i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(PO?need(x,y,2.4,TA(x,y)):g>=.9*SL[gi(x,y)]*opn(idAt(x,y),x,y)||need(x,y,2.4,TA(x,y))) add(lt(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1),.5)); } lay();
+let e=0, tries=0; const N3=Math.round(1050*A*1.4); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r>idAt(x+3,y)||r>idAt(x,y+3)||r>idAt(x-3,y)||r>idAt(x,y-3)){ add(lt(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1),.5)); e++; } } lay();
+REG.forEach((r,ri)=>{ if(r.area<900){ const m=r.area<30?12:40; for(let q=0;q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)===ri) add(lt(oilStroke(x,y,rnd(2,6),r.area<30?rnd(.8,1.4):rnd(1.2,2),1.1),.4)); } } }); lay();
+// highlights as dots (opt-in, hl(x,y) on a region): a small thick dab of the true colour where the scene is much brighter than its surroundings
+REG.forEach((r,ri)=>{ if(r.hl) for(let q=0,m=Math.round(r.area*.25);q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)!==ri||!r.hl(x,y)) continue;
+  const st=oilStroke(x,y,rnd(.8,2),rnd(.9,1.5),1.6), c=colorAt(x,y); st.col=c; st.col2=c; add(lt(st,.2)); } }); lay();
 // light: raking from the upper left. Diffuse is linear in the slope, so bumps don't darken the scene on average. Specular only where
 // the paint is thick (bare linen and thin scumbles stay matte). The weave pushes up through thin paint. A faint falloff, as in a photo.
 const L0=-.5, L1=-.62, L2=.6, ll=Math.hypot(L0,L1,L2), lx=L0/ll, ly=L1/ll, lz=L2/ll, hl=Math.hypot(lx,ly,lz+1), hx=lx/hl, hy=ly/hl, hz=(lz+1)/hl, SPE=10, s0=hz**SPE;
@@ -172,6 +202,7 @@ for(let py=0;py<PY;py++){ const up=(py?py-1:0)*PX, dn=(py<PY-1?py+1:py)*PX, row=
     D[o]=D[o]*sh+sp; D[o+1]=D[o+1]*sh+sp*.97; D[o+2]=D[o+2]*sh+sp*.9; } }
 b.putImageData(img,0,0);
 // for tests: width (units) of the top-most stroke over the pixels of a box, optionally only where region r shows
+window.TWAT=(x,y)=>TW[Math.min(PY-1,Math.floor(y*k))*PX+Math.min(PX-1,Math.floor(x*k))]/4; // for tests: width (units) of the top-most stroke at a point
 window.VIS=(x0,y0,x1,y1,r)=>{ const v=[], L=[0,0,0,0]; for(let py=Math.round(y0*k);py<Math.round(y1*k);py++) for(let px=Math.round(x0*k);px<Math.round(x1*k);px++){ const q=py*PX+px, t=TW[q];
     if(t&&(r===undefined||idAt((px+.5)/k,(py+.5)/k)===r)){ v.push(t/4); const b=t>=48?0:2; L[b]+=.3*D[q*4]+.59*D[q*4+1]+.11*D[q*4+2]; L[b+1]++; } }
   v.sort((a,b)=>a-b); return {n:v.length, big:v.filter(w=>w>=12).length/(v.length||1), p90:v[Math.floor(v.length*.9)]||0, lumBig:L[0]/(L[1]||1), lumSmall:L[2]/(L[3]||1)}; };

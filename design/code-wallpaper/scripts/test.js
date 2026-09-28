@@ -3,7 +3,7 @@
 // usage: NODE_PATH=<dir containing playwright> node scripts/test.js
 const {chromium}=require('playwright'), fs=require('fs'), os=require('os'), path=require('path'), crypto=require('crypto'), {execFileSync}=require('child_process'), {pathToFileURL}=require('url');
 const ASSETS=path.join(__dirname,'..','assets'), T=fs.mkdtempSync(path.join(os.tmpdir(),'cw-test-'));
-for(const f of ['engine.html','render.js','helpers.js']) fs.copyFileSync(path.join(ASSETS,f),path.join(T,f));
+for(const f of ['engine.html','render.js','helpers.js','bake.js']) fs.copyFileSync(path.join(ASSETS,f),path.join(T,f));
 fs.writeFileSync(path.join(T,'scene.js'),`
 const SCENES=[
   { name:'t-paper', seed:11, style:'papercut', build(C){ const {W,H}=C, o=[]; window.BUILD=[];
@@ -30,6 +30,8 @@ const SCENES=[
   { name:'t-oil-comb', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),grad:[[0,'#35507a'],[400,'#c9a27a']],dir:'sky'},
     ...Array.from({length:21},(_,i)=>({pts:rect(299+i*14,40,301+i*14,300),col:'#c8402a',dir:'vert'}))]; } },
   { name:'t-oil-bs0', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),grad:[[0,'#335'],[400,'#a86']],dir:'sky'},{pts:rect(200,200,300,300),col:'#c33',bs:0}]; } },
+  { name:'t-paintover', seed:3, build(C){ return paintOver(C); } },                                                    // 7: needs img.js (baked below)
+  { name:'t-grey', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#888888',dir:'sky'},{pts:rect(200,150,300,250),col:'#888888',bs:0}]; } }, // 8: flat grey; square = small strokes only
 ];`);
 
 let fails=0; const ok=(name,cond,detail='')=>{ console.log((cond?'PASS ':'FAIL ')+name+(detail?'  ('+detail+')':'')); if(!cond) fails++; };
@@ -40,6 +42,16 @@ const render=async(br,q)=>{ const p=await br.newPage(); let err=null; p.on('page
   r.err=err; r.hash=hash(r.url||''); r.page=p; return r; };
 const cli=(args,env={})=>{ try{ return {out:execFileSync('node',[path.join(T,'render.js'),...args],{cwd:T,env:{...process.env,...env},stdio:['ignore','pipe','pipe']}).toString(),code:0}; }
   catch(e){ return {out:String(e.stdout)+String(e.stderr),code:e.status}; } };
+
+const bake=(args)=>{ try{ return {out:execFileSync('node',[path.join(T,'bake.js'),...args],{cwd:T,stdio:['ignore','pipe','pipe']}).toString(),code:0}; }
+  catch(e){ return {out:String(e.stdout)+String(e.stderr),code:e.status}; } };
+const readIMG=f=>require('vm').runInNewContext(fs.readFileSync(f,'utf8')+';IMG',{atob,Uint8Array});
+// draws an image in the browser with canvas code and saves it (png or jpeg)
+const mkimg=async(br,w,h,draw,file)=>{ const p=await br.newPage(); const u=await p.evaluate(([w,h,draw,t])=>{ const c=document.createElement('canvas'); c.width=w; c.height=h;
+  new Function('g','w','h',draw)(c.getContext('2d'),w,h); return c.toDataURL(t,.95); },[w,h,draw,/\.jpe?g$/.test(file)?'image/jpeg':'image/png']); fs.writeFileSync(file,Buffer.from(u.split(',')[1],'base64')); await p.close(); };
+// the paint-over reference: 4:3, light ground, a dark disc, a red diagonal band, a vertical gradient at the bottom
+const REF=`g.fillStyle='#d8d0c0'; g.fillRect(0,0,w,h); const gr=g.createLinearGradient(0,450,0,600); gr.addColorStop(0,'#d8d0c0'); gr.addColorStop(1,'#40506a'); g.fillStyle=gr; g.fillRect(0,450,w,150);
+  g.fillStyle='#b02828'; g.beginPath(); g.moveTo(480,0); g.lineTo(560,0); g.lineTo(800,300); g.lineTo(800,400); g.closePath(); g.fill(); g.fillStyle='#2a2226'; g.beginPath(); g.arc(300,300,90,0,7); g.fill();`;
 
 (async()=>{ const br=await chromium.launch().catch(()=>chromium.launch({channel:'chrome'}));
   const a=await render(br,'s=0&w=711&h=400&seed=11&tseed=1'), a2=await render(br,'s=0&w=711&h=400&seed=11&tseed=1'),
@@ -111,6 +123,50 @@ const cli=(args,env={})=>{ try{ return {out:execFileSync('node',[path.join(T,'re
   ok('helpers.js is loaded before scene.js',!hl.err&&hl.done>0,hl.err||'');
   const nan=await render(br,'s=3&w=711&h=400');
   ok('a non-finite point is reported, not silently dropped',/non-finite/.test(nan.err||''),nan.err||'no error');
+  ok('scenes render with no img.js present',!fs.existsSync(path.join(T,'img.js'))&&!oil.err&&!a.err);
+
+  // oil technique: stroke colour varies in value, not hue, so a flat grey stays grey (no green/pink confetti); small strokes carry thinner paint and don't glint more
+  const grey=await render(br,'s=8&w=3840&h=2160');
+  const gs=await grey.page.evaluate(()=>{ const cv=document.getElementById('cv'), k=cv.height/400, g=cv.getContext('2d');
+    const at=(x0,y0,w,h)=>{ const d=g.getImageData(Math.round(x0*k),Math.round(y0*k),Math.round(w*k),Math.round(h*k)).data; let n=0, s=0, s2=0, gl=0;
+      for(let i=0;i<d.length;i+=4){ const v=d[i]-d[i+1]; if(Math.abs(v)<30){ n++; s+=v; s2+=v*v; } if(Math.min(d[i],d[i+1],d[i+2])>205) gl++; } return {sd:Math.sqrt(s2/n-(s/n)**2), glint:gl/(d.length/4)}; };
+    return {open:at(400,100,200,200), square:at(205,155,90,90)}; });
+  ok('oil: a flat grey varies in value, not hue (sd of R-G <= 3.5)',gs.open.sd<=3.5,'sd '+gs.open.sd.toFixed(2));
+  ok('oil: small strokes do not glint more than big ones (<= 1.5x)',gs.square.glint<=1.5*gs.open.glint+.002,(gs.square.glint*100).toFixed(2)+'% vs '+(gs.open.glint*100).toFixed(2)+'%');
+
+  // paint-over: bake an image into img.js, then paint it
+  const rb=bake(['nope.png']);
+  ok('bake: a missing image fails with a clear message',rb.code!==0&&/not found/i.test(rb.out),rb.out.trim().split('\n').pop());
+  await mkimg(br,3000,2000,REF,path.join(T,'big.jpg'));
+  const rj=bake(['big.jpg']), IJ=rj.code===0&&readIMG(path.join(T,'img.js'));
+  ok('bake: a JPEG bakes, capped at 1600 px on the long side',IJ&&Math.max(IJ.w,IJ.h)===1600&&IJ.d.length===IJ.w*IJ.h*3,rj.out.trim());
+  await mkimg(br,100,100,`g.fillStyle='#000'; g.fillRect(50,0,50,100);`,path.join(T,'alpha.png'));
+  const ra=bake(['alpha.png']), IA=ra.code===0&&readIMG(path.join(T,'img.js'));
+  ok('bake: transparent pixels composite over white, not black',IA&&IA.d[(50*100+10)*3]>240&&IA.d[(50*100+90)*3]<15,ra.out.trim());
+  await mkimg(br,800,600,REF,path.join(T,'ref.png'));
+  ok('bake: PNG',bake(['ref.png']).code===0);
+  const po=await render(br,'s=7&w=1422&h=800'), po2=await render(br,'s=7&w=1422&h=800'), po3=await render(br,'s=7&w=1422&h=800&tseed=9');
+  ok('paint-over renders',!po.err&&po.done>1000,po.err||'strokes '+po.done);
+  ok('paint-over: deterministic, and tseed changes the brushwork',po.hash===po2.hash&&po.hash!==po3.hash);
+  // the 4:3 image covers the 16:9 canvas at one scale (cropped top and bottom): the disc stays round, centred at (266.7, 200), radius 80
+  const disc=await po.page.evaluate(()=>{ const cv=document.getElementById('cv'), k=cv.height/400, d=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data; let x0=1e9,x1=0,y0=1e9,y1=0;
+    for(let y=100;y<300;y+=.5) for(let x=150;x<380;x+=.5){ const i=((y*k|0)*cv.width+(x*k|0))*4; if(d[i]+d[i+1]+d[i+2]<200&&d[i]-d[i+2]<40){ x0=Math.min(x0,x); x1=Math.max(x1,x); y0=Math.min(y0,y); y1=Math.max(y1,y); } }
+    return {w:x1-x0, h:y1-y0, cx:(x0+x1)/2, cy:(y0+y1)/2}; });
+  ok('paint-over: a 4:3 image on 16:9 is cropped, not stretched (disc round, in place)',Math.abs(disc.w/disc.h-1)<=.1&&Math.abs(disc.cx-266.7)<=4&&Math.abs(disc.cy-200)<=4,
+    `${disc.w}x${disc.h} at ${disc.cx},${disc.cy}`);
+  const refCells=await po.page.evaluate(async src=>{ const im=new Image(); im.src=src; await im.decode(); const c=document.createElement('canvas'); c.width=704; c.height=400; const g=c.getContext('2d'), s=Math.max(711/800,400/600);
+    g.drawImage(im,(711-800*s)/2,(400-600*s)/2,800*s,600*s); const o=[]; for(let cy=0;cy<5;cy++) for(let cx=0;cx<8;cx++){ const d=g.getImageData(cx*88,cy*80,88,80).data, m=[0,0,0];
+      for(let i=0;i<d.length;i+=4) for(let q=0;q<3;q++) m[q]+=d[i+q]; o.push(m.map(v=>v/(d.length/4))); } return o; },'data:image/png;base64,'+fs.readFileSync(path.join(T,'ref.png')).toString('base64'));
+  const pA=await cells(po), po4=await render(br,'s=7&w=3840&h=2160'), pB=await cells(po4);
+  const fid=Math.max(...pA.map((a,i)=>Math.max(...a.map((v,c)=>Math.abs(v-refCells[i][c])))));
+  ok('paint-over: colours follow the image (cell means within 25)',fid<=25,'max '+fid.toFixed(1));
+  const pErr=Math.max(...pA.map((a,i)=>Math.max(...a.map((v,c)=>Math.abs(v-pB[i][c])))));
+  ok('paint-over: preview matches the 4K render cell by cell (max error <= 10)',pErr<=10,'max '+pErr.toFixed(1));
+  // no forced outline: the share of small strokes (< 3.2 wide, on top) in the band just outside the disc. Calibrated by eye: 27% drew a visible ridge of
+  // thin light strokes around the disc (and the hair in a real image); ~9% shows none. Some small strokes along a hard edge are normal brushwork
+  const halo=await po4.page.evaluate(()=>{ let b=0,nb=0,f=0,nf=0; for(let a=0;a<6.283;a+=.01) for(let r=81.5;r<=84.5;r+=.5){ nb++; if(window.TWAT(266.7+r*Math.cos(a),200+r*Math.sin(a))<3.2) b++; }
+    for(let y=20;y<100;y+=.5) for(let x=20;x<120;x+=.5){ nf++; if(window.TWAT(x,y)<3.2) f++; } return {band:b/nb, far:f/nf}; });
+  ok('paint-over: no band of small strokes along an edge (<= 12%, open ground for scale)',halo.band<=.12,(halo.band*100).toFixed(1)+'% vs '+(halo.far*100).toFixed(1)+'%');
   await br.close();
 
   // CLI: positional seed + crop still work, --crop-out picks the crop path, crops never land next to the output
