@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 Draw a landscape entirely in code and export it as a PNG at the size the user asks for, in one of two styles:
 
-- **Oil** (default): a stroke engine paints over the scene with thousands of directional brush strokes on a woven linen ground, from broad brush and palette-knife slabs in open areas down to liner strokes on thin detail. It then lights the paint's relief (bristle grooves, knife ridges, impasto, gloss) as if photographing a real canvas.
+- **Oil** (default): a stroke engine paints over the scene with directional brush strokes on a woven linen ground: long strokes where the subject flows (sky, water, hills), short ones only where there is detail, from broad brush slabs and a few palette-knife strokes in open areas down to liner strokes on thin detail. It then lights the paint's relief (bristle grooves, knife ridges, gloss) as if photographing a real canvas: thick impasto in the lights, thin paint in the darks.
 - **Paper cut**: every region becomes a sheet of cut paper with a rough edge and a soft drop shadow, stacked back to front.
 
 Both styles use the same scene, a list of flat-coloured polygons, rendered in headless Chromium through Playwright. **Paint-over** (oil only) replaces the scene with the user's own image: the same stroke engine paints over it (see **Paint-over**).
@@ -52,7 +52,7 @@ output/   finished wallpapers only
    mkdir -p src output && cp "${CLAUDE_SKILL_DIR}"/assets/{engine.html,render.js,helpers.js,bake.js} src/
    ```
    If `src/` already exists from an earlier run, copy the four files again (never overwrite `scene.js` or `img.js`), then delete any helper definitions that an older `scene.js` declares itself (see **Helpers**).
-2. Use `engine.html`, `render.js`, `helpers.js` and `bake.js` as they are. The one allowed edit is raising the oil stroke counts when the polishing loop says so.
+2. Use `engine.html`, `render.js`, `helpers.js` and `bake.js` as they are. The one allowed edit is raising the underpainting count when the polishing loop says so. Never raise the mid or fine counts: extra small strokes turn the canvas into a uniform field of dabs.
 3. Run renders from the working folder: `NODE_PATH=$(npm root -g) node src/render.js 0 3840 2160 output/<name>.png`.
    - `Cannot find module 'playwright'`: run `(cd src && npm i playwright)` and retry without `NODE_PATH`.
    - `render.js` launches Playwright's bundled Chromium and falls back to the installed Google Chrome by itself. Run `npx playwright install chromium` only when both fail, and not when `PLAYWRIGHT_BROWSERS_PATH` is set (browsers are preinstalled there, as in Claude Code on the web, so the error is something else).
@@ -76,9 +76,9 @@ node src/render.js <scene_index> <width> <height> <out.png|out.jpg> [seed] [crop
 
 1. A linen ground: an irregular plain weave (uneven threads, slubs, wavy paths), stained with a thin wash of the scene's colour so gaps between strokes read as canvas, not specks. The wash is heavier where the scene is far from the linen's value (night skies), so gaps never pop as bright confetti.
 2. A broad underpainting pass: thin, opaque lay-in.
-3. A slab pass: big brush and palette-knife strokes, 7 to 28 units wide (most near 10), only in open regions (see `bs`). A slab shrinks until its region's colour is nearly flat across it, so fast gradients and halos get smaller slabs.
-4. A mid pass, thinned out on top of slabs so they stay visible; the gaps between slabs get the full count, and a mid stroke also lands wherever the canvas still misses the scene (rule 2 below).
-5. A fine detail pass, thinned out the same way.
+3. A slab pass: big brush strokes 7 to 28 units wide (most near 10), only in open regions (see `bs`), with an occasional palette-knife slab on the widest. A slab shrinks until its region's colour is nearly flat across it, so fast gradients and halos get smaller slabs.
+4. A mid pass: a stroke lands where the canvas still misses the scene (rule 2 below), plus a small random share in detail regions only. Open regions get none beyond what rule 2 asks for.
+5. A fine detail pass, gated the same way with a smaller random share.
 6. Edge strokes on the front side of region borders.
 7. Extra strokes inside small regions such as windows and stars.
 8. Highlight dots, only on a region that asks for them (`paintOver(C,{dots:true})`).
@@ -86,15 +86,16 @@ node src/render.js <scene_index> <width> <height> <out.png|out.jpg> [seed] [crop
 
 Every pass is laid in painter's order, back to front by region, so a region's strokes land on top of every region listed before it. A stroke may overlap the soft 0.5-unit edge of a region in front of its own, but never paints across its core, so cables, masts and hangers stay unbroken. A stroke stops only where it would cross into a region *behind* its own (overhanging it by 2.2 units at most), so sky slabs run on under a bridge's hangers, which are painted over them later. The brush fits the subject: where a region is narrower than the brush (a cable, a hanger, a window), the stroke is centred across it, narrowed to its width and held straight along it, like a liner brush.
 
-Each stroke is a row of bristles, each with its own paint load, tone, share of a second nearby pigment, and lift-off point. Together they give streaky, imperfect mixing and ragged tails, some trailing past the end. Paint runs out along the stroke, so starved bristles skip and break up, catching the weave's high points first (dry brush). Toward the tail the brush drags the wet paint beneath it along. Lights are laid on thicker than darks, paint piles up along the stroke edges, and a blob marks where the brush touched down. A new stroke flattens the texture under it, less so for the light touch of small strokes. A palette-knife slab has no bristles: a flat plateau with faint drag streaks, one colour smeared into the other across it, a sharp raised ridge on the side the blade pushed paint to and a feathered edge on the other, thick where it lands and scraped thin toward a ridge where the knife lifts off, with ends cut at a slant. All of this is drawn from the texture seed, so `--tseed` changes the brushwork and never the composition.
+Each stroke is a row of bristles, each with its own paint load, tone, share of a second nearby pigment, and lift-off point. Together they give streaky, imperfect mixing and ragged tails, some trailing past the end. Paint runs out along the stroke, so starved bristles skip and break up, catching the weave's high points first (dry brush). Toward the tail the brush drags the wet paint beneath it along. Lights are laid on thicker than darks, and darks go on thin enough that the weave shows through; paint piles up along the stroke edges, and a faint blob marks where the brush touched down. A new stroke flattens the texture under it, less so for the light touch of small strokes. A palette-knife slab has no bristles: a flat plateau with faint drag streaks, one colour smeared into the other across it, a sharp raised ridge on the side the blade pushed paint to and a feathered edge on the other, thick where it lands and scraped thin toward a ridge where the knife lifts off, with ends cut at a slant. All of this is drawn from the texture seed, so `--tseed` changes the brushwork and never the composition.
 
-The brushwork follows five painter's rules:
+The brushwork follows six painter's rules:
 
 1. **Mass drawing**: a brush sees the subject simplified to its own size. In a scene the regions are the masses. In paint-over each stroke takes its colour from the image simplified by an edge-preserving filter at the brush's scale, so big brushes see only big shapes. A stroke picks its second pigment only from its own mass, and deposits no paint where the image is clearly another colour. Image edges then act as region borders do in a scene. The thin underpainting is the exception: its soft lay-in keeps edges from looking cut out.
 2. **The largest brush that makes sense**: a smaller stroke lands only where the canvas still misses the scene at its scale (threshold `T`). This is judged on a logical model of the canvas that holds each stroke's intended colour, so the preview stays faithful and deliberate value variation is never 'repaired'. An edge within 1 to 2 units of its place counts as right, so small brushes don't hem every edge with a halo.
 3. **Broom to needle**: later, smaller strokes press lighter. They drag less of the wet paint beneath them and flatten less of its relief.
 4. **Thin paint in small brushes**: below 6 units wide, paint thickness scales down with the brush, so small strokes don't outline themselves under the raking light.
-5. **Value, not hue**: each stroke's colour varies in lightness only, so a flat grey stays grey instead of turning into green and pink confetti.
+5. **Value, not hue**: each stroke's colour varies in lightness only, and only slightly, so neighbouring strokes merge and a flat grey stays grey instead of turning into green and pink confetti.
+6. **Strokes follow the form**: stroke length depends on `dir`. `sky`, `horiz`, `hill` and `ray` strokes run about twice as long as `swirl` or `pine` strokes, and long strokes keep close to the flow direction. Short dabs belong to foliage and detail only.
 
 **Paper cut** (`style:'papercut'`) lays each region down as one sheet of cut paper, back to front. The first region fills the whole canvas. Every later piece gets:
 
@@ -237,7 +238,7 @@ Oil-paints over the user's image instead of a scene. It uses the same engine, an
 4. **Review each preview visually** with the Read tool. Fix what you see, re-render only the changed scenes, and review again. Repeat until clean.
    - When the scene has pieces under about 3 units wide, render a 1:1 crop during this loop, not only at the end. Thin pieces look fine in the preview even when their cut edges pinch at full size. For example, `node src/render.js 0 3840 2160 <scratch>/full.png '' 150,170,240,135`, then Read the crop path it prints.
    - These are the problems found in earlier runs:
-     - **(Oil) Linen showing through**: weave inside thin paint and small stained-canvas gaps between strokes are intended; they are part of the real-paint look. Only contrasting flecks spread across a whole region at wallpaper scale are a problem: coverage is too thin there. Raise the underpainting count (2400 x A), and the mid count (5200 x A) for detail regions or the slab count (1000 x A) for open ones. Do not lower them.
+     - **(Oil) Linen showing through**: weave inside thin paint and small stained-canvas gaps between strokes are intended; they are part of the real-paint look. Weave in darks is intended too. Only contrasting flecks spread across a whole region at wallpaper scale are a problem: coverage is too thin there. Raise the underpainting count (1500 x A), or lower `T` on that region so rule 2 adds strokes where they are missing. Do not raise the mid or fine counts.
      - **Glow halos around small objects** (for example, glows behind houses looked like snowballs): drop the glow or make it much weaker. Only large light sources should get `glowCF` halos.
      - **Stripes that look like stairs**: evenly spaced, full-width ledges or strata look artificial. Use 3 or 4 short strata at irregular spacing, in a colour close to the base.
      - **Unreadable blobs**, such as a dark polygon on a cliff face, debris-like slivers on water, or a tiny mast that reads as a cross: remove them or make their meaning clear.
@@ -246,6 +247,7 @@ Oil-paints over the user's image instead of a scene. It uses the same engine, an
      - **(Oil) Elements lost in the texture**, such as hay bales: add a darker shadow region offset beneath them for contrast.
      - **(Oil) A slab breaks a focal shape** (a dark streak across the moon, a sun disc cut in two): set `bs:0` on that region.
      - **(Oil) Brushwork too blocky or too even**: water that reads as tiles wants `bs` .3 to .5; a region that should carry big strokes but shows only small dabs wants `bs:1`.
+     - **(Oil) A carpet of short strokes** (the whole region covered in same-sized dabs with visible rims): check that the region's `dir` is a flow direction (`sky`, `horiz` or `hill`, not `swirl`) and that `bs` isn't set low. Then raise `T` toward 20 rather than adding strokes.
      - **(Oil) Regions too thin to paint**: a region keeps an unbroken core only if it is wider than about 1.5 logical units, because the region map is a 0.5-unit grid and strokes from behind may overlap 0.5 units of its edge. Widen anything thinner. List order is paint order, so a thin region must also come after everything it crosses.
      - **(Paper cut) Ghostly ring around the sun**: a `glowCF` halo. Replace it with flat concentric discs.
      - **(Paper cut) Bands that merge**: two neighbouring pieces too close in value. Lighten the farther one or darken the nearer one.
