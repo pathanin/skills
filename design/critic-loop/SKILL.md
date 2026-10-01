@@ -23,7 +23,7 @@ Read the goal and the stop condition from the invocation. Accept flags or plain 
 
 | Setting | Flag | Default | Valid |
 | --- | --- | --- | --- |
-| Score floor (scored critics only) | `--min-score N` | `7` | integer 0 to 10 |
+| Score floor (scored critics only) | `--min-score N` | `8` | integer 0 to 10 |
 | Round cap | `--max-rounds M` | `3` | integer, 1 or more |
 | Critics | `--critics a,b,...` | `brief,consistency,craft` | one or more names |
 
@@ -99,6 +99,8 @@ Scores drift upward when a critic grades against its own last score. These are t
   - 2: misses the goal or is broken
 
   The anchors used to be written against "a demanding expert". Such an expert can always name a change, so craft never scored above 7 in testing. If craft still never clears 7 on good work, its score carries no signal, so make it pass/fail.
+
+  The default floor is 8 because the rubric defines 8 as "ships as is". A floor of 7 accepts work that the critic itself says has a gap to fix before shipping.
 - Blocking issues are listed separately from the score, and any blocking issue fails the critic whatever its score.
 - Critics apply their blocking rule strictly. Praise is not useful.
 
@@ -132,7 +134,7 @@ On hitting the cap, report:
 
 - **`context.md` is wrong, ambiguous, or contradicts itself.** The consistency critic is enforcing a convention the project does not actually follow, one it reads differently each round, or two that conflict. Fix `context.md`.
 - **The fix is outside the builder's medium.** It needs an asset or a tool it was not given. Change the builder's inputs.
-- **The floor is above what the critic will give.** The critic lists no blocking issues but stays at 6 every round against a floor of 7. Say so; the user may lower the floor or accept the result.
+- **The floor is above what the critic will give.** The critic lists no blocking issues but stays at 7 every round against a floor of 8. Say so; the user may lower the floor or accept the result.
 
 Say which one you think it is. Raising the round cap is almost never the fix.
 
