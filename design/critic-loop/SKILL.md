@@ -31,7 +31,11 @@ The stop condition: **no critic reports a blocking issue, and every scored criti
 
 Reject invalid values with the valid range and ask again. Do not round or clamp them. Warn once if M is above 5, because each round costs one builder and every critic, and a gap that survives five rounds is rarely closed by a sixth. Ask only if the goal is missing. Everything else has a default.
 
-Echo the resolved config in one line before going on: goal, floor, cap, critics.
+Pass the goal to the workflow as the user's words with the flags removed.
+
+When the goal leaves a choice open, do not ask about it. Examples: which error type to raise, an ordering nobody stated, or whether one check also covers another. Pick nothing yourself. List each one as an **open choice** in the brief critic's brief. The brief critic never blocks on an open choice, whichever way the builder goes.
+
+Echo the resolved config in one line before going on: goal, floor, cap, critics. Then list the open choices, if any.
 
 ## 2. Context
 
@@ -43,18 +47,18 @@ Write conventions as checkable lines with the file they came from. An adjective 
 - not "matches the existing UI", but "buttons are `<Button variant>` from `src/ui/Button.tsx`, never a bare `<button>`"
 - not "same tone as the docs", but "docs use second person and imperative headings (`docs/guide.md`)"
 
-State every exception exactly. "No px except 1px borders" leaves open whether a 1px `box-shadow` ring counts, and a strict critic then decides differently each round. Write "only `border` may use 1px" instead. Only write what the project actually does. A convention you inferred from one file is a guess, so say so on that line or leave it out. Scope follows the goal: list the conventions that the thing being built will touch, not the whole codebase.
+State every exception exactly. "No px except 1px borders" leaves open whether a 1px `box-shadow` ring counts, and a strict critic then decides differently each round. Write "only `border` may use 1px" instead. Only write what the project's code actually does. A docs promise the code already breaks is not a convention. For example, if a docstring says every error is a `LedgerError` but an existing method leaks a `TypeError`, either leave the line out or narrow it to what is true. A convention you inferred from a single file is a guess. Prefix it with `[inferred]`, and the consistency critic treats a breach of it as a gap, never a blocker. Scope follows the goal: list the conventions that the thing being built will touch, not the whole codebase.
 
 **Empty project:** if there is nothing to be consistent with, skip `context.md`, drop the consistency critic, and say the build is greenfield from the request. Do not invent conventions to fill the gap. A consistency critic grading against made-up rules is grading noise.
 
-Show `context.md` in one short block and continue. Do not wait for approval unless the user asked to review it.
+Show `context.md` in one block and continue. Do not wait for approval unless the user asked to review it.
 
 ## 3. Preflight
 
 A check, not a question. Report it in one block:
 
-- Confirm you can render the output: screenshots for UI, a filmstrip for motion, a PDF render for a document, the actual run output for a CLI or API. Capture a component at its own bounds, not inside a full-page shot. Without a render the craft critic goes blind.
-- Record the starting commit (`git rev-parse HEAD`) as the diff base for the consistency critic, and note whether the tree was already dirty. With no git repo, or a repo with no commits yet (`rev-parse` fails), pass an empty base, and the critic reads the files the builder lists instead.
+- Confirm you can render the output: screenshots for UI, a filmstrip for motion, a PDF render for a document, the actual run output for a CLI. For a library or API, its render is its behaviour when called. That means the test-suite output, the public surface (signatures and `help()`), and probe scripts each critic writes and runs outside the project. The test files themselves are code, so the craft critic does not read them. Capture a component at its own bounds, not inside a full-page shot. Without a render the craft critic goes blind.
+- Record the starting commit (`git rev-parse HEAD`) as the diff base for the consistency critic, and note whether the tree was already dirty. If it was, pass `git status --porcelain` and a line on what the user changed as `dirty`. The builder then leaves those changes alone and does not commit them, and every critic ignores them. With no git repo, or a repo with no commits yet (`rev-parse` fails), pass an empty base, and the critic reads the files the builder lists instead.
 - Name any generation tools the goal needs (image, voice, video) and confirm they are connected.
 
 Print what works, what is missing, and **which critic goes blind**. Drop a blind critic and say so. Never run it on a guess. If every critic would be dropped, stop and tell the user. A loop with no one judging is a single build.
@@ -71,12 +75,12 @@ Run this as a workflow. Invoking `/critic-loop` is itself the opt-in that author
 
 ### Critics
 
-Write each critic's brief for this run. "Does it do the job" means something different for an animation than for a settings page, so do not reuse generic wording across goals.
+Write each critic's brief for this run. The script already tells every critic not to touch the project, so briefs need not repeat it. "Does it do the job" means something different for an animation than for a settings page, so do not reuse generic wording across goals.
 
 | Critic | Blocking means | Verdict | Sees | Model | Why |
 | --- | --- | --- | --- | --- | --- |
 | **Brief** | A stated requirement is not met. Anything the request did not ask for is never blocking. | pass/fail | rendered output | `sonnet` | Simple judgment |
-| **Consistency** | A line of `context.md` is clearly broken. Any listed line, however small, is always blocking. Anything not listed is never blocking. If the critic has to interpret a line to decide, it is a gap. | pass/fail | rendered output **and the diff** | `sonnet` | Reusing a component, token, or pattern is a property of the code, so this is the one critic allowed to read it |
+| **Consistency** | The change clearly breaks a line of `context.md`. Any listed line, however small, is always blocking. Anything not listed is never blocking, and neither is an `[inferred]` line, a line the critic has to interpret, or a breach already present at the starting commit that the change does not add to. | pass/fail | rendered output **and the diff** | `sonnet` | Reusing a component, token, or pattern is a property of the code, so this is the one critic allowed to read it |
 | **Craft** | A defect a user would actually hit on realistic use for this goal, shown with evidence. Contrived edge cases, taste, and polish are gaps, not blocking. | scored | rendered output only, never code | `opus` | **Never downgrade.** A cheap craft critic passes everything and the loop ends on round one. |
 
 The blocking rule is what makes the loop converge. With one shared rule ("anything an expert would reject"), a fresh craft critic found new blockers in every round of every test run, and the loop never passed on work that was objectively fine.
