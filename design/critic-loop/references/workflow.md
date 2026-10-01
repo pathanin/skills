@@ -8,7 +8,7 @@ When you fan out by hand, the skill's rules are things to remember. In a script 
 
 - **Every critic must pass.** `!silent.length && !failing.length` is arithmetic. Nothing talks itself into stopping on two out of three, and a critic that never reported fails closed.
 - **A blocking issue beats a score.** `pass` is computed in the script from `score >= MIN_SCORE && !blocking.length`. A critic cannot return a pass that contradicts its own blocking list.
-- **Critics judge cold.** Each critic is a separate `agent()` call, and its prompt never includes earlier scores or history. With no channel to see its own last score, it cannot anchor on it.
+- **Critics judge cold.** Each critic is a separate `agent()` call. Its prompt never includes earlier scores, history, or the builder's summary, which by round 2 reads "fixed what the critic raised". Critics get only the files touched and how to render them. With no channel to its last score, a critic cannot anchor on it.
 - **The loop is bounded.** `MAX_ROUNDS` comes from the user. The budget guard stops a round that cannot be paid to finish.
 
 Invoking `/critic-loop` is itself the opt-in that authorizes calling Workflow. Say so when you launch it.
@@ -31,13 +31,15 @@ Pass everything in via `args`. Do not have agents re-read files you already have
     // one per critic that survived preflight; `brief` is the per-run brief you wrote
     { name: 'brief', brief: '...', model: 'sonnet' },
     { name: 'consistency', brief: '...', model: 'sonnet', readsCode: true },
+    // extra lenses: { name: 'perf', brief: '...', model: 'sonnet', readsCode: true }
     { name: 'craft', brief: '...', model: 'opus', effort: 'high' },
   ],
   render: 'how to render the output: command, URL, viewport, crop, frames',
+  base: '<git rev-parse HEAD from preflight, or empty string if not a repo>',
 }
 ```
 
-Every text field is a string. If you interpolate an array into a prompt, it is silently comma-joined.
+`minScore` and `maxRounds` default to 8 and 3 if left out. Every text field is a string. If you interpolate an array into a prompt, it is silently comma-joined.
 
 ## Script
 
@@ -65,6 +67,16 @@ const VERDICT = {
   required: ['score', 'blocking', 'biggest_gap'],
 }
 
+const BUILD = {
+  type: 'object',
+  properties: {
+    summary: { type: 'string', description: 'what you built or changed this round and why; only you see this' },
+    files: { type: 'array', items: { type: 'string' }, description: 'every file created or modified, repo-relative' },
+    render: { type: 'string', description: 'how to see the result now, if it differs from the standing instructions' },
+  },
+  required: ['summary', 'files', 'render'],
+}
+
 const RUBRIC =
   `Score on this rubric, not on effort or improvement:\n` +
   `10 nothing a demanding expert would change\n8 shippable, only nits left\n` +
@@ -72,16 +84,16 @@ const RUBRIC =
   `List every blocking issue: anything an expert would reject the work for. A high score does not ` +
   `excuse a blocking issue. List it anyway. Be harsh; praise is not useful.`
 
-const { goal, context, critics, render } = args
-const MIN_SCORE = args.minScore
-const MAX_ROUNDS = args.maxRounds
+const { goal, context, critics, render, base } = args
+const MIN_SCORE = args.minScore ?? 8
+const MAX_ROUNDS = args.maxRounds ?? 3
 const FLOOR = 60_000   // do not start a round we cannot afford to finish
 
 // Feedback order: if it does not do the job, nothing else matters yet; craft comes last.
 const rank = name => name === 'brief' ? 0 : name === 'consistency' ? 1 : name === 'craft' ? 3 : 2
 
 const history = []      // per round: { round, verdicts: [{critic, score, blocking, gap}], silent }
-let report = ''         // builder's last report: what it built, files touched, how to render
+let build = null        // builder's last BUILD; critics get .files and .render, never .summary
 let feedback = ''
 let passed = false
 
@@ -91,30 +103,37 @@ for (let round = 1; round <= MAX_ROUNDS; round++) {
     break
   }
 
-  // 1. Build. Works in place; only the critics' feedback and its own last report come back to it.
-  report = await agent(
+  // 1. Build. Works in place; only the critics' feedback and its own last summary come back to it.
+  const next = await agent(
     `Goal: ${goal}\nRound ${round} of at most ${MAX_ROUNDS}.\n\n` +
     (context
       ? `Stay consistent with this project. These conventions were read from the codebase. ` +
         `Reuse what exists before adding anything new:\n${context}`
       : `The project is empty. Build from the request alone and choose conventions deliberately.`) +
-    (report ? `\n\nYour report from last round:\n${report}` : '') +
+    (build ? `\n\nYour summary from last round:\n${build.summary}` : '') +
     (feedback ? `\n\nCritics' feedback, highest priority first. Fix the blocking issues in order, then the gaps:\n${feedback}` : '') +
-    `\n\nReturn a short report: what you built or changed, the files touched, and how to render it. ` +
+    `\n\nLeave your changes uncommitted in the working tree; the critics diff against the starting commit. ` +
     `Do not argue with the feedback or grade your own work.`,
-    { label: `build r${round}`, phase: 'Build' }
-  ) || report
+    { label: `build r${round}`, phase: 'Build', schema: BUILD }
+  )
+  if (!next) log(`builder returned nothing in round ${round}; critics re-judge the previous state`)
+  build = next || build
+  const files = build ? build.files.join('\n') : '(unknown)'
+  const howToRender = render + (build && build.render ? `\n${build.render}` : '')
 
-  // 2. Critique. Each critic gets the goal, its brief, and how to see the output. It never gets history.
+  // 2. Critique. Each critic gets the goal, its brief, the files, and how to see the output. Never history.
   const verdicts = await parallel(critics.map(c => () => agent(
     `${c.brief}\n\nThe goal was: ${goal}\n\n` +
+    (c.name === 'consistency'
+      ? `Judge against these project conventions, and only these. A convention the project does not ` +
+        `state is not a blocking issue:\n${context}\n\n`
+      : '') +
     (c.readsCode
-      ? `Judge against these project conventions, and only these:\n${context}\n\n` +
-        `Read the diff (git diff, plus untracked files) and the rendered output. A convention ` +
-        `the project does not state is not a blocking issue.\n\n`
+      ? `Read the change (${base ? `git diff ${base} -- <files>` : 'the files'}, plus any of them that are ` +
+        `untracked) and the rendered output.\n\n`
       : `Judge the rendered result, never the code. Reading the implementation makes you grade intent ` +
         `instead of what actually came out.\n\n`) +
-    `How to render it: ${render}\n\nBuilder's report (for locating files, not evidence of quality):\n${report}\n\n${RUBRIC}`,
+    `Files changed:\n${files}\n\nHow to render it: ${howToRender}\n\n${RUBRIC}`,
     { label: `${c.name} r${round}`, phase: 'Critique', model: c.model, effort: c.effort, schema: VERDICT }
   )))
 
@@ -161,7 +180,8 @@ return {
   silent: last ? last.silent : [],
   scores: critics.map(c => ({ critic: c.name, by_round: history.map(h => h.verdicts.find(v => v.critic === c.name)?.score ?? null) })),
   recurring,
-  report,
+  files: build ? build.files : [],
+  summary: build ? build.summary : '',
 }
 ```
 
@@ -171,7 +191,9 @@ return {
 - **Never pipe `history` into a critic prompt.** That is the drift channel. A critic that sees "you gave 7 last round" gives 8 this round for the same work.
 - **`minScore: 0` is blocking-only mode.** Every score is at least 0, so only the blocking lists decide. That is intended, not a bug.
 - **An empty `blocking` array with a low score is still a fail.** The builder gets `biggest_gap` for that critic instead. If it plateaus there round after round, the floor may be above what the critic will award. Report that rather than raising the cap.
-- **Only the consistency critic reads code** (`readsCode: true`). Give it to craft and craft grades intent instead of result.
+- **`readsCode` and the conventions block are separate.** Only the critic named `consistency` gets `context`; `readsCode` only decides whether a critic may see the diff. Consistency always reads code, an extra lens like `perf` may, and craft never does, because it would grade intent instead of result.
+- **The builder's `summary` never reaches a critic.** From round 2 on it describes the previous round's feedback, which is exactly the history critics must not see. Critics get `files` and `render` only.
+- **Diff against `base`, not the working tree.** The builder may commit despite being told not to (a CLAUDE.md can ask for checkpoint commits), which would leave a bare `git diff` empty. A tree that was dirty before the run would mix the user's own changes in. `git diff <base> -- <files>` handles both. Record `base` in preflight.
 - **Greenfield drops consistency.** With `context` empty, leave the consistency critic out of `critics` entirely. Do not pass it an empty convention list and hope it abstains.
 - **Render at the output's real size.** Chrome's `--screenshot` captures full page height, not `--window-size`. Crop to the viewport or to the component's own bounds. For an interaction, capture frames across the transition, not one settled state.
 - **The builder works in place, without `isolation: 'worktree'`.** There is one builder and the critics need to see its work on disk.

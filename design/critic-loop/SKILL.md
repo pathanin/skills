@@ -53,7 +53,7 @@ Show `context.md` in one short block and continue. Do not wait for approval unle
 A check, not a question. Report it in one block:
 
 - Confirm you can render the output: screenshots for UI, a filmstrip for motion, a PDF render for a document, the actual run output for a CLI or API. Capture a component at its own bounds, not inside a full-page shot. Without a render the craft critic goes blind.
-- Confirm a git repo exists, or another way to show the consistency critic exactly what changed.
+- Record the starting commit (`git rev-parse HEAD`) as the diff base for the consistency critic, and note whether the tree was already dirty. With no git repo, the critic reads the files the builder lists instead.
 - Name any generation tools the goal needs (image, voice, video) and confirm they are connected.
 
 Print what works, what is missing, and **which critic goes blind**. Drop a blind critic and say so. Never run it on a guess. If every critic would be dropped, stop and tell the user. A loop with no one judging is a single build.
@@ -84,7 +84,7 @@ Any other name in `--critics` (for example `a11y`, `perf`, `copy`) becomes an ex
 
 Scores drift upward when a critic grades against its own last score. These are the countermeasures, and the script enforces all of them:
 
-- Critics never see earlier rounds: no prior scores, no gap history, no builder reasoning. Each round is judged cold.
+- Critics never see earlier rounds: no prior scores, no gap history, no builder summary. They get the files changed and how to render them. Each round is judged cold.
 - One anchored rubric for every critic:
   - 10: nothing a demanding expert would change
   - 8: shippable, only nits left
@@ -96,7 +96,7 @@ Scores drift upward when a critic grades against its own last score. These are t
 
 ### Feedback to the builder
 
-The builder gets every blocking issue from every failing critic, ranked brief first, then consistency, then the rest, with craft last. If it does not do the job, nothing else matters yet. Each critic still under the floor also contributes its single biggest gap. Fix in that order. A critic that passed adds nothing. The builder also gets its own previous report, so it knows what it already tried.
+The builder gets every blocking issue from every failing critic, ranked brief first, then consistency, then the rest, with craft last. If it does not do the job, nothing else matters yet. Each critic still under the floor also contributes its single biggest gap. Fix in that order. A critic that passed adds nothing. The builder also gets its own previous summary, so it knows what it already tried. That summary goes to the builder only, never to a critic.
 
 A critic that errored or returned nothing is not a pass. It blocks the round until it reports.
 
