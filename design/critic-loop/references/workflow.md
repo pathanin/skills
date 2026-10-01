@@ -27,7 +27,7 @@ Pass everything in via `args`. Do not have agents re-read files you already have
 {
   goal: 'the user request, verbatim',
   context: '<contents of context.md, or empty string for greenfield>',
-  minScore: 7,
+  minScore: 8,
   maxRounds: 3,
   critics: [
     // one per critic that survived preflight; `brief` is the per-run brief you wrote
@@ -43,7 +43,7 @@ Pass everything in via `args`. Do not have agents re-read files you already have
 }
 ```
 
-`minScore` and `maxRounds` default to 7 and 3 if left out. An extra critic without `blockingRule` gets the default rule: a defect a user would actually hit, with evidence. Every text field is a string. If you interpolate an array into a prompt, it is silently comma-joined.
+`minScore` and `maxRounds` default to 8 and 3 if left out. An extra critic without `blockingRule` gets the default rule: a defect a user would actually hit, with evidence. Every text field is a string. If you interpolate an array into a prompt, it is silently comma-joined.
 
 ## Script
 
@@ -123,7 +123,7 @@ const DEFAULT_RULE = `Blocking means a defect a user of this output would actual
   `region. A contrived edge case, taste, preference, polish, and features the goal did not ask for are gaps, not blocking.`
 
 const { goal, context, render, base } = args
-const MIN_SCORE = args.minScore ?? 7
+const MIN_SCORE = args.minScore ?? 8   // 8 is the rubric's "ships as is"; 7 means a gap to fix before shipping
 const MAX_ROUNDS = args.maxRounds ?? 3
 const FLOOR = 60_000   // do not start a round we cannot afford to finish
 // Brief and consistency are yes/no jobs; a 10-point scale on them plateaus below any high floor.
