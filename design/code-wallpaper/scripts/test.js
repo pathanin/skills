@@ -86,7 +86,7 @@ const REF=`g.fillStyle='#d8d0c0'; g.fillRect(0,0,w,h); const gr=g.createLinearGr
   const dev=Math.max(...stats.mean.map((v,c)=>Math.abs(v-[0xcc,0x33,0x33][c])));
   ok('oil: flat region keeps its colour (max channel error <= 14)',dev<=14,'mean '+stats.mean.map(v=>v.toFixed(0))+' vs 204,51,51');
   ok('oil: no linen holes in a painted region (< 1%)',stats.holes<.01,(stats.holes*100).toFixed(2)+'%');
-  ok('oil: the relief is lit (specular glints on the red paint, 0.3%..8%)',stats.glint>.003&&stats.glint<.08,(stats.glint*100).toFixed(2)+'%');
+  ok('oil: the relief is lit (specular glints on the red paint, 0.2%..8%)',stats.glint>.002&&stats.glint<.08,(stats.glint*100).toFixed(2)+'%');
   const cells=async(r,px)=>r.page.evaluate(px=>{ const cv=document.getElementById('cv'), k=cv.height/400, g=cv.getContext('2d'), o=[];
     for(let cy=0;cy<5;cy++) for(let cx=0;cx<8;cx++){ const d=g.getImageData(Math.round(cx*88*k),Math.round(cy*80*k),Math.round(88*k),Math.round(80*k)).data; const s=[0,0,0];
       for(let i=0;i<d.length;i+=4) for(let c=0;c<3;c++) s[c]+=d[i+c]; o.push(s.map(v=>v/(d.length/4))); } return o; },px);

@@ -122,7 +122,7 @@ for(let py=0,q=0;py<PY;py++){ const y=(py+.5)/k;
 // 2 units past the end), and a noise track along it. Paint runs out along the stroke (depl); a starved bristle skips, catching the weave's tops first.
 const BH=new Float32Array(64), BL=new Float32Array(64), BT=new Float32Array(64), BM=new Float32Array(64), BE=new Float32Array(64), BS=new Float32Array(64), NZ=new Float32Array(64*64);
 function paint(s){ const {col,col2,dx,dy,w,id,knife}=s, nx=-dy, ny=dx, cap=knife?Math.min(w*.2,1.5):Math.min(w*.4,2.2), len=Math.hypot(s.p1[0]-s.p0[0],s.p1[1]-s.p0[1])+2*cap, bw=s.bend*Math.min(w,5)*(knife?.5:1), p0=[s.p0[0]-dx*cap,s.p0[1]-dy*cap]; // the bristles overrun both ends by cap
-  const NB=Math.min(64,Math.max(2,Math.round(w/SE))), NS=Math.min(62,Math.ceil(len/1.2))+2, rg=knife?.7+.3*hs(id,-1):.1+.3*hs(id,-1), gd=knife?0:.3+.5*hs(id,-2), bb=knife?hs(id,-3):.35*hs(id,-3), rs=sstep(1.5,4,w), ke=knife?1-Math.min(.2,1.2/w):.8, te=knife?Math.min(.15,.8/len):.15, lr=knife?.3:0, t0=knife?hs(id,-4)*Math.min(.35,w*.5/len):0, t1=knife?hs(id,-5)*Math.min(.35,w*.5/len):0; // per stroke: edge ridge, groove depth, landing blob; rs: narrow strokes (stars, windows) stay solid dabs
+  const NB=Math.min(64,Math.max(2,Math.round(w/SE))), NS=Math.min(62,Math.ceil(len/1.2))+2, rg=knife?.2+.15*hs(id,-1):.1+.3*hs(id,-1), gd=knife?0:.3+.5*hs(id,-2), bb=knife?hs(id,-3):.35*hs(id,-3), rs=sstep(1.5,4,w), ke=knife?1-Math.min(.45,3/w):.8, te=knife?Math.min(.3,3/len):.15, lr=knife?.08:0, t0=knife?hs(id,-4)*Math.min(.35,w*.5/len):0, t1=knife?hs(id,-5)*Math.min(.35,w*.5/len):0; // per stroke: edge ridge, groove depth, landing blob; rs: narrow strokes (stars, windows) stay solid dabs
   for(let j=0;j<NB;j++){ const e=Math.abs((j+.5)/NB*2-1), r=hs(id,j*8+3);
     BL[j]=(1-rs*(.4-.4*hs(id,j*8)))*(1-.45*rs*sstep(.6,1,e)); BH[j]=.4+hs(id,j*8+5)*(.3+.9*hs(id,j*8+6)); BT[j]=hs(id,j*8+1)-.5; BM[j]=hs(id,j*8+2)*.6;
     BE[j]=r>.9?1+Math.min(.1,2/len):1-.3*rs*r*r*(.3+e); BS[j]=.06*hs(id,j*8+4);
@@ -173,7 +173,7 @@ const opn=(r,x,y)=>REG[r].bsf?REG[r].bsf(x,y):REG[r].open;
 for(let i=0,N=Math.round(1000*A);i<N;i++){ const x=rnd(W), y=rnd(H), r=idAt(x,y), g=R(), u=R(), kn=R(); let w=7*4**(u*u);
   if(g>=opn(r,x,y)) continue; const c=regCol(REG[r],x,y), far=(ox,oy)=>{ const d=regCol(REG[r],clamp(x+ox,0,W),clamp(y+oy,0,H)); return Math.max(...d.map((v,i)=>Math.abs(v-c[i]))); };
   while(w>7&&Math.max(far(w/2,0),far(-w/2,0),far(0,w/2),far(0,-w/2))>26) w*=.8;
-  const knife=w>=14&&kn<.1, st=oilStroke(x,y,w*(knife?rnd(1.2,2):rnd(1.6,2.6)),w,knife?1.1:.9,1,knife); add(st); } lay();
+  const knife=w>=16&&kn<.035, st=oilStroke(x,y,w*(knife?rnd(1.2,2):rnd(1.6,2.6)),w,knife?.7:.9,1,knife); add(st); } lay();
 // Use the largest brush that makes sense: a mid or fine stroke lands where the canvas still misses the scene at its scale (need, threshold T: region's T, else 16),
 // plus a small random share in detail regions only (none in fully open ones), so small strokes never carpet the canvas.
 // Paint-over (a region with cfs) places mid and fine strokes only there, from more candidates, so a big stroke that got it right is never painted over
