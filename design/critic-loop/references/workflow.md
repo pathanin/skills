@@ -27,7 +27,7 @@ Pass everything in via `args`. Do not have agents re-read files you already have
 {
   goal: 'the user request, verbatim',
   context: '<contents of context.md, or empty string for greenfield>',
-  minScore: 8,
+  minScore: 7,
   maxRounds: 3,
   critics: [
     // one per critic that survived preflight; `brief` is the per-run brief you wrote
@@ -43,7 +43,7 @@ Pass everything in via `args`. Do not have agents re-read files you already have
 }
 ```
 
-`minScore` and `maxRounds` default to 8 and 3 if left out. An extra critic without `blockingRule` gets the default rule: a defect a user would actually hit, with evidence. Every text field is a string. If you interpolate an array into a prompt, it is silently comma-joined.
+`minScore` and `maxRounds` default to 7 and 3 if left out. An extra critic without `blockingRule` gets the default rule: a defect a user would actually hit, with evidence. Every text field is a string. If you interpolate an array into a prompt, it is silently comma-joined.
 
 ## Script
 
@@ -92,32 +92,38 @@ const BINARY = {
 const SCORED = {
   type: 'object',
   properties: {
-    score: { type: 'integer', minimum: 0, maximum: 10, description: 'anchored rubric; 8 means shippable with only nits' },
+    score: { type: 'integer', minimum: 0, maximum: 10, description: 'anchored rubric; 8 means good, ships as is' },
     blocking: BLOCKING_LIST,
     biggest_gap: { type: 'string', description: 'the single change within the goal that would raise the score most, one sentence' },
   },
   required: ['score', 'blocking', 'biggest_gap'],
 }
 
+// Anchored on what you can observe, not on "a demanding expert": an expert can always name a change,
+// so the old anchors put 8+ out of reach and craft scored 6-7 in all 12 test verdicts, blockers or not.
 const RUBRIC =
-  `Score on this rubric, not on effort or improvement:\n` +
-  `10 nothing a demanding expert would change\n8 shippable, only nits left\n` +
-  `6 works, but an expert would send it back\n4 major problems\n2 misses the goal or is broken\n\n`
+  `Score the work as it is now, on this rubric, not on effort or improvement:\n` +
+  `10 you would hold it up as the example of how to do this\n9 excellent, only nits you would mention in passing\n` +
+  `8 good, ships as is; the gaps left are worth doing but not needed\n` +
+  `7 solid, but one clear gap you would fix before shipping\n6 works, but you would send it back\n` +
+  `4 major problems\n2 misses the goal or is broken\n` +
+  `Be accurate, not harsh: a score too low is as wrong as a score too high. Below 8, biggest_gap names what stops it shipping.\n\n`
 
 // What counts as blocking, per role. A shared "anything an expert would reject" rule let craft
 // re-sample new blockers every round and let consistency file real breaches as nits.
 const BLOCKING_RULE = {
   brief: `Blocking means a stated requirement of the goal is not met, and you showed it by running or looking. ` +
     `Anything the goal does not ask for is at most a gap, never blocking.`,
-  consistency: `Blocking means the change breaks a line on the conventions list; quote the line. Any breach of a ` +
-    `listed convention is always blocking, however small. Anything not on the list is never blocking.`,
+  consistency: `Blocking means the change breaks a line on the conventions list; quote the line. Any clear breach of a ` +
+    `listed convention is always blocking, however small. Anything not on the list is never blocking. If you have to ` +
+    `interpret the line to decide whether it applies, it is a gap, not blocking: name the ambiguous line in biggest_gap.`,
 }
-const DEFAULT_RULE = `Blocking means a defect a user of this output would actually hit, with evidence: a measurement, ` +
-  `a reproduction, or the exact screen region. Taste, preference, polish, and features the goal did not ask for ` +
-  `are gaps, not blocking.`
+const DEFAULT_RULE = `Blocking means a defect a user of this output would actually hit on realistic use for this goal ` +
+  `(the input, audience, and screens the goal implies), with evidence: a measurement, a reproduction, or the exact screen ` +
+  `region. A contrived edge case, taste, preference, polish, and features the goal did not ask for are gaps, not blocking.`
 
 const { goal, context, render, base } = args
-const MIN_SCORE = args.minScore ?? 8
+const MIN_SCORE = args.minScore ?? 7
 const MAX_ROUNDS = args.maxRounds ?? 3
 const FLOOR = 60_000   // do not start a round we cannot afford to finish
 // Brief and consistency are yes/no jobs; a 10-point scale on them plateaus below any high floor.
@@ -177,7 +183,7 @@ for (let round = 1; round <= MAX_ROUNDS; round++) {
         `instead of what actually came out.\n\n`) +
     `Files changed:\n${files}\n\nHow to render it: ${howToRender}\n\n${decisions}` +
     (c.scored ? RUBRIC : '') +
-    `${c.blockingRule || BLOCKING_RULE[c.name] || DEFAULT_RULE} Be harsh within that rule; praise is not useful.`,
+    `${c.blockingRule || BLOCKING_RULE[c.name] || DEFAULT_RULE} Apply that rule strictly; praise is not useful.`,
     { label: `${c.name} r${round}`, phase: 'Critique', model: c.model, effort: c.effort, schema: c.scored ? SCORED : BINARY }
   )))
 
@@ -229,6 +235,10 @@ if (!passed && history.length > 1) {
     else churning.push(c.name)
   }
 }
+// Blockers first raised in the final round never reached the builder, so it could neither fix nor decline them.
+const lastRoundNew = !passed && last ? last.verdicts.flatMap(v => v.blocking
+  .filter(issue => !history.slice(0, -1).some(h => h.verdicts.some(e => e.critic === v.critic && e.blocking.some(b => similar(b, issue)))))
+  .map(issue => ({ critic: v.critic, issue }))) : []
 if (!passed) log(`unresolved after ${history.length} rounds`)
 
 return {
@@ -239,6 +249,7 @@ return {
   scores: critics.filter(c => c.scored).map(c => ({ critic: c.name, by_round: history.map(h => h.verdicts.find(v => v.critic === c.name)?.score ?? null) })),
   recurring,   // same issue every round: the builder cannot see what the critic sees
   churning,    // blocked every round, never on the same issue: the blocking rule is too loose
+  lastRoundNew, // first raised in the final round: the user decides, the builder never saw them
   declined: settled,
   files: build ? build.files : [],
   summary: build ? build.summary : '',
@@ -252,7 +263,9 @@ return {
 - **Scores are only for judgment calls.** Brief and consistency are yes/no jobs. On a 10-point scale, a brief critic that had confirmed every requirement still sat at 8 with no blocking issues for three rounds against a floor of 9. Leave them `scored: false`.
 - **Gaps are optional.** The builder used to get every under-floor gap as work, and a CSV tool picked up exact-decimal parsing, a `--max-distinct` flag, and a streaming memory model nobody asked for. Gaps from binary critics are never sent. Gaps from scored critics are marked optional and limited to the goal.
 - **`minScore: 0` is blocking-only mode.** Every score is at least 0, so only the blocking lists decide. That is intended, not a bug.
+- **The rubric is anchored on observable quality, and critics score accurately, not harshly.** The old anchors measured against "a demanding expert", who can always name a change, and every critic was told to be harsh. Craft scored 6 or 7 in all 12 test verdicts, including rounds with zero blocking issues. If craft still never clears 7 on good work, the score carries no signal, and craft should go pass/fail like the others.
 - **An empty `blocking` array with a low score is still a fail** for a scored critic. The builder gets `biggest_gap` for that critic instead. If it plateaus there round after round, the floor may be above what the critic will award. Report that rather than raising the cap.
+- **`lastRoundNew`** lists blockers first raised in the final round. The builder never saw them, so it could neither fix nor decline them. They go to the user to decide, not into the verdict as the run's failure.
 - **`recurring` versus `churning`.** `recurring` lists issues that came back in similar words every round: the builder cannot see what the critic sees. `churning` lists critics that blocked every round, but never on the same issue twice: the critic's blocking rule is too loose. They need different fixes. Do not report churn as a hard problem.
 - **`readsCode` and the conventions block are separate.** Only the critic named `consistency` gets `context`; `readsCode` only decides whether a critic may see the diff. Consistency always reads code, an extra lens like `perf` may, and craft never does, because it would grade intent instead of result.
 - **The builder's `summary` never reaches a critic.** From round 2 on it describes the previous round's feedback, which is exactly the history critics must not see. Critics get `files` and `render` only.
@@ -262,5 +275,5 @@ return {
 - **Render at the output's real size.** Chrome's `--screenshot` captures full page height, not `--window-size`. Crop to the viewport or to the component's own bounds. For an interaction, capture frames across the transition, not one settled state.
 - **The builder works in place, without `isolation: 'worktree'`.** There is one builder and the critics need to see its work on disk.
 - **No `Date.now()`, `new Date()` or `Math.random()`** in workflow scripts. They throw, because they would break resume.
-- **Running out of rounds is a result.** `passed: false` comes back with `final`, `scores`, `recurring`, `churning`, and `declined`. Report it as unresolved. A truncated run that reports nothing reads as a run that finished.
+- **Running out of rounds is a result.** `passed: false` comes back with `final`, `scores`, `recurring`, `churning`, `lastRoundNew`, and `declined`. Report it as unresolved. A truncated run that reports nothing reads as a run that finished.
 - **Resume after a script edit**: relaunch with `{scriptPath, resumeFromRunId}`. Everything before your first edit returns from cache.

@@ -23,7 +23,7 @@ Read the goal and the stop condition from the invocation. Accept flags or plain 
 
 | Setting | Flag | Default | Valid |
 | --- | --- | --- | --- |
-| Score floor (scored critics only) | `--min-score N` | `8` | integer 0 to 10 |
+| Score floor (scored critics only) | `--min-score N` | `7` | integer 0 to 10 |
 | Round cap | `--max-rounds M` | `3` | integer, 1 or more |
 | Critics | `--critics a,b,...` | `brief,consistency,craft` | one or more names |
 
@@ -43,7 +43,7 @@ Write conventions as checkable lines with the file they came from. An adjective 
 - not "matches the existing UI", but "buttons are `<Button variant>` from `src/ui/Button.tsx`, never a bare `<button>`"
 - not "same tone as the docs", but "docs use second person and imperative headings (`docs/guide.md`)"
 
-Only write what the project actually does. A convention you inferred from one file is a guess, so say so on that line or leave it out. Scope follows the goal: list the conventions that the thing being built will touch, not the whole codebase.
+State every exception exactly. "No px except 1px borders" leaves open whether a 1px `box-shadow` ring counts, and a strict critic then decides differently each round. Write "only `border` may use 1px" instead. Only write what the project actually does. A convention you inferred from one file is a guess, so say so on that line or leave it out. Scope follows the goal: list the conventions that the thing being built will touch, not the whole codebase.
 
 **Empty project:** if there is nothing to be consistent with, skip `context.md`, drop the consistency critic, and say the build is greenfield from the request. Do not invent conventions to fill the gap. A consistency critic grading against made-up rules is grading noise.
 
@@ -76,8 +76,8 @@ Write each critic's brief for this run. "Does it do the job" means something dif
 | Critic | Blocking means | Verdict | Sees | Model | Why |
 | --- | --- | --- | --- | --- | --- |
 | **Brief** | A stated requirement is not met. Anything the request did not ask for is never blocking. | pass/fail | rendered output | `sonnet` | Simple judgment |
-| **Consistency** | A line of `context.md` is broken. Any listed line, however small, is always blocking. Anything not listed is never blocking. | pass/fail | rendered output **and the diff** | `sonnet` | Reusing a component, token, or pattern is a property of the code, so this is the one critic allowed to read it |
-| **Craft** | A defect a user would actually hit, shown with evidence. Taste and polish are gaps, not blocking. | scored | rendered output only, never code | `opus` | **Never downgrade.** A cheap craft critic passes everything and the loop ends on round one. |
+| **Consistency** | A line of `context.md` is clearly broken. Any listed line, however small, is always blocking. Anything not listed is never blocking. If the critic has to interpret a line to decide, it is a gap. | pass/fail | rendered output **and the diff** | `sonnet` | Reusing a component, token, or pattern is a property of the code, so this is the one critic allowed to read it |
+| **Craft** | A defect a user would actually hit on realistic use for this goal, shown with evidence. Contrived edge cases, taste, and polish are gaps, not blocking. | scored | rendered output only, never code | `opus` | **Never downgrade.** A cheap craft critic passes everything and the loop ends on round one. |
 
 The blocking rule is what makes the loop converge. With one shared rule ("anything an expert would reject"), a fresh craft critic found new blockers in every round of every test run, and the loop never passed on work that was objectively fine.
 
@@ -89,14 +89,18 @@ Scores drift upward when a critic grades against its own last score. These are t
 
 - Critics never see earlier rounds: no prior scores, no feedback, no builder summary. They get the files changed, how to render them, and the settled decisions (see below). Each round is judged cold.
 - Only judgment critics are scored. A yes/no job on a 10-point scale plateaus: a brief critic that had confirmed every requirement still sat at 8 for three rounds.
-- One anchored rubric for every scored critic:
-  - 10: nothing a demanding expert would change
-  - 8: shippable, only nits left
-  - 6: works, but an expert would send it back
+- One anchored rubric for every scored critic, based on what can be observed, and scored accurately, not harshly:
+  - 10: you would hold it up as the example of how to do this
+  - 9: excellent, only nits you would mention in passing
+  - 8: good, ships as is
+  - 7: solid, but one clear gap you would fix before shipping
+  - 6: works, but you would send it back
   - 4: major problems
   - 2: misses the goal or is broken
+
+  The anchors used to be written against "a demanding expert". Such an expert can always name a change, so craft never scored above 7 in testing. If craft still never clears 7 on good work, its score carries no signal, so make it pass/fail.
 - Blocking issues are listed separately from the score, and any blocking issue fails the critic whatever its score.
-- Critics are harsh within their blocking rule. Praise is not useful.
+- Critics apply their blocking rule strictly. Praise is not useful.
 
 ### Feedback to the builder
 
@@ -118,6 +122,7 @@ On hitting the cap, report:
 - the score history per critic, so a plateau is visible
 - `recurring`: blocking issues that came back in near-identical words every round
 - `churning`: critics that blocked every round, each time on something new
+- `lastRoundNew`: blockers first raised in the final round. The builder never saw them, so present them for the user to decide. They are not proof the work failed.
 - everything the builder declined, with its reasons
 - what you would try next, in one line
 
@@ -125,9 +130,9 @@ On hitting the cap, report:
 
 **A recurring issue** usually does not mean the work is hard. It means the builder cannot close it from where it stands. Check these causes in order:
 
-- **`context.md` is wrong or contradicts itself.** The consistency critic is enforcing a convention the project does not actually follow, or two that conflict. Fix `context.md`.
+- **`context.md` is wrong, ambiguous, or contradicts itself.** The consistency critic is enforcing a convention the project does not actually follow, one it reads differently each round, or two that conflict. Fix `context.md`.
 - **The fix is outside the builder's medium.** It needs an asset or a tool it was not given. Change the builder's inputs.
-- **The floor is above what the critic will give.** The critic lists no blocking issues but stays at 7 every round against a floor of 8. Say so; the user may lower the floor or accept the result.
+- **The floor is above what the critic will give.** The critic lists no blocking issues but stays at 6 every round against a floor of 7. Say so; the user may lower the floor or accept the result.
 
 Say which one you think it is. Raising the round cap is almost never the fix.
 
