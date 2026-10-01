@@ -151,6 +151,7 @@ for (let round = 1; round <= MAX_ROUNDS; round++) {
       ? `Stay consistent with this project. These conventions were read from the codebase. ` +
         `Reuse what exists before adding anything new:\n${context}`
       : `The project is empty. Build from the request alone and choose conventions deliberately.`) +
+    `\n\nHow the critics will see your output; use the same way to check your own work before you finish:\n${render}` +
     (build ? `\n\nYour summary from last round:\n${build.summary}` : '') +
     (feedbackLog.length ? `\n\nCritics' feedback so far, oldest first. The last round is what to act on now:\n${feedbackLog.join('\n\n')}` : '') +
     `\n\nFix BLOCKING items in order. GAP items are optional: take one only if it stays inside the goal. ` +
@@ -273,6 +274,7 @@ return {
 - **Diff against `base`, not the working tree.** The builder may commit despite being told not to (a CLAUDE.md can ask for checkpoint commits), which would leave a bare `git diff` empty. A tree that was dirty before the run would mix the user's own changes in. `git diff <base> -- <files>` handles both. Record `base` in preflight.
 - **Greenfield drops consistency.** With `context` empty, leave the consistency critic out of `critics` entirely. Do not pass it an empty convention list and hope it abstains.
 - **Render at the output's real size.** Chrome's `--screenshot` captures full page height, not `--window-size`. Crop to the viewport or to the component's own bounds. For an interaction, capture frames across the transition, not one settled state.
+- **The builder gets `render` too.** Without it, a test builder said it could not open the page and shipped a toggle it had never clicked. Checking that its own output renders is not grading it.
 - **The builder works in place, without `isolation: 'worktree'`.** There is one builder and the critics need to see its work on disk.
 - **No `Date.now()`, `new Date()` or `Math.random()`** in workflow scripts. They throw, because they would break resume.
 - **Running out of rounds is a result.** `passed: false` comes back with `final`, `scores`, `recurring`, `churning`, `lastRoundNew`, and `declined`. Report it as unresolved. A truncated run that reports nothing reads as a run that finished.
