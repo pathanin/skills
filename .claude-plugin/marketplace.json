@@ -48,7 +48,7 @@
     },
     {
       "name": "critic-loop",
-      "description": "Manual-only reference-free critic loop, invoked with /critic-loop. One builder works from the project's existing code, design files and docs (or from the request alone in an empty project) and revises against fresh-context critics until no critic has a blocking issue and every scored critic clears a configurable floor, or the round cap is hit.",
+      "description": "Manual-only reference-free critic loop, invoked with /critic-loop. One builder works from the project's existing code, design files and docs (or from the request alone in an empty project) and revises against fresh-context critics until no critic has a blocking issue and every scored critic clears a configurable floor, the round cap is hit, or the builder changes nothing.",
       "author": {
         "name": "oat"
       },
