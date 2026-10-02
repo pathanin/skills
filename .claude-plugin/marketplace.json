@@ -103,6 +103,14 @@
       "source": "./productivity/pdf-to-md"
     },
     {
+      "name": "pick-list",
+      "description": "Mod: a pane that lists the numbered options from Claude's last reply as checkboxes and sends your picks back as \"do 1,3\". /picks reopens it.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./mods/pick-list"
+    },
+    {
       "name": "plan-interview",
       "description": "Walk through a space of interconnected decisions via structured interview — useful when the path forward is unclear and you need to resolve trade-offs before acting.",
       "author": {
@@ -117,6 +125,14 @@
         "name": "oat"
       },
       "source": "./productivity/plan-relax"
+    },
+    {
+      "name": "test-light",
+      "description": "Mod: a one-line readout above the prompt showing whether the last test run passed, its counts, how long ago, and how many files were edited since.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./mods/test-light"
     },
     {
       "name": "to-prd",

@@ -1,0 +1,9 @@
+{
+  "name": "test-light",
+  "version": "0.1.0",
+  "description": "Above the prompt: did the last test run pass, when, and what changed since",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "oat"
+  }
+}

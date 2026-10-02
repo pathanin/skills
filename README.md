@@ -38,6 +38,15 @@ Claude Code skills for personal use, grouped by type. Each skill lives at `<cate
 | [**fresh-start**](internal-tools/fresh-start/SKILL.md) | Manual-only `/fresh-start`. Treats existing code as a spec, not a foundation — extracts the behavior contract, writes an independent implementation, diffs both against the same inputs, and keeps whichever is simpler and correct (keeping the old code when the rewrite only ties). |
 | [**worktree-swarm**](internal-tools/worktree-swarm/SKILL.md) | Split a multi-part fix/feature into worktree-isolated subagents run in parallel, then manually integrate and verify the results. |
 
+## mods/
+
+Hook plugins (mods) that draw inside Claude Code rather than skills. Each has tests: `claude plugin test mods/<name>`.
+
+| Mod | Description |
+|---|---|
+| [**pick-list**](mods/pick-list/hooks/register.tsx) | Pane that lists the numbered options (or `#` table rows) from Claude's last reply as checkboxes; picking sends "do 1,3" as your message. Opens by itself on a reply with a list; `/picks` reopens it. |
+| [**test-light**](mods/test-light/hooks/register.tsx) | One line above the prompt: ✓/✗ for the last test run, pass/fail counts, how long ago, and how many files were edited since. |
+
 ## Installing
 
 These are packaged as plugins via the `local-skills` marketplace (`.claude-plugin/marketplace.json`):

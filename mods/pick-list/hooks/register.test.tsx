@@ -1,0 +1,52 @@
+import { expect, test } from 'claude-code/testing'
+
+import { parseOptions } from './parse'
+
+test('finds a plain numbered list', () => {
+  const text = 'Options:\n\n1. Fix the lock\n2. Add **progress** bar\n3. `Speed` up scan\n\nWhich?'
+  expect(parseOptions(text)).toEqual([
+    { n: 1, title: 'Fix the lock' },
+    { n: 2, title: 'Add progress bar' },
+    { n: 3, title: 'Speed up scan' },
+  ])
+})
+
+test('takes bold headings and skips nested steps', () => {
+  const text = '**1. test-light (band)**\nbody\n   1. sub step\n   2. sub step\n**2. pick-list (pane)**\nbody'
+  expect(parseOptions(text).map(o => o.title)).toEqual(['test-light (band)', 'pick-list (pane)'])
+})
+
+test('picks the longest list, not the trailing questions', () => {
+  const text = '1. found a\n2. found b\n\n**1. idea one**\n**2. idea two**\n**3. idea three**\n\n## Needs your input\n\n1. Which?\n2. Extend?'
+  expect(parseOptions(text).map(o => o.title)).toEqual(['idea one', 'idea two', 'idea three'])
+})
+
+test('reads a table with a # column', () => {
+  const text = '| # | Location | Today |\n|---|---|---|\n| 1 | **Terminal** progress | frozen |\n| 2 | **Web** modal | instant |'
+  expect(parseOptions(text)).toEqual([
+    { n: 1, title: 'Terminal progress' },
+    { n: 2, title: 'Web modal' },
+  ])
+})
+
+test('no list, or one item, gives nothing', () => {
+  expect(parseOptions('All done, tests pass.')).toEqual([])
+  expect(parseOptions('1. only one')).toEqual([])
+  expect(parseOptions('Released v0.4.4 on 2026-10-02.')).toEqual([])
+})
+
+for (const surface of ['terminal', 'desktop'] as const) {
+  test(`${surface}: ticking options sends "do 1,3"`, async ($, on) => {
+    const sent: string[] = []
+    on('turn.complete', () => ({ text: '' }))
+    on('ui.open', () => ({ value: undefined }))
+    on('prompt.submit', (_, e) => { sent.push(e.text); return { text: '' } })
+    const pane = await $.ui.mount({ plugin: 'pick-list', surface, component: 'Pane', requestId: 'pick-list', props: {} })
+
+    await $.turn.complete({ answer: 'Pick:\n1. alpha\n2. beta\n3. gamma', durationMs: 1, isAborted: false, turnId: 't', reason: 'answer' })
+    await pane.press({ key: 'opt-3' })
+    await pane.press({ key: 'opt-1' })
+    await pane.press({ key: 'send' })
+    expect(sent).toEqual(['do 1,3'])
+  })
+}
