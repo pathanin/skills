@@ -12,7 +12,7 @@ test('finds a plain numbered list', () => {
 })
 
 test('takes bold headings and skips nested steps', () => {
-  const text = '**1. test-light (band)**\nbody\n   1. sub step\n   2. sub step\n**2. pick-list (pane)**\nbody'
+  const text = '**1. test-light (band)**\nbody\n   1. sub step\n   2. sub step\n**2. pick-list (pane)**\nbody\n\nWhich one?'
   expect(parseOptions(text).map(o => o.title)).toEqual(['test-light (band)', 'pick-list (pane)'])
 })
 
@@ -22,7 +22,7 @@ test('picks the longest list, not the trailing questions', () => {
 })
 
 test('reads a table with a # column', () => {
-  const text = '| # | Location | Today |\n|---|---|---|\n| 1 | **Terminal** progress | frozen |\n| 2 | **Web** modal | instant |'
+  const text = '| # | Location | Today |\n|---|---|---|\n| 1 | **Terminal** progress | frozen |\n| 2 | **Web** modal | instant |\n\nFix which?'
   expect(parseOptions(text)).toEqual([
     { n: 1, title: 'Terminal progress' },
     { n: 2, title: 'Web modal' },
@@ -35,6 +35,12 @@ test('no list, or one item, gives nothing', () => {
   expect(parseOptions('Released v0.4.4 on 2026-10-02.')).toEqual([])
 })
 
+test('a result report that asks nothing gives nothing', () => {
+  const text = 'The demo is finished:\n\n1. **Count to 1M:** the sum came to 499,999,500,000.\n2. **Hash a file:** the SHA-256 starts with c7dd.\n3. **Report result:** this message.\n\nNo files were created.'
+  expect(parseOptions(text)).toEqual([])
+  expect(parseOptions('See https://x.io/?a=1\n\n1. done a\n2. done b')).toEqual([])
+})
+
 for (const surface of ['terminal', 'desktop'] as const) {
   test(`${surface}: ticking options in the band sends "do 1,3"`, async ($, on) => {
     const sent: string[] = []
@@ -44,7 +50,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     const band = await $.ui.mount({ plugin: 'pick-list', surface, component: 'AbovePrompt', props: { hasSurvey: false, isWorking: false } })
     expect(await band.find({ key: 'opt-1' })).toBeUndefined()
 
-    await $.turn.complete({ answer: 'Pick:\n1. alpha\n2. beta\n3. gamma', durationMs: 1, isAborted: false, turnId: 't', reason: 'answer' })
+    await $.turn.complete({ answer: 'Which?\n1. alpha\n2. beta\n3. gamma', durationMs: 1, isAborted: false, turnId: 't', reason: 'answer' })
     await band.press({ key: 'opt-3' })
     await band.press({ key: 'opt-1' })
     await band.press({ key: 'send' })

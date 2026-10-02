@@ -8,9 +8,14 @@ const ROW = /^\|\s*(\d{1,2})\s*\|\s*([^|]+)\|/
 const clean = (text: string): string =>
   text.replace(/\*\*|`/g, '').trim().slice(0, 90)
 
+// A question mark ending a sentence, not one inside a URL.
+const ASKS = /\?(?:[*_)\s]|$)/
+
 // The longest run of items numbered 1, 2, 3… (the later one on a tie), if it has two or more.
 // Longest, not last: replies often end with a short "Needs your input" list.
+// A reply that asks nothing is a report, so its lists are results, not choices.
 export const parseOptions = (answer: string): Option[] => {
+  if (!ASKS.test(answer)) return []
   const lists: Option[][] = []
   for (const line of answer.split('\n')) {
     const m = line.match(ITEM) ?? line.match(ROW)
