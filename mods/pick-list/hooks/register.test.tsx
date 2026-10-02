@@ -36,17 +36,27 @@ test('no list, or one item, gives nothing', () => {
 })
 
 for (const surface of ['terminal', 'desktop'] as const) {
-  test(`${surface}: ticking options sends "do 1,3"`, async ($, on) => {
+  test(`${surface}: ticking options in the band sends "do 1,3"`, async ($, on) => {
     const sent: string[] = []
     on('turn.complete', () => ({ text: '' }))
-    on('ui.open', () => ({ value: undefined }))
+    on('ui.render', ($, e) => { const { Box } = $.ui.resolve(e); return <Box /> })
     on('prompt.submit', (_, e) => { sent.push(e.text); return { text: '' } })
-    const pane = await $.ui.mount({ plugin: 'pick-list', surface, component: 'Pane', requestId: 'pick-list', props: {} })
+    const band = await $.ui.mount({ plugin: 'pick-list', surface, component: 'AbovePrompt', props: { hasSurvey: false, isWorking: false } })
+    expect(await band.find({ key: 'opt-1' })).toBeUndefined()
 
     await $.turn.complete({ answer: 'Pick:\n1. alpha\n2. beta\n3. gamma', durationMs: 1, isAborted: false, turnId: 't', reason: 'answer' })
-    await pane.press({ key: 'opt-3' })
-    await pane.press({ key: 'opt-1' })
-    await pane.press({ key: 'send' })
+    await band.press({ key: 'opt-3' })
+    await band.press({ key: 'opt-1' })
+    await band.press({ key: 'send' })
     expect(sent).toEqual(['do 1,3'])
+    expect(await band.find({ key: 'opt-1' })).toBeUndefined()
+  })
+
+  test(`${surface}: band hides while a turn runs`, async ($, on) => {
+    on('turn.complete', () => ({ text: '' }))
+    on('ui.render', ($, e) => { const { Box } = $.ui.resolve(e); return <Box /> })
+    const band = await $.ui.mount({ plugin: 'pick-list', surface, component: 'AbovePrompt', props: { hasSurvey: false, isWorking: true } })
+    await $.turn.complete({ answer: '1. alpha\n2. beta', durationMs: 1, isAborted: false, turnId: 't', reason: 'answer' })
+    expect(await band.find({ key: 'opt-1' })).toBeUndefined()
   })
 }
