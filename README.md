@@ -44,6 +44,7 @@ Hook plugins (mods) that draw inside Claude Code rather than skills. Each has te
 
 | Mod | Description |
 |---|---|
+| [**checklist**](mods/checklist/hooks/register.tsx) | Gives Claude a `checklist` tool for multi-step work; it lists the steps up front and ticks each one off as it goes. A pane opens on the first checklist (`/checklist` reopens it) and the status line shows `☑ 2/5`. |
 | [**pick-list**](mods/pick-list/hooks/register.tsx) | Pane that lists the numbered options (or `#` table rows) from Claude's last reply as checkboxes; picking sends "do 1,3" as your message. Opens by itself on a reply with a list; `/picks` reopens it. |
 | [**test-light**](mods/test-light/hooks/register.tsx) | One line above the prompt: ✓/✗ for the last test run, pass/fail counts, how long ago, and how many files were edited since. |
 

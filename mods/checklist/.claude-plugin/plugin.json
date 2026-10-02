@@ -1,0 +1,9 @@
+{
+  "name": "checklist",
+  "version": "0.1.0",
+  "description": "Claude keeps a checklist of the work and ticks it off as it goes; a pane and the status line show progress",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "oat"
+  }
+}
