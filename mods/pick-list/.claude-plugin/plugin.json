@@ -1,6 +1,6 @@
 {
   "name": "pick-list",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Band above the prompt: tick the numbered options from Claude's last reply and send them back",
   "types": "./types/index.d.ts",
   "author": {
