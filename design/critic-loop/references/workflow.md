@@ -25,7 +25,7 @@ Pass everything in via `args`. Do not have agents re-read files you already have
 
 ```js
 {
-  goal: 'the user request, verbatim',
+  goal: "the user's request, with the flags removed",
   context: '<contents of context.md, or empty string for greenfield>',
   minScore: 8,
   maxRounds: 3,
@@ -64,6 +64,7 @@ const BUILD = {
     summary: { type: 'string', description: 'what you built or changed this round and why; only you see this' },
     files: { type: 'array', items: { type: 'string' }, description: 'every file created or modified, repo-relative' },
     render: { type: 'string', description: 'how to see the result now, if it differs from the standing instructions' },
+    changed: { type: 'boolean', description: 'true if you edited any project file this round; false if you only declined or left it as it was' },
     declined: {
       type: 'array',
       items: {
@@ -74,7 +75,7 @@ const BUILD = {
       description: 'feedback you deliberately did not act on this round, each with the reason; empty if none',
     },
   },
-  required: ['summary', 'files', 'render', 'declined'],
+  required: ['summary', 'files', 'render', 'changed', 'declined'],
 }
 
 const BLOCKING_LIST = {
@@ -140,6 +141,7 @@ const feedbackLog = []  // every round's feedback, for the builder only
 const settled = []      // builder's declines: { round, issue, reason }; critics see these as decisions
 let build = null        // builder's last BUILD; critics get .files and .render, never .summary
 let passed = false
+let stalled = false     // the builder changed nothing, so the last verdicts stand
 
 for (let round = 1; round <= MAX_ROUNDS; round++) {
   if (budget.total && budget.remaining() < FLOOR) {
@@ -171,6 +173,12 @@ for (let round = 1; round <= MAX_ROUNDS; round++) {
   if (!next) log(`builder returned nothing in round ${round}; critics re-judge the previous state`)
   build = next || build
   if (next) settled.push(...next.declined.map(d => ({ round, ...d })))
+  // Re-judging an unchanged tree only re-samples the score: in a test run craft gave the same code 8, then 9.
+  if (next && next.changed === false && history.length) {
+    log(`builder changed nothing in round ${round}; round ${round - 1}'s verdicts stand`)
+    stalled = true
+    break
+  }
   const files = build ? build.files.join('\n') : '(unknown)'
   const howToRender = render + (build && build.render ? `\n${build.render}` : '')
   const decisions = settled.length
@@ -245,7 +253,7 @@ if (!passed && history.length > 1) {
   }
 }
 // Blockers first raised in the final round never reached the builder, so it could neither fix nor decline them.
-const lastRoundNew = !passed && last ? last.verdicts.flatMap(v => v.blocking
+const lastRoundNew = !passed && !stalled && last ? last.verdicts.flatMap(v => v.blocking
   .filter(issue => !history.slice(0, -1).some(h => h.verdicts.some(e => e.critic === v.critic && e.blocking.some(b => similar(b, issue)))))
   .map(issue => ({ critic: v.critic, issue }))) : []
 if (!passed) log(`unresolved after ${history.length} rounds`)
@@ -253,6 +261,7 @@ if (!passed) log(`unresolved after ${history.length} rounds`)
 return {
   passed,
   rounds: history.length,
+  stalled,     // the builder changed nothing after the last judged round: the user decides on its declines
   final: last ? last.verdicts : [],
   silent: last ? last.silent : [],
   scores: critics.filter(c => c.scored).map(c => ({ critic: c.name, by_round: history.map(h => h.verdicts.find(v => v.critic === c.name)?.score ?? null) })),
@@ -288,5 +297,6 @@ return {
 - **The builder gets `render` too.** Without it, a test builder said it could not open the page and shipped a toggle it had never clicked. Checking that its own output renders is not grading it.
 - **The builder works in place, without `isolation: 'worktree'`.** There is one builder and the critics need to see its work on disk.
 - **No `Date.now()`, `new Date()` or `Math.random()`** in workflow scripts. They throw, because they would break resume.
-- **Running out of rounds is a result.** `passed: false` comes back with `final`, `scores`, `recurring`, `churning`, `lastRoundNew`, and `declined`. Report it as unresolved. A truncated run that reports nothing reads as a run that finished.
+- **An unchanged round is not re-judged.** If the builder reports `changed: false` after round 1, the loop stops with `stalled: true` and the last judged verdicts stand. Re-judging the same tree only re-samples the score: in a test run the builder declined every gap and changed nothing, and craft scored the identical code 8, then 9, clearing a floor of 9 without any fix. A builder that returned nothing is different: it may have edited before dying, so critics re-judge. A missing `changed` counts as changed.
+- **Running out of rounds is a result.** `passed: false` comes back with `final`, `scores`, `stalled`, `recurring`, `churning`, `lastRoundNew`, and `declined`. Report it as unresolved. A truncated run that reports nothing reads as a run that finished.
 - **Resume after a script edit**: relaunch with `{scriptPath, resumeFromRunId}`. Everything before your first edit returns from cache.

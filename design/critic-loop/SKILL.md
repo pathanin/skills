@@ -27,7 +27,7 @@ Read the goal and the stop condition from the invocation. Accept flags or plain 
 | Round cap | `--max-rounds M` | `3` | integer, 1 or more |
 | Critics | `--critics a,b,...` | `brief,consistency,craft` | one or more names |
 
-The stop condition: **no critic reports a blocking issue, and every scored critic scores at least N**, or M rounds have run. Brief and consistency are pass/fail, so the floor applies only to craft and to extra critics that judge quality. `--min-score 0` turns off the score check, so the loop stops only when there are no blocking issues left. The blocking check is never off. A score is not a pass while a critic still names something blocking.
+The stop condition: **no critic reports a blocking issue, and every scored critic scores at least N**, or M rounds have run, or the builder changes nothing after a judged round. Brief and consistency are pass/fail, so the floor applies only to craft and to extra critics that judge quality. `--min-score 0` turns off the score check, so the loop stops only when there are no blocking issues left. The blocking check is never off. A score is not a pass while a critic still names something blocking.
 
 Reject invalid values with the valid range and ask again. Do not round or clamp them. Warn once if M is above 5, because each round costs one builder and every critic, and a gap that survives five rounds is rarely closed by a sixth. Ask only if the goal is missing. Everything else has a default.
 
@@ -57,7 +57,7 @@ Show `context.md` in one block and continue. Do not wait for approval unless the
 
 A check, not a question. Report it in one block:
 
-- Confirm you can render the output: screenshots for UI, a filmstrip for motion, a PDF render for a document, the actual run output for a CLI. For a library or API, its render is its behaviour when called. That means the test-suite output, the public surface (signatures and `help()`), and probe scripts each critic writes and runs outside the project. The test files themselves are code, so the craft critic does not read them. Capture a component at its own bounds, not inside a full-page shot. Without a render the craft critic goes blind.
+- Confirm you can render the output: screenshots for UI, a filmstrip for motion, a PDF render for a document, the actual run output for a CLI. For a library or API, its render is its behaviour when called. That means the test-suite output, the public surface (signatures and `help()`), and probe scripts each critic writes and runs outside the project. Write the render commands so they leave nothing in the project: for Python, `PYTHONDONTWRITEBYTECODE=1` and `pytest -p no:cacheprovider`; for other stacks, the equivalent cache and build-output flags. The test files themselves are code, so the craft critic does not read them. Capture a component at its own bounds, not inside a full-page shot. Without a render the craft critic goes blind.
 - Record the starting commit (`git rev-parse HEAD`) as the diff base for the consistency critic, and note whether the tree was already dirty. If it was, pass `git status --porcelain` and a line on what the user changed as `dirty`. The builder then leaves those changes alone and does not commit them, and every critic ignores them. With no git repo, or a repo with no commits yet (`rev-parse` fails), pass an empty base, and the critic reads the files the builder lists instead.
 - Name any generation tools the goal needs (image, voice, video) and confirm they are connected.
 
@@ -75,7 +75,7 @@ Run this as a workflow. Invoking `/critic-loop` is itself the opt-in that author
 
 ### Critics
 
-Write each critic's brief for this run. The script already tells every critic not to touch the project, so briefs need not repeat it. "Does it do the job" means something different for an animation than for a settings page, so do not reuse generic wording across goals.
+Write each critic's brief for this run. The script already tells every critic not to touch the project, so briefs need not repeat it. If a critic writes probes, its brief names a scratchpad location where it makes a fresh directory every round (`mktemp -d <scratchpad>/probes/<critic>-XXXXXX`) and reads no other. Last round's probes are a channel to last round's judgment. "Does it do the job" means something different for an animation than for a settings page, so do not reuse generic wording across goals.
 
 | Critic | Blocking means | Verdict | Sees | Model | Why |
 | --- | --- | --- | --- | --- | --- |
@@ -114,6 +114,8 @@ The builder gets every blocking issue from every failing critic, ranked brief fi
 
 Critics forget between rounds, so the builder carries the memory. It gets every round's feedback and its own previous summary. It may **decline** an item that reverses a change an earlier round asked for, or that goes beyond the goal, giving a reason. Each decline goes to later critics as a settled decision. A critic may still block on it, but only by showing a defect the reason does not cover. Without this, the builder flip-flops: one round's critic asks for something, and the next round's critic blocks it. The summary and the feedback history go to the builder only, never to a critic.
 
+If the builder changed nothing after a judged round, because it declined everything or found nothing to do, the loop stops and the last verdicts stand. Re-judging the same work only re-samples the score: in a test run craft scored identical code 8, then 9, and cleared a floor of 9 with no fix.
+
 A critic that errored or returned nothing is not a pass. It blocks the round until it reports.
 
 `--max-rounds` is a budget ceiling, not a target. The exit is passing. Running out of rounds is reported as unresolved, never as a quiet pass.
@@ -121,6 +123,8 @@ A critic that errored or returned nothing is not a pass. It blocks the round unt
 ## 5. Handback
 
 On a pass, report the round it passed on, each critic's final verdict or score, the files changed, and anything the builder declined, with its reason. The user may disagree with a decline.
+
+On a stall (`stalled: true`), report it as unresolved: each failing critic's last verdict, and what the builder declined, with its reasons. Those declines are why the loop stopped, so the user decides. If the user accepts them, the work is done. If the user rejects one, rerun with that item stated in the goal.
 
 On hitting the cap, report:
 
