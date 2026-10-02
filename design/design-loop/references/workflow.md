@@ -80,7 +80,7 @@ for (let round = 1; round <= MAX_ROUNDS; round++) {
       (settled ? `\n\nAlready settled across the whole build — conform to these, do not re-decide them:\n${settled}` : '') +
       (last ? `\n\nFix this first: ${last.primary}` +
               (last.secondary ? `\nDo not regress these while you do: ${last.secondary}` : '') : ''),
-      { label: `build ${piece.name} r${round}`, phase: 'Build' }
+      { label: `build ${piece.name} r${round}`, phase: 'Build', model: 'opus', effort: 'low' }
     )
   }))
 

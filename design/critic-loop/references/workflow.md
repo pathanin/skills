@@ -168,7 +168,7 @@ for (let round = 1; round <= MAX_ROUNDS; round++) {
     `Do not decline something just because it is hard.\n` +
     `Leave your changes uncommitted in the working tree; the critics diff against the starting commit. ` +
     `Do not grade your own work.`,
-    { label: `build r${round}`, phase: 'Build', schema: BUILD }
+    { label: `build r${round}`, phase: 'Build', model: 'opus', effort: 'low', schema: BUILD }
   )
   if (!next) log(`builder returned nothing in round ${round}; critics re-judge the previous state`)
   build = next || build
