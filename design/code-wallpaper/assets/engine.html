@@ -64,7 +64,9 @@ function oilStroke(x,y,L,w,thick,dry=1,knife=false){ const r=idAt(x,y), fl=1+((F
   if(m0+m1<w){ const c=(m0-m1)/2; x+=dy*c; y-=dx*c; w=Math.max(1.2,m0+m1); }
   else { const c=Math.min(0,m0-w/2+2.2)-Math.min(0,m1-w/2+2.2); x+=dy*c; y-=dx*c; } // off-centre near an edge: move in, so it overhangs the region behind by 2.2 units at most
   // the length clip checks the stroke's sides too, so a tilted wide stroke stops before its corners cross into a region behind
-  const hs2=Math.max(0,w/2-2.2), fits=t=>{ const px=x+dx*t, py=y+dy*t; return idAt(px,py)>=r&&(!hs2||idAt(px+dy*hs2,py-dx*hs2)>=r&&idAt(px-dy*hs2,py+dx*hs2)>=r); };
+  // a region behind whose colour already matches the stroke's doesn't stop it: no row of stroke ends traces a border nobody can see (a halo's rim)
+  const c00=regCol(REG[r],x,y), ok=(px,py)=>{ const q=idAt(px,py); return q>=r||cdist(regCol(REG[q],clamp(px,0,W-.01),clamp(py,0,H-.01)),c00)<24; };
+  const hs2=Math.max(0,w/2-2.2), fits=t=>{ const px=x+dx*t, py=y+dy*t; return ok(px,py)&&(!hs2||ok(px+dy*hs2,py-dx*hs2)&&ok(px-dy*hs2,py+dx*hs2)); };
   while(l0<L/2&&fits(-l0-st)) l0+=st; while(l1<L/2&&fits(l1+st)) l1+=st;
   const js=.5, f=1+js*rnd(-.1,.1), dv=js*rnd(-8,8), jit=c=>c.map(v=>clamp(v*f+dv+js*rnd(-2.5,2.5),0,255)), // strokes vary in value, not hue: a flat grey stays grey, not green/pink confetti
     x2=clamp(x+rnd(-1,1)*Math.min(6,1.5*w),0,W-.01), y2=clamp(y+rnd(-1,1)*Math.min(6,1.5*w),0,H-.01), c0=scol(r,x,y,w), c2=scol(idAt(x2,y2),x2,y2,w); // the second pigment comes from within the brush's reach
@@ -180,7 +182,17 @@ for(let i=0,N=Math.round(1000*A);i<N;i++){ const x=rnd(W), y=rnd(H), r=idAt(x,y)
 const PO=REG.some(r=>r.cfs), TA=(x,y)=>REG[idAt(x,y)].T??16;
 for(let i=0,N=Math.round(5200*A*(PO?1.4:1));i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(PO?need(x,y,4.5,TA(x,y)):g<.35*(1-opn(idAt(x,y),x,y))||need(x,y,4.5,TA(x,y))) add(lt(oilStroke(x,y,rnd(7,12),rnd(3.5,5.5),.7),.7)); } lay();
 for(let i=0,N=Math.round(3500*A*(PO?1.6:1));i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(PO?need(x,y,2.4,TA(x,y)):g<.15*(1-opn(idAt(x,y),x,y))||need(x,y,2.4,TA(x,y))) add(lt(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1),.5)); } lay();
-let e=0, tries=0; const N3=Math.round(1050*A*.7); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r>idAt(x+3,y)||r>idAt(x,y+3)||r>idAt(x-3,y)||r>idAt(x,y-3)){ add(lt(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1),.5)); e++; } } lay();
+// lost and found edges: where the two sides of a border are close in value, a dry brush drags along the border and blends them (lost);
+// far values or hues, small shapes (thick under ~12 to 30 units, so a house or a grass cap) and bs:0 focal shapes keep a hard (found) edge. A slow wave along the contour loses some stretches and finds others
+const lumv=c=>.3*c[0]+.59*c[1]+.11*c[2], soften=(x,y,r)=>{ let nx=0, ny=0, q=-1;
+  for(let i=0;i<8;i++){ const a=i*TAU/8, id=idAt(x+3*Math.cos(a),y+3*Math.sin(a)); if(id<r){ nx+=Math.cos(a); ny+=Math.sin(a); if(q<0||id>q) q=id; } }
+  const nl=Math.hypot(nx,ny); if(q<0||!nl||REG[r].bs===0||REG[q].bs===0||REG[r].thick<4||REG[q].thick<4) return; nx/=nl; ny/=nl;
+  let t=0; while(t<3&&idAt(x+nx*t,y+ny*t)>=r) t+=.5; const bx=clamp(x+nx*t,0,W-.01), by=clamp(y+ny*t,0,H-.01); // the border, toward the region behind
+  const cr=regCol(REG[r],clamp(bx-2*nx,0,W-.01),clamp(by-2*ny,0,H-.01)), cq=regCol(REG[q],clamp(bx+2*nx,0,W-.01),clamp(by+2*ny,0,H-.01));
+  if(R()>=sstep(12,30,REG[r].thick)*(1-sstep(10,36,Math.abs(lumv(cr)-lumv(cq))))*(1-sstep(60,140,cdist(cr,cq)))*(.35+.65*(.5+.5*Math.sin(bx*.06+by*.045)))) return;
+  const s=oilStroke(x,y,1,3,1), L=rnd(3,14)/2, a=angleAt(bx,by,q), dx=Math.cos(a), dy=Math.sin(a), sh=rnd(-.7,.7)*L, cx=bx+dx*sh, cy=by+dy*sh, col=mixc(cr,cq,.5); // oilStroke only for its per-stroke draws; the stroke follows the flow of the region behind, dragging the edge into it (a house into the ground, not down it)
+  Object.assign(s,{p0:[cx-dx*L,cy-dy*L],p1:[cx+dx*L,cy+dy*L],dx,dy,w:rnd(2.5,4.5),bend:s.bend*.3,col:mixc(cr,cq,.3),col2:mixc(cr,cq,.8),base:col,thick:.55,wet:.45,depl:rnd(.3,.7),mk:null}); add(lt(s,.6)); }; // staggered along the flow so their ends don't line up into a new edge; bristles streak two in-between tones (broken colour) and run dry, so the blend keeps a stroke's texture
+let e=0, tries=0; const N3=Math.round(1050*A*.7); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r>idAt(x+3,y)||r>idAt(x,y+3)||r>idAt(x-3,y)||r>idAt(x,y-3)){ add(lt(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1),.5)); soften(x,y,r); e++; } } lay();
 REG.forEach((r,ri)=>{ if(r.area<900){ const m=r.area<30?12:40; for(let q=0;q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)===ri) add(lt(oilStroke(x,y,rnd(2,6),r.area<30?rnd(.8,1.4):rnd(1.2,2),1.1),.4)); } } }); lay();
 // highlights as dots (opt-in, hl(x,y) on a region): a small thick dab of the true colour where the scene is much brighter than its surroundings
 REG.forEach((r,ri)=>{ if(r.hl) for(let q=0,m=Math.round(r.area*.25);q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)!==ri||!r.hl(x,y)) continue;

@@ -32,6 +32,8 @@ const SCENES=[
   { name:'t-oil-bs0', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),grad:[[0,'#335'],[400,'#a86']],dir:'sky'},{pts:rect(200,200,300,300),col:'#c33',bs:0}]; } },
   { name:'t-paintover', seed:3, build(C){ return paintOver(C); } },                                                    // 7: needs img.js (baked below)
   { name:'t-grey', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#888888',dir:'sky'},{pts:rect(200,150,300,250),col:'#888888',bs:0}]; } }, // 8: flat grey; square = small strokes only
+  // 9: lost and found edges: a square close in value to the sky (hue differs only), and one far from it in value
+  { name:'t-edges', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#8a7a9a',dir:'horiz'},{pts:rect(200,140,300,260),col:'#9a8a6a',dir:'horiz'},{pts:rect(450,140,550,260),col:'#f0d0a0',dir:'horiz'}]; } },
 ];`);
 
 let fails=0; const ok=(name,cond,detail='')=>{ console.log((cond?'PASS ':'FAIL ')+name+(detail?'  ('+detail+')':'')); if(!cond) fails++; };
@@ -119,6 +121,14 @@ const REF=`g.fillStyle='#d8d0c0'; g.fillRect(0,0,w,h); const gr=g.createLinearGr
   const spill=await o4.page.evaluate(()=>{ const cv=document.getElementById('cv'), k=cv.height/400, Wp=cv.width, d=cv.getContext('2d').getImageData(0,0,Wp,cv.height).data; let n=0, red=0;
     for(let y=190;y<310;y+=.25) for(let x=190;x<310;x+=.25){ const o=Math.max(200-x,x-300,200-y,y-300); if(o<3||o>6) continue; const i=((y*k|0)*Wp+(x*k|0))*4; n++; if(Math.max(d[i+1],d[i+2])<.45*d[i]) red++; } return red/n; }); // a hue test (#c33 has G/R .25, the sky's orange >= .58), so lit sky doesn't count
   ok('oil: the square does not spill 3-6 units into the sky behind it (<= 1%)',spill<=.01,(spill*100).toFixed(2)+'%');
+  // edges: averaged across rows, a border between near values blends over a wider band than one between far values (which stays found).
+  // Measured on R-B, which the lighting barely moves: sky -16, near square +48 (within 9 levels of the sky's value), far square +80 (82 levels lighter)
+  const ed=await render(br,'s=9&w=3840&h=2160'), ew=await ed.page.evaluate(()=>{ const cv=document.getElementById('cv'), k=cv.height/400, Wp=cv.width, d=cv.getContext('2d').getImageData(0,0,Wp,cv.height).data;
+    const width=x0=>{ const P=[]; for(let o=-8;o<=8;o+=.25){ let t=0, n=0; for(let y=160;y<240;y+=1/k){ const i=((y*k|0)*Wp+((x0+o)*k|0))*4; t+=d[i]-d[i+2]; n++; } P.push([o,t/n]); }
+      const lo=P[0][1], hi=P[P.length-1][1], at=f=>{ const g=lo+(hi-lo)*f; for(let j=1;j<P.length;j++) if((P[j][1]-g)*(hi-lo)>=0) return P[j][0]; return 8; }; return at(.85)-at(.15); };
+    return {near:width(200), far:width(450)}; });
+  ok('oil: a border between near values is lost (blend band >= 3 units, >= 2x the far one)',ew.near>=3&&ew.near>=2*ew.far,ew.near.toFixed(2)+' vs '+ew.far.toFixed(2));
+  ok('oil: a border between far values stays found (band <= 2 units)',ew.far<=2,ew.far.toFixed(2));
   const hl=await render(br,'s=2&w=711&h=400');
   ok('helpers.js is loaded before scene.js',!hl.err&&hl.done>0,hl.err||'');
   const nan=await render(br,'s=3&w=711&h=400');
