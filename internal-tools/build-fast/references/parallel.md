@@ -43,5 +43,5 @@ lands in a real repo and touches shared tracked files, this is the wrong skill â
 ## You integrate
 
 Each agent ran only its own half, so run the pieces together on the real input yourself
-before believing any of it. If you are blocked on a piece you could write in three minutes,
-write it and drop the agent's version.
+before believing any of it. Don't redo an agent's piece yourself unless it failed or
+returned nothing usable on the real input.
