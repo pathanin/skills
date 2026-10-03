@@ -169,14 +169,16 @@ const lt=(s,p)=>(s.press=p,s); // start with a broom, end with a needle: later, 
 let P=[]; const add=s=>P.push(s), lay=()=>{ P.sort((a,b)=>a.r-b.r).forEach(s=>{ paint(s); stamp(s); n++; }); P=[]; }; // stable sort: generation order within a region
 // the underpainting is never masked: its soft, broken lay-in is what keeps paint-over edges from looking cut out
 for(let i=0,N=Math.round(1500*A);i<N;i++) add(Object.assign(oilStroke(rnd(W),rnd(H),rnd(14,24),rnd(8,11),.35,.3),{mk:null})); lay();
-// slabs: big brush strokes (a few knife strokes on the widest) where the region is open (sky, sea, broad hills). Sizes are heavy-tailed, 7..28 units, most near 10;
+// slabs: big brush strokes (a few knife strokes on the widest) where the region is open (sky, sea, broad hills). Sizes are heavy-tailed, 7..28 units, most near 10,
+// each 3 to 5 widths long before the flow stretches it (7+ in a sky): long strokes, as an alla prima sky is laid, not dabs a couple of widths long;
 // a slab shrinks until the region's own colour is near-flat across it, so gradients and halos get smaller strokes where they change fast
 // bsf(x,y): a region's openness per point, so brush size can blend smoothly instead of switching at a region border (paint-over)
-const opn=(r,x,y)=>REG[r].bsf?REG[r].bsf(x,y):REG[r].open;
+const SL={n:0,asp:0}, opn=(r,x,y)=>REG[r].bsf?REG[r].bsf(x,y):REG[r].open;
 for(let i=0,N=Math.round(1000*A);i<N;i++){ const x=rnd(W), y=rnd(H), r=idAt(x,y), g=R(), u=R(), kn=R(); let w=7*4**(u*u);
   if(g>=opn(r,x,y)) continue; const c=regCol(REG[r],x,y), far=(ox,oy)=>{ const d=regCol(REG[r],clamp(x+ox,0,W),clamp(y+oy,0,H)); return Math.max(...d.map((v,i)=>Math.abs(v-c[i]))); };
   while(w>7&&Math.max(far(w/2,0),far(-w/2,0),far(0,w/2),far(0,-w/2))>26) w*=.8;
-  const knife=w>=16&&kn<.035, st=oilStroke(x,y,w*(knife?rnd(1.2,2):rnd(1.6,2.6)),w,knife?.7:.9,1,knife); add(st); } lay();
+  const knife=w>=16&&kn<.035, st=oilStroke(x,y,w*(knife?rnd(1.2,2):rnd(3.2,5.2)),w,knife?.7:.9,1,knife); add(st); if(!knife){ SL.n++; SL.asp+=Math.hypot(st.p1[0]-st.p0[0],st.p1[1]-st.p0[1])/st.w; } } lay();
+window.SLABS=()=>({n:SL.n, aspect:SL.asp/(SL.n||1)}); // for tests: mean length/width of the brush slabs laid
 // Use the largest brush that makes sense: a mid or fine stroke lands where the canvas still misses the scene at its scale (need, threshold T: region's T, else 16),
 // plus a small random share in true detail regions only (under 12 units thick: foliage, rocks; none in open or mid-size flat ones), so small strokes never carpet the canvas.
 // Paint-over (a region with cfs) places mid and fine strokes only there, from more candidates, so a big stroke that got it right is never painted over

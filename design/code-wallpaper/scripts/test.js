@@ -116,6 +116,9 @@ const REF=`g.fillStyle='#d8d0c0'; g.fillRect(0,0,w,h); const gr=g.createLinearGr
   // stroke size follows the subject: slabs in open areas, fine strokes on thin ones; big strokes stay visible, and don't spill past their region
   const pvs=await pv.page.evaluate(()=>window.VIS(10,10,190,190,0));
   ok('oil: open sky shows big strokes (>= 30% of it from strokes 12+ units wide, p90 >= 16)',pvs.big>=.3&&pvs.p90>=16,(pvs.big*100).toFixed(0)+'%, p90 '+pvs.p90);
+  // long strokes: an alla prima sky is laid with strokes many brush-widths long (Hertzmann's long strokes), not dabs a couple of widths long
+  const sl=await pv.page.evaluate(()=>window.SLABS());
+  ok('oil: slabs in an open sky run long (mean length >= 7 brush widths)',sl.aspect>=7,sl.aspect.toFixed(1)+' widths, '+sl.n+' slabs');
   const comb=await render(br,'s=5&w=1422&h=800'), cs=await comb.page.evaluate(()=>window.VIS(300,60,580,280,0));
   ok('oil: sky between hangers 14 apart still shows big strokes (>= 20%)',cs.big>=.2,(cs.big*100).toFixed(0)+'%');
   const bs0=await render(br,'s=6&w=1422&h=800'), sq=await bs0.page.evaluate(()=>window.VIS(205,205,295,295,1)), sq1=await pv.page.evaluate(()=>window.VIS(205,205,295,295,1));
@@ -139,9 +142,10 @@ const REF=`g.fillStyle='#d8d0c0'; g.fillRect(0,0,w,h); const gr=g.createLinearGr
   ok('oil: impasto in the lights, thin paint in the darks (light paint >= 1.95x as thick, the weave counted)',th.light>=1.95*th.dark,(th.light/th.dark).toFixed(2)+'x');
   ok('oil: softened edges in the darks stay as thin as the darks (border strip <= 1.3x the open field)',th.edge<=1.3*th.dark,(th.edge/th.dark).toFixed(2)+'x');
   // short strokes only where the canvas needs them: none tracing a border nobody can see, no random dabs on a flat area
-  const sh=await render(br,'s=11&w=1422&h=800'), sv=await sh.page.evaluate(()=>({rim:window.VIS(170,136,230,146), open:window.VIS(170,60,230,70), sq:window.VIS(455,185,485,215,2)}));
+  const sh=await render(br,'s=11&w=1422&h=800'), sv=await sh.page.evaluate(()=>({rim:window.VIS(170,136,230,146), open:window.VIS(170,60,230,70)}));
+  sv.sq={small6:0}; for(let t=1;t<=4;t++){ const r=await render(br,'s=11&w=1422&h=800&tseed='+t); sv.sq.small6+=await r.page.evaluate(()=>window.VIS(455,185,485,215,2).small6)/4; await r.page.close(); } // one seed swings 5..33%: average four
   ok('oil: no short edge strokes along a border whose sides match (rim within 1.5x open sky)',sv.rim.small6<=1.5*sv.open.small6+.02,(sv.rim.small6*100).toFixed(1)+'% vs '+(sv.open.small6*100).toFixed(1)+'%');
-  ok('oil: a flat mid-size area is painted mostly with broad strokes (< 15% of it under 6 units wide, was 57%)',sv.sq.small6<.15,(sv.sq.small6*100).toFixed(1)+'%');
+  ok('oil: a flat mid-size area is painted mostly with broad strokes (< 15% of it under 6 units wide over four tseeds, was 57% on one)',sv.sq.small6<.15,(sv.sq.small6*100).toFixed(1)+'%');
   const hl=await render(br,'s=2&w=711&h=400');
   ok('helpers.js is loaded before scene.js',!hl.err&&hl.done>0,hl.err||'');
   const nan=await render(br,'s=3&w=711&h=400');
