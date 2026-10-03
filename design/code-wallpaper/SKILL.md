@@ -128,7 +128,7 @@ Each region is `{pts:[[x,y],...], dir, jit?, ...colour}`:
   - `mtn`: diagonal mountain strokes.
   - `vert`: trunks, towers and cacti.
   - `angle` + `a`: a fixed angle in radians.
-  - `radial` + `cx,cy`: strokes circle a point, used for sun, moon and halos.
+  - `radial` + `cx,cy`: strokes circle a point, used for a sun or moon disc only. Give a `glowCF` halo the sky's own `dir` (`sky` or `horiz`): painters lay a glow in the sky's flow, and radial strokes there read as a target with upright slabs under the sun.
   - `ray` + `cx,cy`: strokes point outward, used for beams and perspective roads.
   - `roof` + `rx`: the two slopes of a roof.
   - `pine` + `tx`: drooping pine branches.
@@ -168,7 +168,7 @@ Here is an example scene entry, a lighthouse cove at sunset for W = 711:
 const SCENES=[{ name:'lighthouse-sunset', seed:1101, build(C){ const {W,H}=C, o=[];
   const sky=[[0,'#3b3f7e'],[90,'#7b5c9a'],[170,'#d9728a'],[230,'#f8b56a']];
   o.push({pts:rect(0,0,W,H),grad:sky,dir:'sky'});
-  o.push({pts:circ(190,228,120),cf:glowCF(C,sky,190,228,120,'#ffd9a0',.6),dir:'radial',cx:190,cy:228});
+  o.push({pts:circ(190,228,120),cf:glowCF(C,sky,190,228,120,'#ffd9a0',.6),dir:'sky'}); // a halo follows the sky's flow, never radial
   o.push({pts:circ(190,222,30),col:'#ffcf72',dir:'radial',cx:190,cy:222});
   o.push({pts:rect(0,228,W,H),grad:[[228,'#5a5d9a'],[300,'#35507e'],[400,'#1f3558']],dir:'horiz'});
   for(let i=0;i<9;i++){ const y=236+i*i*2.2, hw=26-i*1.8; o.push({pts:rect(190-hw,y,190+hw,y+2+i*.35),col:i<3?'#ffd58a':'#f2a86a',dir:'horiz'}); }
@@ -245,6 +245,7 @@ Oil-paints over the user's image instead of a scene. It uses the same engine, an
      - **Broken or disconnected shapes**, such as a road drawn in pieces: the polygon is self-intersecting. Order the points as the left edge up, then the right edge down.
      - **Focal element hidden**, such as a sun behind a mesa: check the draw order and the overlap, and move the element into a gap.
      - **(Oil) Elements lost in the texture**, such as hay bales: add a darker shadow region offset beneath them for contrast.
+     - **(Oil) A target or ring around the sun or moon**: the halo has `dir:'radial'`. Give it the sky's `dir`.
      - **(Oil) A slab breaks a focal shape** (a dark streak across the moon, a sun disc cut in two): set `bs:0` on that region.
      - **(Oil) Brushwork too blocky or too even**: water that reads as tiles wants `bs` .3 to .5; a region that should carry big strokes but shows only small dabs wants `bs:1`.
      - **(Oil) A carpet of short strokes** (the whole region covered in same-sized dabs with visible rims): check that the region's `dir` is a flow direction (`sky`, `horiz` or `hill`, not `swirl`) and that `bs` isn't set low. Then raise `T` toward 20 rather than adding strokes.
