@@ -178,11 +178,11 @@ for(let i=0,N=Math.round(1000*A);i<N;i++){ const x=rnd(W), y=rnd(H), r=idAt(x,y)
   while(w>7&&Math.max(far(w/2,0),far(-w/2,0),far(0,w/2),far(0,-w/2))>26) w*=.8;
   const knife=w>=16&&kn<.035, st=oilStroke(x,y,w*(knife?rnd(1.2,2):rnd(1.6,2.6)),w,knife?.7:.9,1,knife); add(st); } lay();
 // Use the largest brush that makes sense: a mid or fine stroke lands where the canvas still misses the scene at its scale (need, threshold T: region's T, else 16),
-// plus a small random share in detail regions only (none in fully open ones), so small strokes never carpet the canvas.
+// plus a small random share in true detail regions only (under 12 units thick: foliage, rocks; none in open or mid-size flat ones), so small strokes never carpet the canvas.
 // Paint-over (a region with cfs) places mid and fine strokes only there, from more candidates, so a big stroke that got it right is never painted over
 const PO=REG.some(r=>r.cfs), TA=(x,y)=>REG[idAt(x,y)].T??16;
-for(let i=0,N=Math.round(5200*A*(PO?1.4:1));i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(PO?need(x,y,4.5,TA(x,y)):g<.35*(1-opn(idAt(x,y),x,y))||need(x,y,4.5,TA(x,y))) add(lt(oilStroke(x,y,rnd(7,12),rnd(3.5,5.5),.7),.7)); } lay();
-for(let i=0,N=Math.round(3500*A*(PO?1.6:1));i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(PO?need(x,y,2.4,TA(x,y)):g<.15*(1-opn(idAt(x,y),x,y))||need(x,y,2.4,TA(x,y))) add(lt(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1),.5)); } lay();
+for(let i=0,N=Math.round(5200*A*(PO?1.4:1));i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(PO?need(x,y,4.5,TA(x,y)):g<.35*(1-opn(idAt(x,y),x,y))*(REG[idAt(x,y)].thick<12)||need(x,y,4.5,TA(x,y))) { const o=1+opn(idAt(x,y),x,y); add(lt(oilStroke(x,y,rnd(7,12)*o,rnd(3.5,5.5)*o,.7),.7)); } } lay(); // a repair in an open region uses a brush to match (up to twice as big), not a detail dab
+for(let i=0,N=Math.round(3500*A*(PO?1.6:1));i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(PO?need(x,y,2.4,TA(x,y)):g<.15*(1-opn(idAt(x,y),x,y))*(REG[idAt(x,y)].thick<12)||need(x,y,2.4,TA(x,y))){ const o=1+opn(idAt(x,y),x,y); add(lt(oilStroke(x,y,rnd(4,8)*o,rnd(1.8,3)*o,1),.5)); } } lay();
 // lost and found edges: where the two sides of a border are close in value, a dry brush drags along the border and blends them (lost);
 // far values or hues, small shapes (under ~900 to 2400 square units: a house, a pine, a window; a cloud is a mass) and bs:0 focal shapes keep a hard (found) edge. A slow wave along the contour loses some stretches and finds others
 const lumv=c=>.3*c[0]+.59*c[1]+.11*c[2], soften=(x,y,r)=>{ let nx=0, ny=0, q=-1;
@@ -194,7 +194,7 @@ const lumv=c=>.3*c[0]+.59*c[1]+.11*c[2], soften=(x,y,r)=>{ let nx=0, ny=0, q=-1;
   if(R()>=sstep(900,2400,REG[r].mass)*(1-sstep(10,36,Math.abs(lumv(cr)-lumv(cq))))*(1-sstep(60,140,cd))*(.35+.65*(.5+.5*Math.sin(bx*.06+by*.045)))) return;
   const s=oilStroke(x,y,1,3,1), L=rnd(3,14)/2, a=Math.atan2(nx,-ny)+rnd(-.3,.3), dx=Math.cos(a), dy=Math.sin(a), sh=rnd(-.7,.7)*L, cx=bx+dx*sh, cy=by+dy*sh, col=mixc(cr,cq,.5); // oilStroke only for its per-stroke draws; the brush drags along the contour, straddling it (a stroke across it pokes out as a post or a hair)
   const bw=rnd(2.5,4.5); Object.assign(s,{p0:[cx-dx*L,cy-dy*L],p1:[cx+dx*L,cy+dy*L],dx,dy,w:bw,bend:s.bend*.3,col:mixc(cr,cq,.3),col2:mixc(cr,cq,.8),base:col,thick:.9*(.1+1.15*lumv(col)/255)*Math.min(1,bw/6)**.8,wet:.45,depl:rnd(.3,.7),mk:null}); add(lt(s,.6)); }; // staggered along the flow so their ends don't line up into a new edge; bristles streak two in-between tones (broken colour) and run dry, so the blend keeps a stroke's texture
-let e=0, tries=0; const N3=Math.round(1050*A*.7); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r>idAt(x+3,y)||r>idAt(x,y+3)||r>idAt(x-3,y)||r>idAt(x,y-3)){ add(lt(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1),.5)); soften(x,y,r); e++; } } lay();
+let e=0, tries=0; const N3=Math.round(1050*A*.7); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); const nb=[[3,0],[0,3],[-3,0],[0,-3]].find(([ox,oy])=>idAt(x+ox,y+oy)<r); if(nb&&cdist(colorAt(x,y),colorAt(clamp(x+nb[0],0,W-.01),clamp(y+nb[1],0,H-.01)))>=24){ /* a border whose sides match (a glow's rim) gets no edge strokes: they'd only trace it */ add(lt(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1),.5)); soften(x,y,r); e++; } } lay();
 REG.forEach((r,ri)=>{ if(r.area<900){ const m=r.area<30?12:40; for(let q=0;q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)===ri) add(lt(oilStroke(x,y,rnd(2,6),r.area<30?rnd(.8,1.4):rnd(1.2,2),1.1),.4)); } } }); lay();
 // highlights as dots (opt-in, hl(x,y) on a region): a small thick dab of the true colour where the scene is much brighter than its surroundings
 REG.forEach((r,ri)=>{ if(r.hl) for(let q=0,m=Math.round(r.area*.25);q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)!==ri||!r.hl(x,y)) continue;
@@ -221,7 +221,7 @@ window.THK=(x0,y0,x1,y1)=>{ let s=0, n=0; for(let py=Math.round(y0*k);py<Math.ro
 window.TWAT=(x,y)=>TW[Math.min(PY-1,Math.floor(y*k))*PX+Math.min(PX-1,Math.floor(x*k))]/4; // for tests: width (units) of the top-most stroke at a point
 window.VIS=(x0,y0,x1,y1,r)=>{ const v=[], L=[0,0,0,0]; for(let py=Math.round(y0*k);py<Math.round(y1*k);py++) for(let px=Math.round(x0*k);px<Math.round(x1*k);px++){ const q=py*PX+px, t=TW[q];
     if(t&&(r===undefined||idAt((px+.5)/k,(py+.5)/k)===r)){ v.push(t/4); const b=t>=48?0:2; L[b]+=.3*D[q*4]+.59*D[q*4+1]+.11*D[q*4+2]; L[b+1]++; } }
-  v.sort((a,b)=>a-b); return {n:v.length, big:v.filter(w=>w>=12).length/(v.length||1), p90:v[Math.floor(v.length*.9)]||0, lumBig:L[0]/(L[1]||1), lumSmall:L[2]/(L[3]||1)}; };
+  v.sort((a,b)=>a-b); return {n:v.length, small6:v.filter(w=>w<6).length/(v.length||1), big:v.filter(w=>w>=12).length/(v.length||1), p90:v[Math.floor(v.length*.9)]||0, lumBig:L[0]/(L[1]||1), lumSmall:L[2]/(L[3]||1)}; };
 }
 window.DONE=n;
 }

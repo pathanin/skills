@@ -36,6 +36,8 @@ const SCENES=[
   { name:'t-edges', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#8a7a9a',dir:'horiz'},{pts:rect(200,140,300,260),col:'#9a8a6a',dir:'horiz'},{pts:rect(450,140,550,260),col:'#f0d0a0',dir:'horiz'},{pts:rect(620,180,646,206),col:'#9a8a6a',dir:'horiz'}]; } }, // last: a house-sized near-value square
   // 10: impasto in the lights, thin paint in the darks: a dark field beside a light one
   { name:'t-impasto', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#283040',dir:'horiz',bs:1},{pts:rect(W/2,-2,W+2,H+2),col:'#e8dcc0',dir:'horiz',bs:1},{pts:rect(20,20,80,80),col:'#40304a',dir:'horiz'}]; } }, // last: a dark mass near the field's value (soft edges)
+  // 11: short strokes only where needed: a halo whose rim matches the sky (an invisible border), and a flat mid-size square that needs no repair
+  { name:'t-short', seed:11, build(C){ const {W,H}=C, c=C.hex('#7a8aa0'); return [{pts:rect(0,0,W,H),col:'#7a8aa0',dir:'sky'},{pts:circ(200,200,60),cf:()=>c,dir:'sky'},{pts:rect(450,180,490,220),col:'#a07a6a',dir:'horiz'}]; } },
 ];`);
 
 let fails=0; const ok=(name,cond,detail='')=>{ console.log((cond?'PASS ':'FAIL ')+name+(detail?'  ('+detail+')':'')); if(!cond) fails++; };
@@ -136,6 +138,10 @@ const REF=`g.fillStyle='#d8d0c0'; g.fillRect(0,0,w,h); const gr=g.createLinearGr
   const im=await render(br,'s=10&w=3840&h=2160'), th=await im.page.evaluate(()=>({dark:window.THK(100,140,220,260), light:window.THK(480,140,600,260), edge:window.THK(77,30,83,70)}));
   ok('oil: impasto in the lights, thin paint in the darks (light paint >= 1.95x as thick, the weave counted)',th.light>=1.95*th.dark,(th.light/th.dark).toFixed(2)+'x');
   ok('oil: softened edges in the darks stay as thin as the darks (border strip <= 1.3x the open field)',th.edge<=1.3*th.dark,(th.edge/th.dark).toFixed(2)+'x');
+  // short strokes only where the canvas needs them: none tracing a border nobody can see, no random dabs on a flat area
+  const sh=await render(br,'s=11&w=1422&h=800'), sv=await sh.page.evaluate(()=>({rim:window.VIS(170,136,230,146), open:window.VIS(170,60,230,70), sq:window.VIS(455,185,485,215,2)}));
+  ok('oil: no short edge strokes along a border whose sides match (rim within 1.5x open sky)',sv.rim.small6<=1.5*sv.open.small6+.02,(sv.rim.small6*100).toFixed(1)+'% vs '+(sv.open.small6*100).toFixed(1)+'%');
+  ok('oil: a flat mid-size area is painted mostly with broad strokes (< 15% of it under 6 units wide, was 57%)',sv.sq.small6<.15,(sv.sq.small6*100).toFixed(1)+'%');
   const hl=await render(br,'s=2&w=711&h=400');
   ok('helpers.js is loaded before scene.js',!hl.err&&hl.done>0,hl.err||'');
   const nan=await render(br,'s=3&w=711&h=400');
