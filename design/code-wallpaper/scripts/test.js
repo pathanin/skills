@@ -33,7 +33,7 @@ const SCENES=[
   { name:'t-paintover', seed:3, build(C){ return paintOver(C); } },                                                    // 7: needs img.js (baked below)
   { name:'t-grey', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#888888',dir:'sky'},{pts:rect(200,150,300,250),col:'#888888',bs:0}]; } }, // 8: flat grey; square = small strokes only
   // 9: lost and found edges: a square close in value to the sky (hue differs only), and one far from it in value
-  { name:'t-edges', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#8a7a9a',dir:'horiz'},{pts:rect(200,140,300,260),col:'#9a8a6a',dir:'horiz'},{pts:rect(450,140,550,260),col:'#f0d0a0',dir:'horiz'}]; } },
+  { name:'t-edges', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#8a7a9a',dir:'horiz'},{pts:rect(200,140,300,260),col:'#9a8a6a',dir:'horiz'},{pts:rect(450,140,550,260),col:'#f0d0a0',dir:'horiz'},{pts:rect(620,180,646,206),col:'#9a8a6a',dir:'horiz'}]; } }, // last: a house-sized near-value square
   // 10: impasto in the lights, thin paint in the darks: a dark field beside a light one
   { name:'t-impasto', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#283040',dir:'horiz',bs:1},{pts:rect(W/2,-2,W+2,H+2),col:'#e8dcc0',dir:'horiz',bs:1}]; } },
 ];`);
@@ -126,11 +126,12 @@ const REF=`g.fillStyle='#d8d0c0'; g.fillRect(0,0,w,h); const gr=g.createLinearGr
   // edges: averaged across rows, a border between near values blends over a wider band than one between far values (which stays found).
   // Measured on R-B, which the lighting barely moves: sky -16, near square +48 (within 9 levels of the sky's value), far square +80 (82 levels lighter)
   const ed=await render(br,'s=9&w=3840&h=2160'), ew=await ed.page.evaluate(()=>{ const cv=document.getElementById('cv'), k=cv.height/400, Wp=cv.width, d=cv.getContext('2d').getImageData(0,0,Wp,cv.height).data;
-    const width=x0=>{ const P=[]; for(let o=-8;o<=8;o+=.25){ let t=0, n=0; for(let y=160;y<240;y+=1/k){ const i=((y*k|0)*Wp+((x0+o)*k|0))*4; t+=d[i]-d[i+2]; n++; } P.push([o,t/n]); }
+    const width=(x0,y0=160,y1=240)=>{ const P=[]; for(let o=-8;o<=8;o+=.25){ let t=0, n=0; for(let y=y0;y<y1;y+=1/k){ const i=((y*k|0)*Wp+((x0+o)*k|0))*4; t+=d[i]-d[i+2]; n++; } P.push([o,t/n]); }
       const lo=P[0][1], hi=P[P.length-1][1], at=f=>{ const g=lo+(hi-lo)*f; for(let j=1;j<P.length;j++) if((P[j][1]-g)*(hi-lo)>=0) return P[j][0]; return 8; }; return at(.85)-at(.15); };
-    return {near:width(200), far:width(450)}; });
+    return {near:width(200), far:width(450), small:width(620,183,203)}; });
   ok('oil: a border between near values is lost (blend band >= 3 units, >= 2x the far one)',ew.near>=3&&ew.near>=2*ew.far,ew.near.toFixed(2)+' vs '+ew.far.toFixed(2));
   ok('oil: a border between far values stays found (band <= 2 units)',ew.far<=2,ew.far.toFixed(2));
+  ok('oil: a small shape near in value stays found, as a house keeps its silhouette (band <= 2 units)',ew.small<=2,ew.small.toFixed(2));
   // impasto in the lights, thin paint in the darks: mean paint height over a dark field and a light one (1.8x before darks went thin)
   const im=await render(br,'s=10&w=3840&h=2160'), th=await im.page.evaluate(()=>({dark:window.THK(100,140,220,260), light:window.THK(480,140,600,260)}));
   ok('oil: impasto in the lights, thin paint in the darks (light paint >= 1.95x as thick, the weave counted)',th.light>=1.95*th.dark,(th.light/th.dark).toFixed(2)+'x');
@@ -145,8 +146,13 @@ const REF=`g.fillStyle='#d8d0c0'; g.fillRect(0,0,w,h); const gr=g.createLinearGr
   const gs=await grey.page.evaluate(()=>{ const cv=document.getElementById('cv'), k=cv.height/400, g=cv.getContext('2d');
     const at=(x0,y0,w,h)=>{ const d=g.getImageData(Math.round(x0*k),Math.round(y0*k),Math.round(w*k),Math.round(h*k)).data; let n=0, s=0, s2=0, gl=0;
       for(let i=0;i<d.length;i+=4){ const v=d[i]-d[i+1]; if(Math.abs(v)<30){ n++; s+=v; s2+=v*v; } if(Math.min(d[i],d[i+1],d[i+2])>205) gl++; } return {sd:Math.sqrt(s2/n-(s/n)**2), glint:gl/(d.length/4)}; };
-    return {open:at(400,100,200,200), square:at(205,155,90,90)}; });
-  ok('oil: a flat grey varies in value, not hue (sd of R-G <= 3.5)',gs.open.sd<=3.5,'sd '+gs.open.sd.toFixed(2));
+    // warm light, cool shadow: over 1x1-unit blocks (glints excluded), lighter paint leans warm (R-B rises with value)
+    const temp=(x0,y0,w,h)=>{ const B=Math.round(k), S=Math.round(w*k), d=g.getImageData(Math.round(x0*k),Math.round(y0*k),S,Math.round(h*k)).data, P=[];
+      for(let by=0;by+B<=Math.round(h*k);by+=B) for(let bx=0;bx+B<=S;bx+=B){ let l=0, t=0, sk=false; for(let y=by;y<by+B;y++) for(let x=bx;x<bx+B;x++){ const i=(y*S+x)*4; if(Math.min(d[i],d[i+1],d[i+2])>180) sk=true; l+=d[i]+d[i+1]+d[i+2]; t+=d[i]-d[i+2]; } if(!sk) P.push([l,t]); }
+      const n=P.length, ml=P.reduce((a,p)=>a+p[0],0)/n, mt=P.reduce((a,p)=>a+p[1],0)/n; let c=0, vl=0, vt=0; for(const [l,t] of P){ c+=(l-ml)*(t-mt); vl+=(l-ml)**2; vt+=(t-mt)**2; } return c/Math.sqrt(vl*vt); };
+    return {open:at(400,100,200,200), square:at(205,155,90,90), temp:temp(400,100,200,200)}; });
+  ok('oil: lighter strokes lean warm, darker ones cool (correlation of R-B with value >= .3)',gs.temp>=.3,'r '+gs.temp.toFixed(2));
+  ok('oil: a flat grey varies mainly in value, not hue (sd of R-G <= 3.5)',gs.open.sd<=3.5,'sd '+gs.open.sd.toFixed(2));
   ok('oil: small strokes do not glint more than big ones (<= 1.5x)',gs.square.glint<=1.5*gs.open.glint+.002,(gs.square.glint*100).toFixed(2)+'% vs '+(gs.open.glint*100).toFixed(2)+'%');
 
   // paint-over: bake an image into img.js, then paint it

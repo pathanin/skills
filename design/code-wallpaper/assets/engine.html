@@ -27,7 +27,7 @@ REG.forEach((r,i)=>{ if(!r.pts.every(p=>isFinite(p[0])&&isFinite(p[1]))) throw n
   const xs=r.pts.map(p=>p[0]), ys=r.pts.map(p=>p[1]); r.box=[Math.min(...xs),Math.min(...ys),Math.max(...xs),Math.max(...ys)];
   r.area=(r.box[2]-r.box[0])*(r.box[3]-r.box[1]); if(r.col) r.rgb=Array.isArray(r.col)?r.col:hex(r.col);
   let A=0, P=0; r.pts.forEach(([x0,y0],i)=>{ const [x1,y1]=r.pts[(i+1)%r.pts.length]; A+=x0*y1-x1*y0; P+=Math.hypot(x1-x0,y1-y0); });
-  r.thick=Math.abs(A)/(P||1); r.open=r.bs??clamp((r.thick-6)/24); }); // thick = 2*area/perimeter: about the width of a strip, the radius of a disc; open: 0 detail .. 1 open sky or sea (slab brushes)
+  r.thick=Math.abs(A)/(P||1); r.mass=Math.abs(A)/2; r.open=r.bs??clamp((r.thick-6)/24); }); // thick = 2*area/perimeter: about the width of a strip, the radius of a disc; open: 0 detail .. 1 open sky or sea (slab brushes)
 function pip(pts,x,y){ let c=false; for(let i=0,j=pts.length-1;i<pts.length;j=i++){ const [xi,yi]=pts[i],[xj,yj]=pts[j]; if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi) c=!c; } return c; }
 const inR=(r,x,y)=>{ const b=REG[r].box; return x>=b[0]&&x<=b[2]&&y>=b[1]&&y<=b[3]&&pip(REG[r].pts,x,y); };
 const GS=.5, GX=W/GS|0, GY=H/GS|0, ID=new Uint16Array(GX*GY);
@@ -68,7 +68,8 @@ function oilStroke(x,y,L,w,thick,dry=1,knife=false){ const r=idAt(x,y), fl=1+((F
   const c00=regCol(REG[r],x,y), ok=(px,py)=>{ const q=idAt(px,py); return q>=r||cdist(regCol(REG[q],clamp(px,0,W-.01),clamp(py,0,H-.01)),c00)<24; };
   const hs2=Math.max(0,w/2-2.2), fits=t=>{ const px=x+dx*t, py=y+dy*t; return ok(px,py)&&(!hs2||ok(px+dy*hs2,py-dx*hs2)&&ok(px-dy*hs2,py+dx*hs2)); };
   while(l0<L/2&&fits(-l0-st)) l0+=st; while(l1<L/2&&fits(l1+st)) l1+=st;
-  const js=.5, f=1+js*rnd(-.1,.1), dv=js*rnd(-8,8), jit=c=>c.map(v=>clamp(v*f+dv+js*rnd(-2.5,2.5),0,255)), // strokes vary in value, not hue: a flat grey stays grey, not green/pink confetti
+  const js=.5, f=1+js*rnd(-.1,.1), dv=js*rnd(-8,8), tw=.5*dv+12*(f-1), TW3=[tw,.25*tw,-tw], // warm light, cool shadow: a stroke a touch lighter leans warm, a darker one cool, from the same draws
+    jit=c=>c.map((v,i)=>clamp(v*f+dv+TW3[i]+js*rnd(-2.5,2.5),0,255)), // strokes vary mainly in value, hue only by that small temperature shift: a flat grey stays grey, not green/pink confetti
     x2=clamp(x+rnd(-1,1)*Math.min(6,1.5*w),0,W-.01), y2=clamp(y+rnd(-1,1)*Math.min(6,1.5*w),0,H-.01), c0=scol(r,x,y,w), c2=scol(idAt(x2,y2),x2,y2,w); // the second pigment comes from within the brush's reach
   // the second pigment must come from the stroke's own mass: its own region, and in paint-over a colour near its own (else strokes blend across an edge)
   const c2u=idAt(x2,y2)===r&&(!REG[r].cfs||cdist(c2,c0)<=60)?c2:c0, base=c0.map((v,i)=>.7*v+.3*c2u[i]);
@@ -183,14 +184,15 @@ const PO=REG.some(r=>r.cfs), TA=(x,y)=>REG[idAt(x,y)].T??16;
 for(let i=0,N=Math.round(5200*A*(PO?1.4:1));i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(PO?need(x,y,4.5,TA(x,y)):g<.35*(1-opn(idAt(x,y),x,y))||need(x,y,4.5,TA(x,y))) add(lt(oilStroke(x,y,rnd(7,12),rnd(3.5,5.5),.7),.7)); } lay();
 for(let i=0,N=Math.round(3500*A*(PO?1.6:1));i<N;i++){ const x=rnd(W), y=rnd(H), g=R(); if(PO?need(x,y,2.4,TA(x,y)):g<.15*(1-opn(idAt(x,y),x,y))||need(x,y,2.4,TA(x,y))) add(lt(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1),.5)); } lay();
 // lost and found edges: where the two sides of a border are close in value, a dry brush drags along the border and blends them (lost);
-// far values or hues, small shapes (thick under ~12 to 30 units, so a house or a grass cap) and bs:0 focal shapes keep a hard (found) edge. A slow wave along the contour loses some stretches and finds others
+// far values or hues, small shapes (under ~900 to 2400 square units: a house, a pine, a window; a cloud is a mass) and bs:0 focal shapes keep a hard (found) edge. A slow wave along the contour loses some stretches and finds others
 const lumv=c=>.3*c[0]+.59*c[1]+.11*c[2], soften=(x,y,r)=>{ let nx=0, ny=0, q=-1;
   for(let i=0;i<8;i++){ const a=i*TAU/8, id=idAt(x+3*Math.cos(a),y+3*Math.sin(a)); if(id<r){ nx+=Math.cos(a); ny+=Math.sin(a); if(q<0||id>q) q=id; } }
   const nl=Math.hypot(nx,ny); if(q<0||!nl||REG[r].bs===0||REG[q].bs===0||REG[r].thick<4||REG[q].thick<4) return; nx/=nl; ny/=nl;
   let t=0; while(t<3&&idAt(x+nx*t,y+ny*t)>=r) t+=.5; const bx=clamp(x+nx*t,0,W-.01), by=clamp(y+ny*t,0,H-.01); // the border, toward the region behind
   const cr=regCol(REG[r],clamp(bx-2*nx,0,W-.01),clamp(by-2*ny,0,H-.01)), cq=regCol(REG[q],clamp(bx+2*nx,0,W-.01),clamp(by+2*ny,0,H-.01));
-  if(R()>=sstep(12,30,REG[r].thick)*(1-sstep(10,36,Math.abs(lumv(cr)-lumv(cq))))*(1-sstep(60,140,cdist(cr,cq)))*(.35+.65*(.5+.5*Math.sin(bx*.06+by*.045)))) return;
-  const s=oilStroke(x,y,1,3,1), L=rnd(3,14)/2, a=angleAt(bx,by,q), dx=Math.cos(a), dy=Math.sin(a), sh=rnd(-.7,.7)*L, cx=bx+dx*sh, cy=by+dy*sh, col=mixc(cr,cq,.5); // oilStroke only for its per-stroke draws; the stroke follows the flow of the region behind, dragging the edge into it (a house into the ground, not down it)
+  const cd=cdist(cr,cq); if(cd<24) return; // already one colour (a glow's rim): nothing to lose, and strokes along it would trace it
+  if(R()>=sstep(900,2400,REG[r].mass)*(1-sstep(10,36,Math.abs(lumv(cr)-lumv(cq))))*(1-sstep(60,140,cd))*(.35+.65*(.5+.5*Math.sin(bx*.06+by*.045)))) return;
+  const s=oilStroke(x,y,1,3,1), L=rnd(3,14)/2, a=Math.atan2(nx,-ny)+rnd(-.3,.3), dx=Math.cos(a), dy=Math.sin(a), sh=rnd(-.7,.7)*L, cx=bx+dx*sh, cy=by+dy*sh, col=mixc(cr,cq,.5); // oilStroke only for its per-stroke draws; the brush drags along the contour, straddling it (a stroke across it pokes out as a post or a hair)
   Object.assign(s,{p0:[cx-dx*L,cy-dy*L],p1:[cx+dx*L,cy+dy*L],dx,dy,w:rnd(2.5,4.5),bend:s.bend*.3,col:mixc(cr,cq,.3),col2:mixc(cr,cq,.8),base:col,thick:.55,wet:.45,depl:rnd(.3,.7),mk:null}); add(lt(s,.6)); }; // staggered along the flow so their ends don't line up into a new edge; bristles streak two in-between tones (broken colour) and run dry, so the blend keeps a stroke's texture
 let e=0, tries=0; const N3=Math.round(1050*A*.7); while(e<N3&&tries++<N3*100){ const x=rnd(W), y=rnd(H), r=idAt(x,y); if(r>idAt(x+3,y)||r>idAt(x,y+3)||r>idAt(x-3,y)||r>idAt(x,y-3)){ add(lt(oilStroke(x,y,rnd(4,8),rnd(1.8,3),1),.5)); soften(x,y,r); e++; } } lay();
 REG.forEach((r,ri)=>{ if(r.area<900){ const m=r.area<30?12:40; for(let q=0;q<m;q++){ const x=rnd(r.box[0],r.box[2]), y=rnd(r.box[1],r.box[3]); if(idAt(x,y)===ri) add(lt(oilStroke(x,y,rnd(2,6),r.area<30?rnd(.8,1.4):rnd(1.2,2),1.1),.4)); } } }); lay();
