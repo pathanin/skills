@@ -34,6 +34,8 @@ const SCENES=[
   { name:'t-grey', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#888888',dir:'sky'},{pts:rect(200,150,300,250),col:'#888888',bs:0}]; } }, // 8: flat grey; square = small strokes only
   // 9: lost and found edges: a square close in value to the sky (hue differs only), and one far from it in value
   { name:'t-edges', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#8a7a9a',dir:'horiz'},{pts:rect(200,140,300,260),col:'#9a8a6a',dir:'horiz'},{pts:rect(450,140,550,260),col:'#f0d0a0',dir:'horiz'}]; } },
+  // 10: impasto in the lights, thin paint in the darks: a dark field beside a light one
+  { name:'t-impasto', seed:11, build(C){ const {W,H}=C; return [{pts:rect(0,0,W,H),col:'#283040',dir:'horiz',bs:1},{pts:rect(W/2,-2,W+2,H+2),col:'#e8dcc0',dir:'horiz',bs:1}]; } },
 ];`);
 
 let fails=0; const ok=(name,cond,detail='')=>{ console.log((cond?'PASS ':'FAIL ')+name+(detail?'  ('+detail+')':'')); if(!cond) fails++; };
@@ -129,6 +131,9 @@ const REF=`g.fillStyle='#d8d0c0'; g.fillRect(0,0,w,h); const gr=g.createLinearGr
     return {near:width(200), far:width(450)}; });
   ok('oil: a border between near values is lost (blend band >= 3 units, >= 2x the far one)',ew.near>=3&&ew.near>=2*ew.far,ew.near.toFixed(2)+' vs '+ew.far.toFixed(2));
   ok('oil: a border between far values stays found (band <= 2 units)',ew.far<=2,ew.far.toFixed(2));
+  // impasto in the lights, thin paint in the darks: mean paint height over a dark field and a light one (1.8x before darks went thin)
+  const im=await render(br,'s=10&w=3840&h=2160'), th=await im.page.evaluate(()=>({dark:window.THK(100,140,220,260), light:window.THK(480,140,600,260)}));
+  ok('oil: impasto in the lights, thin paint in the darks (light paint >= 1.95x as thick, the weave counted)',th.light>=1.95*th.dark,(th.light/th.dark).toFixed(2)+'x');
   const hl=await render(br,'s=2&w=711&h=400');
   ok('helpers.js is loaded before scene.js',!hl.err&&hl.done>0,hl.err||'');
   const nan=await render(br,'s=3&w=711&h=400');

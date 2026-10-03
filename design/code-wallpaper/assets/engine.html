@@ -75,7 +75,7 @@ function oilStroke(x,y,L,w,thick,dry=1,knife=false){ const r=idAt(x,y), fl=1+((F
   const col=jit(c0), col2=jit(c2u), lum=(.3*col[0]+.59*col[1]+.11*col[2])/255;
   const wf=Math.min(w,1.2+(l0+l1)*.8);
   return {p0:[x-dx*l0,y-dy*l0],p1:[x+dx*l1,y+dy*l1],w:wf,col,col2,dx,dy,bend:rnd(-.3,.3)*tn,id:R()*4294967296>>>0,
-    op:rnd(.85,1), depl:rnd(.1,.7)*(knife?.1:dry), wet:rnd(.25,.55), thick:thick*(.35+lum)*Math.min(1,wf/6)**.8, press:1, base, mk:REG[r].cfs?(X,Y)=>REG[r].cfs(X,Y,1.5):null, knife, r}; } // small brushes carry thinner paint, so their edges aren't steeper than a big brush's // lights are laid on thicker (impasto), darks thin enough for the weave to show; a knife lays its full load
+    op:rnd(.85,1), depl:rnd(.1,.7)*(knife?.1:dry), wet:rnd(.25,.55), thick:thick*(.1+1.15*lum)*Math.min(1,wf/6)**.8, press:1, base, mk:REG[r].cfs?(X,Y)=>REG[r].cfs(X,Y,1.5):null, knife, r}; } // small brushes carry thinner paint, so their edges aren't steeper than a big brush's // lights are laid on thicker (impasto), darks thin enough for the weave to show; a knife lays its full load
 
 const cv=document.getElementById('cv'); cv.width=PX; cv.height=PY; const b=cv.getContext('2d');
 b.setTransform(k,0,0,k,0,0);
@@ -201,7 +201,7 @@ REG.forEach((r,ri)=>{ if(r.hl) for(let q=0,m=Math.round(r.area*.25);q<m;q++){ co
 // the paint is thick (bare linen and thin scumbles stay matte). The weave pushes up through thin paint. A faint falloff, as in a photo.
 const L0=-.5, L1=-.62, L2=.6, ll=Math.hypot(L0,L1,L2), lx=L0/ll, ly=L1/ll, lz=L2/ll, hl=Math.hypot(lx,ly,lz+1), hx=lx/hl, hy=ly/hl, hz=(lz+1)/hl, SPE=10, s0=hz**SPE;
 const TT=new Float32Array(NP), RB=Math.max(1,Math.round(k*.4)); // cavity blur radius (px)
-for(let q=0;q<NP;q++){ const h=HT[q]; TT[q]=h+.4*WV[q]/255/(1+6*h*h); WV[q]=255*sstep(0,.15,h)*(.3+.7*sstep(.2,1,h)); } // WV now holds gloss: bare linen is matte, oil has a sheen, impasto shines
+for(let q=0;q<NP;q++){ const h=HT[q]; TT[q]=h+.4*WV[q]/255/(1+(h/.3)**4); /* the weave shows through thin paint only: impasto buries it */ WV[q]=255*sstep(0,.15,h)*(.45+.55*sstep(.1,.8,h)); } // WV now holds gloss: bare linen is matte, oil has a sheen even where thin, impasto shines
 { const tmp=new Float32Array(Math.max(PX,PY)); // separable box blur TT -> HT
   for(let y=0;y<PY;y++){ const r=y*PX; let acc=0; for(let x=-RB;x<=RB;x++) acc+=TT[r+clamp(x,0,PX-1)];
     for(let x=0;x<PX;x++){ tmp[x]=acc/(2*RB+1); acc+=TT[r+Math.min(PX-1,x+RB+1)]-TT[r+Math.max(0,x-RB)]; } HT.set(tmp.subarray(0,PX),r); }
@@ -215,6 +215,7 @@ for(let py=0;py<PY;py++){ const up=(py?py-1:0)*PX, dn=(py<PY-1?py+1:py)*PX, row=
     D[o]=D[o]*sh+sp; D[o+1]=D[o+1]*sh+sp*.97; D[o+2]=D[o+2]*sh+sp*.9; } }
 b.putImageData(img,0,0);
 // for tests: width (units) of the top-most stroke over the pixels of a box, optionally only where region r shows
+window.THK=(x0,y0,x1,y1)=>{ let s=0, n=0; for(let py=Math.round(y0*k);py<Math.round(y1*k);py++) for(let px=Math.round(x0*k);px<Math.round(x1*k);px++){ s+=TT[py*PX+px]; n++; } return s/(n||1); }; // for tests: mean paint height over a box
 window.TWAT=(x,y)=>TW[Math.min(PY-1,Math.floor(y*k))*PX+Math.min(PX-1,Math.floor(x*k))]/4; // for tests: width (units) of the top-most stroke at a point
 window.VIS=(x0,y0,x1,y1,r)=>{ const v=[], L=[0,0,0,0]; for(let py=Math.round(y0*k);py<Math.round(y1*k);py++) for(let px=Math.round(x0*k);px<Math.round(x1*k);px++){ const q=py*PX+px, t=TW[q];
     if(t&&(r===undefined||idAt((px+.5)/k,(py+.5)/k)===r)){ v.push(t/4); const b=t>=48?0:2; L[b]+=.3*D[q*4]+.59*D[q*4+1]+.11*D[q*4+2]; L[b+1]++; } }
