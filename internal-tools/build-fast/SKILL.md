@@ -172,8 +172,7 @@ uses, because they come back to this cold:
 
 Run it once on the real input, then run the check you named in step 1 — that one, not
 whichever looks cheapest now, because the cheapest-looking check is the one this output
-happens to pass. It is one check, not a test suite. It costs a minute, and skipping it
-because the code looks obviously right risks the whole rebuild.
+happens to pass. It is one check, not a test suite.
 
 Write a real assert, or cache an intermediate, only when it makes the build *faster* — when
 the tricky bit needs iterating and re-running the whole pipeline each time costs more than
@@ -182,10 +181,9 @@ a five-line check. That is the only way a test earns its place here.
 If the run itself is destructive — it overwrites, deletes, moves, posts, or sends — do
 not point it at the real thing first. Copy the input aside and run against the copy, or
 add a dry-run that prints what it would do and show that output before the real run.
-The draft is in the code, never in the user's data.
 
-If the check fails, fix it and re-run before reporting. Never hand over a script you have
-not run: they will trust it on inputs you never saw.
+If the check fails, fix it and re-run before reporting: they will trust it on inputs you
+never saw.
 
 ## 5. Hand back
 
@@ -196,11 +194,11 @@ In this order:
    thing they wanted to see first.
 3. **What you checked and what it said**, one line: "spot-checked order #4417 against
    orders.json: amount and date match its CSV row."
-4. **What is baked in and what you skipped**, two to four bullets: the input shape it
+4. **What is baked in and what you skipped**, one bullet each: the input shape it
    assumes, what it does not handle, any rows dropped, what a later run can safely vary.
    Anything skipped and left unnamed gets trusted as done.
 
-Say plainly that it is a first draft, and name in one line where a later pass would
-start — the input handling, the edge case you skipped, the slow bit, the want you parked
-in step 1. Then stop. Naming the seam is the handoff; working it is the next request, with
-its own scope line.
+Say plainly that it is a first draft, and name where a later pass would start — the
+input handling, the edge case you skipped, the slow bit, the want you parked in step 1.
+Then stop. Naming the seam is the handoff; working it is the next request, with its own
+scope line.
