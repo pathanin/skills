@@ -41,13 +41,12 @@ In a Git repository, commit at logical checkpoints without asking. A checkpoint 
 2. **Capture the command's own exit code.** After a pipe, `$?` belongs to the last command; use `set -o pipefail` or `${PIPESTATUS[0]}`.
 3. **No tests ran is a failure.** That includes pytest exit 5, a `-k` that matched nothing, and an all-skipped suite (which exits 0). Read the counts.
 4. **Unknown is not pass.** Report a check that couldn't run as "not run", with the reason and where you looked. If the repo has no test suite, report tests as "not run: no suite" and give the build and lint results instead.
-5. **Green means every CI job on the revision.** Pending or cancelled is not green. If you haven't pushed, report CI as "not run: not pushed"; don't push only to get CI results.
 
 ## When you report
 
-6. **Inspect the artefact, not a summary of it.** Open the diff, decode the image, load the page and look at it, run the binary. "Saved", a 200 or a subagent's report is not proof; check the evidence behind it.
-7. **Verify every citation.** `git cat-file -e <sha>^{commit}` and `git cat-file -e <rev>:<path>`; for "it's on main", `git fetch && git merge-base --is-ancestor <sha> origin/main`.
-8. **State the base you tested, and re-check origin/main just before reporting.**
+5. **Inspect the artefact, not a summary of it.** Open the diff, decode the image, load the page and look at it, run the binary. "Saved", a 200 or a subagent's report is not proof; check the evidence behind it.
+6. **Verify every citation.** `git cat-file -e <sha>^{commit}` and `git cat-file -e <rev>:<path>`; for "it's on main", `git fetch && git merge-base --is-ancestor <sha> origin/main`.
+7. **State the base you tested, and re-check origin/main just before reporting.**
 
 End every non-trivial run with three headings, in this order:
 
