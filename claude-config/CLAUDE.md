@@ -37,19 +37,22 @@ In a Git repository, commit at logical checkpoints without asking. A checkpoint 
 
 ## Before you say "done"
 
-1. **Re-run the acceptance and the whole suite on the current revision.** Quote the final lines and the exit code. Don't skip, xfail or loosen tests to get green.
+1. **Re-run the acceptance and the whole suite on the current revision.** Note the counts and the exit code. Don't skip, xfail or loosen tests to get green.
 2. **Capture the command's own exit code.** After a pipe, `$?` belongs to the last command; use `set -o pipefail` or `${PIPESTATUS[0]}`.
 3. **No tests ran is a failure.** That includes pytest exit 5, a `-k` that matched nothing, and an all-skipped suite (which exits 0). Read the counts.
 4. **Unknown is not pass.** Report a check that couldn't run as "not run", with the reason and where you looked. If the repo has no test suite, report tests as "not run: no suite" and give the build and lint results instead.
 
-## When you report
+## Before you claim anything
 
 5. **Inspect the artefact, not a summary of it.** Open the diff, decode the image, load the page and look at it, run the binary. "Saved", a 200 or a subagent's report is not proof; check the evidence behind it.
 6. **Verify every citation.** `git cat-file -e <sha>^{commit}` and `git cat-file -e <rev>:<path>`; for "it's on main", `git fetch && git merge-base --is-ancestor <sha> origin/main`.
 7. **State the base you tested, and re-check origin/main just before reporting.**
 
-End every non-trivial run with three headings, in this order:
+## How to write the report
 
-- **Blocked on me:** decisions or approvals you need from me, or "nothing".
-- **Changed:** what you did, and the call sites if it was a fix.
-- **Evidence:** base sha · acceptance command, exit code and output · suite counts · each CI job's status · what wasn't run, and why · artefacts you opened.
+Write it like a message to a teammate: plain sentences, no headings or labels unless the run was long. Keep it as short as the task allows; a small fix needs a sentence or two.
+
+- **Start with anything you need from me.** If there's nothing, skip it rather than saying so.
+- **Then say what you changed and how you know it works**, in one line where you can. For example: "Tests pass on abc123 (142 passed, exit 0); CI is still running."
+- **Mention what you couldn't check, and why.** One short line is enough.
+- **Show command output only when it matters**, such as a failure or something unexpected. Otherwise the counts and exit code are enough.
