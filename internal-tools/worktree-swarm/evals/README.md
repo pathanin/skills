@@ -10,7 +10,7 @@ Four cases. Each scaffolds a small stdlib-Python git repo with a `check.sh` acce
 |---|---|---|
 | `fanout-six` | `unitconv` needs six unit modules behind a pinned `registry.py` contract. Tests and spec exist. | 6-7 worktree builders on haiku with complete briefs, one read-only Opus low-effort verifier per branch, all 20 tests pass, `registry.py` and tests untouched, no worktree or agent branch left. Old skill capped at 4 pieces, so this is the ceiling check. |
 | `two-piece` | Username validation on the server plus its client message. The prompt leaves the error code's name open. | 2-3 worktree builders on haiku, the code pinned in both briefs, at least 3 agents in total (verifiers make up the floor; no padded third piece), all tests pass. |
-| `judgment-piece` | Three mechanical modules from `SPEC.md`, plus "totals are sometimes a cent low, nobody knows why". | Mechanical pieces on haiku, the debugging piece on sonnet or opus, Opus low-effort verifiers, all 8 tests pass, and the reply names the real cause (`int()` truncating `float * 100`). |
+| `judgment-piece` | Three mechanical modules from `SPEC.md`, plus "totals are sometimes a cent low, nobody knows why". | Mechanical pieces on haiku; the debugging piece on sonnet or opus unless the brief already names the root cause; one Opus low-effort verifier per branch; all 8 tests pass, and the reply names the real cause (`int()` truncating `float * 100`). |
 | `no-swarm` | A one-line off-by-one in `paginate`. The prompt doesn't mention swarming. | Fixed directly, with no worktree agents. Should-not-fire case. |
 
 ### How the checks measure
