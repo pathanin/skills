@@ -1,17 +1,17 @@
 ---
 name: worktree-swarm
-description: Split a multi-part fix/feature into independently-scoped pieces and delegate each to a worktree-isolated subagent in parallel (Haiku builders by default, with cheap Haiku scouts and verifiers around them), then integrate and verify the results yourself. Use when the user asks to "swarm", "delegate to subagents", "fan out", or "parallelize" a task that touches shared files, or when a request naturally breaks into 3-12 self-contained pieces worth building concurrently. Also use when the user names a model for the swarm ("swarm this with haiku", "run the heavy piece on opus"). Skip for a task with one or two tightly coupled pieces, where the split costs more than it saves.
+description: Split a multi-part fix/feature into independently-scoped pieces and delegate each to a worktree-isolated subagent in parallel (Haiku scouts and builders by default, Opus verifiers at low effort checking each branch), then integrate and verify the results yourself. Use when the user asks to "swarm", "delegate to subagents", "fan out", or "parallelize" a task that touches shared files, or when a request naturally breaks into 3-12 self-contained pieces worth building concurrently. Also use when the user names a model for the swarm ("swarm this with haiku", "run the heavy piece on opus"). Skip for a task with one or two tightly coupled pieces, where the split costs more than it saves.
 ---
 
 # Worktree Swarm
 
-A swarm is 3-24 agents in three roles. Haiku is cheap and fast enough that support agents are almost free, so use them:
+A swarm is 3-24 agents in three roles. Haiku is cheap and fast enough to do the reading and the building; Opus at low effort does the checking, where judgment matters more than volume:
 
 | Role | Count | Model | Isolation | Job |
 |---|---|---|---|---|
 | **Scout** | 0-4 | `haiku` | none (read-only, `subagent_type: "Explore"`) | Before the split: map call sites, pull the exact current code each brief must quote, run the untracked-file survey. |
 | **Builder** | 3-12 | per piece (see *Choosing the model*) | `isolation: "worktree"` | Build one piece, commit, hand back. |
-| **Verifier** | up to one per builder | `haiku` | none (works in the builder's worktree path) | Check one builder's branch against its brief before you merge it. |
+| **Verifier** | up to one per builder | `opus`, `effort: "low"` | none (works in the builder's worktree path) | Check one builder's branch against its brief before you merge it. |
 
 Floor: every swarm has at least 3 agents. A task with only 2 natural pieces gets 2 builders plus their verifiers; it never gets padded with fake pieces. Ceiling: 12 builders and 24 agents in total per swarm. Past that, the integration queue outgrows what one integrator can check, so split the request into sequential swarms instead.
 
@@ -25,7 +25,7 @@ Floor: every swarm has at least 3 agents. A task with only 2 natural pieces gets
 3. **Write the ledger** to a file outside the repo (your scratchpad directory if you have one): one row per piece with model, owned files, contracts, wave, and status (`queued` / `running` / `verifying` / `merged` / `relaunched`). Update it as results land. With a dozen agents in flight, the ledger is what survives your own context filling up.
 4. **Survey what the worktree won't have** (see *Untracked files* below) and fold the answer into every builder prompt.
 5. **Launch a wave.** One `Agent` call per builder, all in one message, each with `isolation: "worktree"` and an explicit `model`. Launch at most 8 builders per message; if agents come back with rate-limit or overload errors, relaunch them in smaller groups. Each prompt must be fully self-contained (see *Writing builder briefs*). Report the launch to the user with the per-piece model, so they can override before the work lands.
-6. **Verify each builder as it finishes.** Agents run in the background and finish out of order. As each builder reports, launch a Haiku verifier on its branch (see *Verifiers*). Don't wait for the whole wave.
+6. **Verify each builder as it finishes.** Agents run in the background and finish out of order. As each builder reports, launch an Opus verifier at low effort on its branch (see *Verifiers*). Don't wait for the whole wave.
 7. **Integrate each verified piece** (see *Integrating* below). Contract pairs merge back to back, so you can test both sides together. You are the integrator; neither builders nor verifiers are responsible for the merged result.
 8. **Commit between waves.** Worktrees branch from the repo's current *commit*, so the next wave sees nothing you merged until it is committed. Commit the integrated wave (a WIP commit is fine), then launch the next.
 9. **Clean up as you go**: `git worktree remove <path> --force`, delete the branch, and delete any rescue tags once a piece is merged. Don't hold finished worktrees until the end — each one is a full checkout.
@@ -36,8 +36,8 @@ Before a swarm of more than 6 builders, check disk: the checkout size (`du -sh -
 
 `model` is per-`Agent`-call, so pieces in one swarm can run on different models. Valid values: `opus`, `sonnet`, `haiku`, `fable`.
 
-- If the user names a model, use it. A model named without a piece applies to every builder; one named with a piece applies to that builder only, and the rest take the defaults below. Scouts and verifiers stay on `haiku` unless the user names a model for them.
-- Otherwise default builders to `haiku`. It follows instructions closely and runs well as a sub-agent, at roughly a twentieth of `sonnet`'s price and a fortieth of `opus`'s, which is what pays for the wider swarm and the verifiers. A piece qualifies for `haiku` when the brief can state the files, the contract, and the check that proves it done.
+- If the user names a model, use it. A model named without a piece applies to every builder; one named with a piece applies to that builder only, and the rest take the defaults below. Scouts stay on `haiku` and verifiers on `opus` with `effort: "low"` unless the user names a model for them.
+- Otherwise default builders to `haiku`. It follows instructions closely and runs well as a sub-agent, at roughly a twentieth of `sonnet`'s price and a fortieth of `opus`'s, which is what pays for the wider swarm and its Opus verifiers. A piece qualifies for `haiku` when the brief can state the files, the contract, and the check that proves it done.
 - Raise a piece to `sonnet` when the brief can't be made that concrete: the right edit location is unknown, the fix depends on reading behavior across several files, or the bug has a known symptom but an unclear site.
 - Raise a piece to `opus` when it needs real judgment: an unclear root cause, a design decision, or a diff that will be awkward to integrate.
 - Use `fable` only when the user asks for it.
@@ -70,7 +70,7 @@ GAPS: <anything unfixed, untested, or not covered by the brief>
 
 ## Verifiers
 
-A verifier is a Haiku agent with no isolation that inspects one finished builder. Give it the builder's worktree path and branch (from the builder's `Agent` result), the base commit, the builder's full brief, and these instructions:
+A verifier is an `Agent` call with `model: "opus"`, `effort: "low"`, and no isolation that inspects one finished builder. Verification is where judgment pays: a missed contract drift or out-of-scope edit costs a full merge cycle later. Low effort keeps each check short, since the brief already says what to compare against. Don't raise its effort: a check that needs deep reasoning means the piece was too big or the brief too vague, so re-split it instead. Give it the builder's worktree path and branch (from the builder's `Agent` result), the base commit, the builder's full brief, and these instructions:
 
 - Run `git -C <worktree> diff <base>..<branch>` and check it against the brief: only owned files touched, contract implemented verbatim, hard constraints intact.
 - Run the brief's done-check in the builder's worktree and report the real output.
