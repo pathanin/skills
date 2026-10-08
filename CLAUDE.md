@@ -80,14 +80,14 @@ Write tests first for code changes. Skip test-first for docs, comments and confi
 
 ## Commits
 
-In a Git repository, commit at logical checkpoints without asking. A checkpoint commit needs the relevant tests to pass; if no test suite exists, the code must build and lint cleanly. Stage only files related to the change. Use concise commit messages.
+In a Git repository, commit at logical checkpoints without asking. A checkpoint commit needs the relevant tests to pass; if no test suite exists, the code must build and lint cleanly. In this repo, that check is a read-through of the changed `SKILL.md`, or the `claude plugin eval` / `claude plugin test` suites where they exist. Stage only files related to the change. Use concise commit messages.
 
 ## Before you say "done"
 
 1. **Re-run the acceptance and the whole suite on the current revision.** Note the counts and the exit code. Don't skip, xfail or loosen tests to get green.
 2. **Capture the command's own exit code.** After a pipe, `$?` belongs to the last command; use `set -o pipefail` or `${PIPESTATUS[0]}`.
 3. **No tests ran is a failure.** That includes pytest exit 5, a `-k` that matched nothing, and an all-skipped suite (which exits 0). Read the counts.
-4. **Unknown is not pass.** Report a check that couldn't run as "not run", with the reason and where you looked. If the repo has no test suite, report tests as "not run: no suite" and give the build and lint results instead.
+4. **Unknown is not pass.** Report a check that couldn't run as "not run", with the reason and where you looked. If the repo has no test suite, report tests as "not run: no suite" and give the build and lint results instead. In this repo, that check is a read-through of the changed `SKILL.md`, or the `claude plugin eval` / `claude plugin test` suites where they exist.
 
 ## Before you claim anything
 
