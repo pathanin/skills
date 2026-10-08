@@ -1,0 +1,5 @@
+---
+type: regex
+target: {source: file, path: check-output.txt}
+pattern: 'protected files: intact'
+---
