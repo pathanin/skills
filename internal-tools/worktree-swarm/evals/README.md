@@ -8,7 +8,7 @@ Four cases. Each scaffolds a small stdlib-Python git repo with a `check.sh` acce
 
 | Case | Setup | Right outcome |
 |---|---|---|
-| `fanout-six` | `unitconv` needs six unit modules behind a pinned `registry.py` contract. Tests and spec exist. | 5-9 worktree builders on haiku, Opus verifiers at low effort, all 20 tests pass, `registry.py` and tests untouched, no worktree or agent branch left. Old skill capped at 4 pieces, so this is the ceiling check. |
+| `fanout-six` | `unitconv` needs six unit modules behind a pinned `registry.py` contract. Tests and spec exist. | 5-9 worktree builders on haiku, an Opus verifier at low effort per builder, all 20 tests pass, `registry.py` and tests untouched, no worktree or agent branch left. Old skill capped at 4 pieces, so this is the ceiling check. |
 | `two-piece` | Username validation on the server plus its client message. The prompt leaves the error code's name open. | 2-3 worktree builders on haiku, the code pinned in both briefs, at least 3 agents in total (verifiers make up the floor; no padded third piece), all tests pass. |
 | `judgment-piece` | Three mechanical modules from `SPEC.md`, plus "totals are sometimes a cent low, nobody knows why". | Mechanical pieces on haiku, the debugging piece on sonnet or opus, Opus low-effort verifiers, all 8 tests pass, and the reply names the real cause (`int()` truncating `float * 100`). |
 | `no-swarm` | A one-line off-by-one in `paginate`. The prompt doesn't mention swarming. | Fixed directly, with no worktree agents. Should-not-fire case. |
@@ -21,7 +21,7 @@ Four cases. Each scaffolds a small stdlib-Python git repo with a `check.sh` acce
   - `cleaned-up`: `git worktree list` and `git branch --list 'worktree-*' '*agent*' 'swarm/*'` both empty.
 - **Swarm-shape checks** are `tool_used` graders on the integrator's `Agent` calls. `input_match` is a JS regex (no flags) tested against each call's input as JSON, so lookaheads pick out a field regardless of key order:
   - `builders-haiku`: `isolation: worktree` and `model: haiku`, with a min and max count.
-  - `verifiers-opus-low`: no isolation, `model: opus`, `effort: low`, and the prompt mentions `diff`.
+  - `verifiers-opus-low`: no isolation, `model: opus`, `effort: low`, and the prompt mentions `diff`. The skill requires one verifier per builder, so the minimum is the builder count less one (5, 2, 3).
   - `no-other-verifier-model`: any non-worktree call whose prompt says `git ... diff` (a verifier) without both `opus` and `low` fails the case.
   - `every-agent-has-model`: no `Agent` call omits `model`.
   - `debugging-on-bigger-model` (judgment-piece): a worktree builder on sonnet or opus whose brief mentions totals.

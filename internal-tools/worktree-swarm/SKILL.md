@@ -5,15 +5,15 @@ description: Split a multi-part fix/feature into independently-scoped pieces and
 
 # Worktree Swarm
 
-A swarm is 3-24 agents in three roles. Haiku is cheap and fast enough to do the reading and the building; Opus at low effort does the checking, where judgment matters more than volume:
+A swarm is 3-28 agents in three roles. Haiku is cheap and fast enough to do the reading and the building; Opus at low effort does the checking, where judgment matters more than volume:
 
 | Role | Count | Model | Isolation | Job |
 |---|---|---|---|---|
 | **Scout** | 0-4 | `haiku` | none (read-only, `subagent_type: "Explore"`) | Before the split: map call sites, pull the exact current code each brief must quote, run the untracked-file survey. |
 | **Builder** | 3-12 | per piece (see *Choosing the model*) | `isolation: "worktree"` | Build one piece, commit, hand back. |
-| **Verifier** | up to one per builder | `opus`, `effort: "low"` | none (works in the builder's worktree path) | Check one builder's branch against its brief before you merge it. |
+| **Verifier** | one per builder | `opus`, `effort: "low"` | none (works in the builder's worktree path) | Check one builder's branch against its brief before you merge it. |
 
-Floor: every swarm has at least 3 agents. A task with only 2 natural pieces gets 2 builders plus their verifiers; it never gets padded with fake pieces. Ceiling: 12 builders and 24 agents in total per swarm. Past that, the integration queue outgrows what one integrator can check, so split the request into sequential swarms instead.
+Floor: every swarm has at least 3 agents. A task with only 2 natural pieces gets 2 builders plus their verifiers; it never gets padded with fake pieces. Ceiling: 12 builders and 28 agents in total per swarm, counting scouts and verifiers. Past that, the integration queue outgrows what one integrator can check, so split the request into sequential swarms instead.
 
 ## Workflow
 
@@ -79,7 +79,7 @@ A verifier is an `Agent` call with `model: "opus"`, `effort: "low"`, and no isol
 
 A `PASS` means the piece is worth merging, not that the merge is correct. A `FAIL` sends the piece back through *Escalate, don't retry in place*. When a verifier and the builder disagree, read the diff yourself.
 
-For a small piece you can read in a minute, you may skip its verifier and check the diff directly; the 3-agent floor still applies to the swarm as a whole.
+Launch a verifier for every builder, including small pieces. Reading the diff yourself doesn't replace it: the verifier runs the done-check inside the builder's worktree, and it keeps your own context free for integration.
 
 ## Git state is shared across worktrees
 
