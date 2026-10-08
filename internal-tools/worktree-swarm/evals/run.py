@@ -155,7 +155,8 @@ def js_input_text(inp):
 
 def grade_tool_used(g, calls):
     rx = re.compile(g["input_match"]) if g.get("input_match") else None
-    n = sum(1 for c in calls if c["name"] == g["tool"] and not c["error"]
+    tools = g["tool"].split("|")  # runner extension: "Bash|Write" matches either tool
+    n = sum(1 for c in calls if c["name"] in tools and not c["error"]
             and (rx is None or rx.search(js_input_text(c["input"]))))
     lo, hi = g.get("min", 1), g.get("max", float("inf"))
     return lo <= n <= hi, f"{g['tool']} matched {n}x (expected {lo}..{hi})"
