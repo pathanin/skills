@@ -8,7 +8,7 @@ Four cases. Each scaffolds a small stdlib-Python git repo with a `check.sh` acce
 
 | Case | Setup | Right outcome |
 |---|---|---|
-| `fanout-six` | `unitconv` needs six unit modules behind a pinned `registry.py` contract. Tests and spec exist. | 5-9 worktree builders on haiku, an Opus verifier at low effort per builder, all 20 tests pass, `registry.py` and tests untouched, no worktree or agent branch left. Old skill capped at 4 pieces, so this is the ceiling check. |
+| `fanout-six` | `unitconv` needs six unit modules behind a pinned `registry.py` contract. Tests and spec exist. | 6-7 worktree builders on haiku with complete briefs, one read-only Opus low-effort verifier per branch, all 20 tests pass, `registry.py` and tests untouched, no worktree or agent branch left. Old skill capped at 4 pieces, so this is the ceiling check. |
 | `two-piece` | Username validation on the server plus its client message. The prompt leaves the error code's name open. | 2-3 worktree builders on haiku, the code pinned in both briefs, at least 3 agents in total (verifiers make up the floor; no padded third piece), all tests pass. |
 | `judgment-piece` | Three mechanical modules from `SPEC.md`, plus "totals are sometimes a cent low, nobody knows why". | Mechanical pieces on haiku, the debugging piece on sonnet or opus, Opus low-effort verifiers, all 8 tests pass, and the reply names the real cause (`int()` truncating `float * 100`). |
 | `no-swarm` | A one-line off-by-one in `paginate`. The prompt doesn't mention swarming. | Fixed directly, with no worktree agents. Should-not-fire case. |
@@ -19,13 +19,20 @@ Four cases. Each scaffolds a small stdlib-Python git repo with a `check.sh` acce
   - `tests-pass`: `CHECK RESULT: PASS (N tests)` with N at least the fixture's test count, so deleting tests fails it.
   - `contract-intact`: `sha256sum -c` over the files the task must not change (the registry contract, the tests, the spec).
   - `cleaned-up`: `git worktree list` and `git branch --list 'worktree-*' '*agent*' 'swarm/*'` both empty.
-- **Swarm-shape checks** are `tool_used` graders on the integrator's `Agent` calls. `input_match` is a JS regex (no flags) tested against each call's input as JSON, so lookaheads pick out a field regardless of key order:
-  - `builders-haiku`: `isolation: worktree` and `model: haiku`, with a min and max count.
-  - `verifiers-opus-low`: no isolation, `model: opus`, `effort: low`, and the prompt mentions `diff`. The skill requires one verifier per builder, so the minimum is the builder count less one (5, 2, 3).
-  - `no-other-verifier-model`: any non-worktree call whose prompt says `git ... diff` (a verifier) without both `opus` and `low` fails the case.
+- **Swarm-shape checks** are `tool_used` graders on the integrator's top-level tool calls. `input_match` is a JS-compatible regex (no flags, no apostrophes) tested against each call's input as compact JSON, so lookaheads pick out fields regardless of key order:
+  - `builders-haiku` / `mechanical-on-haiku`: worktree builders on `haiku`, with an exact count (6-7 in `fanout-six`, 3+ in `judgment-piece`, 2+ in `two-piece`).
+  - `builder-briefs-complete`: **every** builder brief (min = builder count) has the git-stash rule, the `BRANCH:` / `CHECK:` hand-back format, a stop rule ("report the gap" / "do not improvise"), a file-ownership line, and a concrete done-check command (`unittest`, `pytest` or `python3 -c`).
+  - `verifier-briefs-complete`: **every** builder has a verifier (min = builder count) on `opus` at `effort: low`, without isolation, read-only, covering exactly one `agent-<id>` branch, with `diff`, a done-check command, and a PASS/FAIL verdict.
+  - `no-other-verifier-model`: no verifier-shaped call (non-worktree, prompt says `git ... diff`) on another model or effort.
   - `every-agent-has-model`: no `Agent` call omits `model`.
-  - `debugging-on-bigger-model` (judgment-piece): a worktree builder on sonnet or opus whose brief mentions totals.
+  - `ledger-kept`: a `Bash` or `Write` call writes a `ledger.md`-style file. `tool: Bash|Write` is a `run.py` extension; the harness only takes one tool name.
+  - `merge-base-checked`: the integrator ran `git merge-base` before porting a branch.
+  - `debugging-brief-fits-model` (judgment-piece): the totals builder is on sonnet or opus, or on haiku with the root cause already in its brief.
+  - `floor-three-agents`, `two-builders`, `code-pinned-in-both-briefs` (two-piece): the 3-agent floor without a padded third builder, and the error code in both builder briefs.
+  - `no-worktree-agents`, `skill-not-invoked` (no-swarm): no swarm and no skill load on a one-line fix.
 - **LLM checks** only grade the reply: `reports-models` (fanout-six) and `relays-root-cause` (judgment-piece).
+
+The outcome checks guard correctness, and the swarm-shape checks separate the arms. A check that a baseline would pass only because it launches no verifiers was dropped (`one-branch-per-verifier`; its condition lives inside `verifier-briefs-complete`).
 
 Every `tool_used` grader sets `arm: both`, so it counts in the no-skill baseline too and the delta measures the skill.
 
@@ -73,7 +80,35 @@ Before changing the skill, decide which of these a red is:
 
 ## Results
 
-### 2026-10-08: first full run
+### 2026-10-08: second full run, stricter graders
+
+Same setup as the first run, with the current `SKILL.md` (one Opus verifier per branch) and the stricter graders above. 24 runs, $15.31 agent cost. Every `check-output.txt` matched a fresh `check.sh` run. Results are in `results/full2` (gitignored), re-graded after the grader fixes below with `run.py --regrade`.
+
+| Case | With skill | Without skill | Checks that split the arms (with 3/3, without 0/3) | With: time, cost per run | Without: time, cost per run |
+|---|---|---|---|---|---|
+| `fanout-six` | 1.00 | 0.48 | 7 of 11 | 104 s, $1.22 | 54 s, $1.01 |
+| `judgment-piece` | 1.00 | 0.50 | 7 of 12 | 83 s, $0.90 | 47 s, $0.68 |
+| `two-piece` | 1.00 | 0.52 | 7 of 13 | 61 s, $0.60 | 44 s, $0.48 |
+| `no-swarm` | 1.00 | 1.00 | 0 of 3 (expected: should-not-fire) | 8 s, $0.11 | 9 s, $0.11 |
+
+The seven checks that split the arms in every swarm case are the brief contents, the verifiers, the per-agent model, the ledger, the `merge-base` check, plus the case's own model or count check. Without the skill, the baseline still gets the code right: `tests-pass`, `contract-intact` and `cleaned-up` pass 3/3 in both arms. So on tasks this small, the skill changes how the work is done and what it costs, not whether it's correct.
+
+**Grader calibration before this run** (on the first run's traces, via `--regrade`):
+
+- `ledger-kept` matched the `ledger/` package name in `judgment-piece`'s baseline. It now needs a ledger *file* (`ledger.md`, `.txt`, `.tsv`, `.json`).
+- The ownership clause in `builder-briefs-complete` missed "Only edit X", "create ONLY", "Touch NO other file" and "Never edit". All are now accepted.
+
+**Grader fix after this run:** in two `two-piece` runs, the client builder and its verifier used a `python3 -c "..."` done-check with the exact expected output instead of `unittest`. That is a valid done-check, so both brief checks now accept `unittest`, `pytest` or `python3 -c`. Before the fix, `two-piece` scored 0.90 with the skill.
+
+**Skill reds:** none in this run. On the first run's traces, the stricter graders found two:
+
+- the batched verifier from before the one-branch rule;
+- all three `judgment-piece` integrators skipped `git merge-base` and ported files with `git checkout <branch> -- <paths>`.
+
+Both passed 3/3 in this run.
+
+
+### 2026-10-08: first full run (original graders)
 
 Linux cloud container, `claude` 2.1.294, Opus integrator, sonnet judge, 3 runs per case and arm, `-j 3`. Agent cost $14.92 for the 24 runs, plus $3.62 for the recheck. Every `check-output.txt` was confirmed by rerunning `check.sh` in the run's repo.
 
