@@ -1,4 +1,4 @@
-<title>Ballpit Swarm Test</title>
+<title>{title}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,750&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -66,6 +66,7 @@ figcaption {{ font: 12px/1.3 var(--mono); color: var(--muted); }}
 .mixed {{ color: var(--mixed); }}
 .agents {{ font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 10px; }}
 .missing {{ color: var(--bad); }}
+.unscored {{ font-size: 11px; color: var(--muted); letter-spacing: 0.04em; margin-left: 6px; }}
 .note {{ font-size: 14px; border-left: 3px solid var(--mixed); padding: 4px 0 4px 10px; }}
 
 .checks {{ display: grid; gap: 12px; }}
@@ -89,9 +90,9 @@ code {{ font: 13px var(--mono); }}
 
 <div class="wrap">
   <section class="intro">
-    <span class="eyebrow">worktree-swarm eval · physics-scene</span>
-    <h1>Ballpit Swarm Test</h1>
-    <p class="lede">Twenty balls stacked in a pyramid, hit by a heavy cue ball, simulated for 2.5 seconds and ray-traced. The repo was missing seven modules: integrator, walls, collisions, camera, renderer, scene and contact sheet. Each run had an Opus session build them from the same spec, three times with the worktree-swarm skill and three times without it.</p>
+    <span class="eyebrow">{eyebrow}</span>
+    <h1>{title}</h1>
+    <p class="lede">{lede}</p>
   </section>
 
   <section class="summary" aria-label="Averages per arm">
@@ -109,11 +110,8 @@ code {{ font: 13px var(--mono); }}
 
   <section class="reference">
     <h2>Reference render</h2>
-    <p class="lede">From a known-good implementation of the same spec. Energy ends at {ref_energy_end} J, peak energy ratio {ref_ratio}, deepest overlap {ref_pen} m.</p>
-    <div class="ref-imgs">
-      <figure><img src="reference-final.png" alt="Reference final frame"><figcaption>Final frame, t = 2.5 s</figcaption></figure>
-      <figure><img src="reference-sheet.png" alt="Reference 8-frame contact sheet"><figcaption>8 frames, t = 0 to 2.5 s</figcaption></figure>
-    </div>
+    <p class="lede">From a known-good implementation of the same spec: {ref_stats}.</p>
+    <div class="ref-imgs">{ref_figs}</div>
   </section>
 
   <section class="arms">
@@ -135,8 +133,7 @@ code {{ font: 13px var(--mono); }}
 
   <section class="notes">
     <h2>Reading the numbers</h2>
-    <p><strong>Match</strong> is the share of pixels within ±{tol} per channel of the reference image. The first frame is t = 0: it depends only on the scene, camera and renderer, so a correct build matches it almost exactly. The final frame comes after 600 steps of colliding balls, a chaotic system: two builds that differ only in the order of floating-point operations end with balls in different places. A low final-frame match on its own doesn't mean the physics is wrong. The energy and overlap figures do.</p>
-    <p><strong>Physics in bounds</strong> means no NaN, energy never more than 2% above its starting value, energy lower at the end than at the start (restitution 0.9 loses energy at every bounce), and no ball ever more than 3 cm inside a wall or another ball.</p>
-    <p><strong>Score</strong> is the weighted share of checks passed. Most of the gap between the arms comes from how the work was split and checked: builder models, brief contents, one verifier per branch, the ledger and the base check. The rendered output is held to the same standard in both arms.</p>
+    {case_notes}
+    <p><strong>Score</strong> is the weighted share of scored checks passed. Checks marked "not scored" are shown for the swarm's shape only.</p>
   </section>
 </div>
