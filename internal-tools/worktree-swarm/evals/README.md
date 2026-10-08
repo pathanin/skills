@@ -4,13 +4,14 @@ How to run the `worktree-swarm` eval suite, what each check measures, and the re
 
 ## What the suite tests
 
-Four cases. Each scaffolds a small stdlib-Python git repo with a `check.sh` acceptance script; the prompt tells the agent to finish with `./check.sh > check-output.txt`. Every case pins the integrator to Opus (`model: opus` in its `prompt.md`), so the builder, scout and verifier models are the skill's choice, not the session's. Don't pass `--model`, because it overrides that pin.
+Five cases. Each scaffolds a small stdlib-Python git repo with a `check.sh` acceptance script; the prompt tells the agent to finish with `./check.sh > check-output.txt`. Every case pins the integrator to Opus (`model: opus` in its `prompt.md`), so the builder, scout and verifier models are the skill's choice, not the session's. Don't pass `--model`, because it overrides that pin.
 
 | Case | Setup | Right outcome |
 |---|---|---|
 | `fanout-six` | `unitconv` needs six unit modules behind a pinned `registry.py` contract. Tests and spec exist. | 6-7 worktree builders on haiku with complete briefs, one read-only Opus low-effort verifier per branch, all 20 tests pass, `registry.py` and tests untouched, no worktree or agent branch left. Old skill capped at 4 pieces, so this is the ceiling check. |
 | `two-piece` | Username validation on the server plus its client message. The prompt leaves the error code's name open. | 2-3 worktree builders on haiku, the code pinned in both briefs, at least 3 agents in total (verifiers make up the floor; no padded third piece), all tests pass. |
 | `judgment-piece` | Three mechanical modules from `SPEC.md`, plus "totals are sometimes a cent low, nobody knows why". | Mechanical pieces on haiku; the debugging piece on sonnet or opus unless the brief already names the root cause; one Opus low-effort verifier per branch; all 8 tests pass, and the reply names the real cause (`int()` truncating `float * 100`). |
+| `physics-scene` | `ballpit`, a 3D ball-physics sim with a ray-traced renderer, missing seven modules (integrator, walls, collisions, camera, renderer, scene, contact sheet). `SPEC.md` pins every formula. | 6-9 haiku builders and one Opus low-effort verifier per branch; all 29 tests pass; `make_movie.py` renders `out/sheet.png` and `out/final.png` with energy and overlap in bounds. `gallery.py` puts every run's images next to a reference render from `physics-scene/reference/`. |
 | `no-swarm` | A one-line off-by-one in `paginate`. The prompt doesn't mention swarming. | Fixed directly, with no worktree agents. Should-not-fire case. |
 
 ### How the checks measure
@@ -79,6 +80,27 @@ Before changing the skill, decide which of these a red is:
 - **The environment is wrong:** rate limits, a timeout, or a refused tool. Look at `stderr.txt` and the `error` flags in `agents`, then rerun.
 
 ## Results
+
+### 2026-10-08: physics-scene (visual case)
+
+3 runs per arm, same setup as the full runs. $9.57 agent cost. Gallery: `python3 evals/gallery.py evals/results/physics1 <dir>` (published as the "Ballpit Swarm Test" artifact).
+
+| | With skill | Without skill |
+|---|---|---|
+| Mean score | 0.99 | 0.56 |
+| Mean time, cost per run | 168 s, $1.69 | 103 s, $1.50 |
+| Agents per run | 7 haiku builders, 7 opus/low verifiers | 6-7 builders with no `model` (session Opus), no verifiers |
+| Tests, physics, render | 3/3 pass, physics identical to the reference | 3/3 pass, physics identical to the reference |
+| Pixel match with the reference (final frame) | 100%, 100%, 97.4% | 100%, 100%, 100% |
+
+All six runs reproduced the reference simulation exactly (energy ends at 38.5278 J in every run). The `with-3` render differs. Its Haiku-built renderer computed `0.25 + 0.75 * dot(normal, L)` without the spec's `max(0, ...)`, so the side of each ball facing away from the light renders darker than ambient, down to black. The suite's raster test only compared the lit side with the dark side, and the Opus low-effort verifier passed the branch on that test.
+
+`test_raster.py` now also checks that an unlit sphere point is exactly the ambient colour. That test fails `with-3`'s renderer and passes the reference and the other runs. The suite is now 29 tests, so this run's scores were measured on the 28-test version.
+
+The other red with the skill was `merge-base-checked` in `with-1`.
+
+**What this case shows:** a Haiku builder can ship a subtle spec deviation that its tests miss, and a low-effort verifier that leans on those tests misses it too. The Opus builders in the baseline didn't make that mistake in 3 runs. That's too few runs to call it a rate, but it is the clearest quality difference the suite has measured so far.
+
 
 ### 2026-10-08: second full run, stricter graders
 

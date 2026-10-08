@@ -40,6 +40,12 @@ class TestRender(unittest.TestCase):
         dark = self.px([BALL[0] + 0.3, BALL[1] - 0.25, BALL[2] + 0.1])
         self.assertGreater(lit[0], dark[0])
 
+    def test_unlit_side_is_ambient_not_darker(self):
+        # a sphere point facing away from the light gets exactly the ambient term, never less
+        away = normalize([0.6, -0.3, 0.75])          # visible from the camera, dot(away, L) < 0
+        point = [BALL[0] + away[0] * 0.399, BALL[1] + away[1] * 0.399, BALL[2] + away[2] * 0.399]
+        self.assertEqual(self.px(point), (55, 10, 10))   # (220, 40, 40) * 0.25
+
     def test_shadow_is_ambient_only(self):
         # the floor point straight down the light ray through the ball centre is shadowed
         shadow = sub(BALL, mul(L, BALL[1] / L[1]))

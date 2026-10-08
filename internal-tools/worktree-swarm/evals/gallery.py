@@ -47,7 +47,7 @@ def match(a_path, b_path, box=None):
         return 0.0
     if box:
         a, b = a.crop(box), b.crop(box)
-    pa, pb = a.getdata(), b.getdata()
+    pa, pb = list(a.getdata()), list(b.getdata())
     same = sum(1 for x, y in zip(pa, pb) if max(abs(x[i] - y[i]) for i in range(3)) <= TOL)
     return same / len(pa)
 
@@ -71,7 +71,7 @@ def collect(results, dest):
             if a["error"]:
                 continue
             role = "builder" if a.get("isolation") == "worktree" else ("verifier" if a.get("effort") == "low" else "other")
-            models[(role, a.get("model") or "inherited", a.get("effort"))] += 1
+            models[(role, a.get("model") or "the session's Opus (no model set)", a.get("effort"))] += 1
         frame0 = (GUTTER, GUTTER, GUTTER + FRAME[0], GUTTER + FRAME[1])
         runs.append({
             "name": name, "arm": r["arm"], "run": r["run"], "score": r["score"], "cost": r["cost_usd"],
@@ -99,8 +99,10 @@ def agent_line(models):
     return ", ".join(parts)
 
 
-def card(run):
+def card(run, notes):
     m = run["metrics"] or {}
+    note = notes.get(run["name"])
+    note_html = f'<p class="note">{html.escape(note)}</p>' if note else ""
     ok_tests = "PASS" in run["tests"]
     phys_ok = bool(m) and m.get("finite") and m.get("energy_max_ratio", 9) <= 1.02 and m.get("max_penetration", 9) <= 0.03
     imgs = run["imgs"]
@@ -124,6 +126,7 @@ def card(run):
     <div><dt>Match, final frame</dt><dd>{pct(run['match_final'])}</dd></div>
     <div><dt>Time, cost</dt><dd>{run['seconds']} s, ${run['cost']:.2f}</dd></div>
   </dl>
+  {note_html}
   <p class="agents">{html.escape(agent_line(run['models']))}</p>
 </article>"""
 
@@ -142,15 +145,15 @@ def grader_table(runs):
     return "\n".join(rows)
 
 
-def page(ref, runs):
+def page(ref, runs, notes):
     def arm_stats(arm):
         ar = [r for r in runs if r["arm"] == arm]
         return (sum(r["score"] for r in ar) / len(ar), sum(r["seconds"] for r in ar) / len(ar),
                 sum(r["cost"] for r in ar) / len(ar))
     ws, wt, wc = arm_stats("with")
     ns, nt, nc = arm_stats("without")
-    with_cards = "".join(card(r) for r in runs if r["arm"] == "with")
-    without_cards = "".join(card(r) for r in runs if r["arm"] == "without")
+    with_cards = "".join(card(r, notes) for r in runs if r["arm"] == "with")
+    without_cards = "".join(card(r, notes) for r in runs if r["arm"] == "without")
     return (EVALS / "gallery_template.html").read_text().format(
         ref_energy_end=ref["energy_end"], ref_pen=ref["max_penetration"], ref_ratio=ref["energy_max_ratio"],
         with_score=f"{ws:.2f}", with_time=f"{wt:.0f}", with_cost=f"{wc:.2f}",
@@ -164,7 +167,10 @@ def main():
     ref = render_reference(dest)
     runs = collect(results, dest)
     (dest / "runs.json").write_text(json.dumps(runs, indent=2))
-    (dest / "index.html").write_text(page(ref, runs))
+    # optional hand-written findings per run, e.g. {"with-3": "..."}
+    notes_file = results / "notes.json"
+    notes = json.loads(notes_file.read_text()) if notes_file.exists() else {}
+    (dest / "index.html").write_text(page(ref, runs, notes))
     print(f"{len(runs)} runs -> {dest / 'index.html'}")
 
 
