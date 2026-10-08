@@ -1,6 +1,6 @@
 {
   "name": "worktree-swarm",
-  "description": "Split a multi-part fix/feature into 3-12 worktree-isolated builders (Haiku by default, Sonnet/Opus for judgment pieces) plus Haiku scouts and per-piece verifiers, run in waves, then integrate and verify the results yourself.",
+  "description": "Split a multi-part fix/feature into 3-12 worktree-isolated builders (Haiku by default, Sonnet/Opus for judgment pieces) plus Haiku scouts and per-piece Opus verifiers at low effort, run in waves, then integrate and verify the results yourself.",
   "author": {
     "name": "oat"
   }
