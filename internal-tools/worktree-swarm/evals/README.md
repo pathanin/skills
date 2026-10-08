@@ -73,4 +73,36 @@ Before changing the skill, decide which of these a red is:
 
 ## Results
 
-See the dated sections below.
+### 2026-10-08: first full run
+
+Linux cloud container, `claude` 2.1.294, Opus integrator, sonnet judge, 3 runs per case and arm, `-j 3`. Agent cost $14.92 for the 24 runs, plus $3.62 for the recheck. Every `check-output.txt` was confirmed by rerunning `check.sh` in the run's repo.
+
+| Case | With skill | Without skill | With: time, cost per run | Without: time, cost per run |
+|---|---|---|---|---|
+| `fanout-six` | 0.96 (recheck 1.00) | 0.56 | 98 s, $1.10 (recheck ~105 s, $1.20) | 50 s, $1.01 |
+| `judgment-piece` | 1.00 | 0.60 | 77 s, $0.87 | 51 s, $0.70 |
+| `two-piece` | 1.00 | 0.62 | 62 s, $0.62 | 38 s, $0.46 |
+| `no-swarm` | 1.00 | 1.00 | 8 s, $0.11 | 8 s, $0.10 |
+
+**What the skill changes.** Without it, the integrator still splits the work into worktree agents and gets the code right: tests, contract and cleanup pass 3/3 in both arms. But every one of those agents runs with no `model`, so it inherits Opus, and nothing verifies a branch. With the skill:
+
+- builders run on Haiku (6 per `fanout-six` run, 3-4 per `judgment-piece` run, 2 per `two-piece` run);
+- each branch gets an Opus verifier at low effort;
+- every builder brief carries the git hygiene rules;
+- the `two-piece` swarm reaches the 3-agent floor without inventing a third piece.
+
+The price is time and a little money. Verification adds a second round, so runs take 1.5-2x as long and cost 15-35% more. These pieces are small. The cost gap should narrow on larger pieces, where Haiku's lower per-token price outweighs the fixed verifier cost, but this suite doesn't measure that.
+
+**Reds and what they were:**
+
+- **Skill, fixed.** The first pilot ran no verifiers at all. The skill allowed skipping them for small pieces, so `SKILL.md` now requires one per builder. Then `fanout-six` with-1 batched six branches into three verifiers. `SKILL.md` now says one branch per verifier, and the recheck passed `verifiers-opus-low` 3/3.
+- **Grader, fixed.** `debugging-on-bigger-model` failed all three with-skill `judgment-piece` runs. In each, the integrator read `totals.py`, found the `int(float * 100)` truncation itself, and gave Haiku a brief with the exact fix. That is the skill's own rule for Haiku: the brief states the files, the contract and the check. The grader is now `debugging-brief-fits-model`: sonnet or opus, or haiku with a brief that names the truncation.
+- **Harness.** `claude plugin eval` refuses worktree isolation, hence `run.py` (see above).
+
+## Known gaps
+
+- `judgment-piece` no longer forces a bigger model. The bug is findable from one file, so the integrator diagnoses it first. A case whose root cause needs a multi-file investigation would test the "raise to sonnet" rule.
+- No case reaches the 12-builder ceiling, uses waves with a dependency between them, or needs scouts. `fanout-six` tests 6 builders in one wave.
+- No case exercises *escalate, don't retry in place*: every Haiku builder passed verification on the first try.
+- Rate-limit behavior at 8+ concurrent builders is untested.
+- `reports-models` and `relays-root-cause` are LLM checks on the reply. Both were unanimous in every run, but they haven't been calibrated against hand-written wrong replies.

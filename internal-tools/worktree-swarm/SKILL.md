@@ -79,7 +79,7 @@ A verifier is an `Agent` call with `model: "opus"`, `effort: "low"`, and no isol
 
 A `PASS` means the piece is worth merging, not that the merge is correct. A `FAIL` sends the piece back through *Escalate, don't retry in place*. When a verifier and the builder disagree, read the diff yourself.
 
-Launch a verifier for every builder, including small pieces. Reading the diff yourself doesn't replace it: the verifier runs the done-check inside the builder's worktree, and it keeps your own context free for integration.
+Launch one verifier per builder, including small pieces, and give each verifier exactly one branch. Never hand one verifier several branches to save launches: a batched verifier splits its short effort budget across briefs and reports them as one verdict. Reading the diff yourself doesn't replace it: the verifier runs the done-check inside the builder's worktree, and it keeps your own context free for integration.
 
 ## Git state is shared across worktrees
 
