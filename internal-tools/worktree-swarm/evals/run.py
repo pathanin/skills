@@ -264,6 +264,32 @@ def summarize(results, cases, arms):
     return "\n".join(lines)
 
 
+def write_summary(out_root, results, cases, arms):
+    results.sort(key=lambda r: (r["case"], r["arm"], r["run"]))
+    (out_root / "summary.json").write_text(json.dumps(results, indent=2))
+    table = summarize(results, cases, arms)
+    total = sum(r["cost_usd"] or 0 for r in results)
+    (out_root / "summary.md").write_text(f"# worktree-swarm eval {out_root.name}\n\nTotal cost ${total:.2f}\n{table}\n")
+    print(table)
+    print(f"\nTotal agent cost ${total:.2f} (judge calls not included). Details: {out_root}")
+
+
+def regrade(out_root, judge_model):
+    results, cases, arms = [], [], []
+    for case_dir in sorted(p for p in out_root.iterdir() if p.is_dir()):
+        case = load_case(EVALS / case_dir.name)
+        cases.append(case)
+        for run_dir in sorted(case_dir.iterdir()):
+            old = json.loads((run_dir / "result.json").read_text())
+            keep = {k: old[k] for k in ("seconds", "timed_out", "exit", "case", "arm", "run")}
+            res = grade(case, run_dir, judge_model) | keep
+            (run_dir / "result.json").write_text(json.dumps(res, indent=2))
+            results.append(res)
+            if res["arm"] not in arms:
+                arms.append(res["arm"])
+    write_summary(out_root, results, cases, sorted(arms, key=lambda x: x != "with"))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--case", action="append", help="case name (repeatable); default all")
@@ -272,7 +298,10 @@ def main():
     ap.add_argument("-j", type=int, default=2, help="runs at once (each is a full claude session)")
     ap.add_argument("--judge-model", default="sonnet")
     ap.add_argument("--out", help="output dir (default evals/results/<timestamp>)")
+    ap.add_argument("--regrade", metavar="DIR", help="re-grade an earlier results dir with the current graders; no new runs")
     a = ap.parse_args()
+    if a.regrade:
+        return regrade(Path(a.regrade), a.judge_model)
 
     names = a.case or sorted(p.name for p in EVALS.iterdir() if (p / "prompt.md").exists())
     cases = [load_case(EVALS / n) for n in names]
@@ -289,13 +318,7 @@ def main():
                 results.append(f.result())
             except Exception as e:
                 log(f"run failed: {e}")
-    results.sort(key=lambda r: (r["case"], r["arm"], r["run"]))
-    (out_root / "summary.json").write_text(json.dumps(results, indent=2))
-    table = summarize(results, cases, arms)
-    total = sum(r["cost_usd"] or 0 for r in results)
-    (out_root / "summary.md").write_text(f"# worktree-swarm eval {out_root.name}\n\nTotal cost ${total:.2f}\n{table}\n")
-    print(table)
-    print(f"\nTotal agent cost ${total:.2f} (judge calls not included). Details: {out_root}")
+    write_summary(out_root, results, cases, arms)
 
 
 if __name__ == "__main__":
