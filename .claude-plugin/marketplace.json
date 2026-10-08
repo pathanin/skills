@@ -168,7 +168,7 @@
     },
     {
       "name": "worktree-swarm",
-      "description": "Split a multi-part fix/feature into 3-12 worktree-isolated builders (Haiku by default, Sonnet/Opus for judgment pieces) plus Haiku scouts and per-piece Opus verifiers at low effort, run in waves, then integrate and verify the results yourself.",
+      "description": "Run a genuinely large build (8-24 substantial pieces) as a swarm of worktree-isolated Haiku builders, with Opus low-effort verifiers only where tests miss the spec, then integrate and verify yourself. Skips smaller tasks, which plain subagents finish faster and cheaper.",
       "author": {
         "name": "oat"
       },

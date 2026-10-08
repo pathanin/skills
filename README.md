@@ -36,7 +36,7 @@ Claude Code skills for personal use, grouped by type. Each skill lives at `<cate
 | [**build-fast**](internal-tools/build-fast/SKILL.md) | Manual-only `/build-fast`. Gets a working first-draft script into the user's hands as fast as possible — the one or two things asked, run on the real input, output that satisfies the need. Everything else serves that: scaffolding cut (tests, config layers, recovery, generality), correctness never; refinement named at handoff but deferred; worker agents only when parallel actually finishes sooner. |
 | [**bump-homebrew**](internal-tools/bump-homebrew/SKILL.md) | Automate releasing a new Homebrew formula version — tags the repo, builds a deterministic tarball, uploads a GitHub Release asset, and updates the formula. |
 | [**fresh-start**](internal-tools/fresh-start/SKILL.md) | Manual-only `/fresh-start`. Treats existing code as a spec, not a foundation — extracts the behavior contract, writes an independent implementation, diffs both against the same inputs, and keeps whichever is simpler and correct (keeping the old code when the rewrite only ties). |
-| [**worktree-swarm**](internal-tools/worktree-swarm/SKILL.md) | Split a multi-part fix/feature into 3-12 worktree-isolated builders (Haiku by default, Sonnet/Opus for judgment pieces) plus Haiku scouts and per-piece Opus verifiers at low effort, run in waves, then integrate and verify the results yourself. |
+| [**worktree-swarm**](internal-tools/worktree-swarm/SKILL.md) | Run a genuinely large build (8-24 substantial pieces) as a swarm of worktree-isolated Haiku builders, with Opus low-effort verifiers only where tests miss the spec, then integrate and verify yourself. Skips smaller tasks, which plain subagents finish faster and cheaper. |
 
 ## mods/
 

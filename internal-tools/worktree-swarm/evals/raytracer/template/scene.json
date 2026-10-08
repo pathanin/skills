@@ -1,0 +1,32 @@
+{
+  "camera": {"eye": [0.0, 2.1, 6.2], "target": [0.0, 0.75, 0.0], "up": [0, 1, 0], "vfov": 38},
+  "ambient": [0.06, 0.06, 0.08],
+  "background": {"top": [0.32, 0.48, 0.85], "bottom": [0.92, 0.93, 0.98]},
+  "max_depth": 4,
+  "materials": {
+    "floor": {"texture": {"type": "checker", "scale": 0.7, "a": [0.85, 0.85, 0.82], "b": [0.18, 0.2, 0.24]}, "specular": 0.15, "shininess": 60, "reflect": 0.12},
+    "mirror": {"color": [0.9, 0.92, 0.95], "diffuse": 0.05, "specular": 0.9, "shininess": 200, "reflect": 0.85},
+    "glass": {"color": [0.95, 0.97, 1.0], "diffuse": 0.02, "specular": 0.9, "shininess": 300, "transparency": 0.92, "ior": 1.5},
+    "marble": {"texture": {"type": "marble", "scale": 3.0, "a": [0.95, 0.94, 0.9], "b": [0.2, 0.22, 0.3], "turbulence": 1.2}, "specular": 0.4, "shininess": 80},
+    "lacquer": {"color": [0.78, 0.12, 0.1], "specular": 0.7, "shininess": 90, "reflect": 0.08},
+    "stripes": {"texture": {"type": "stripes", "count": 6, "a": [0.95, 0.75, 0.2], "b": [0.15, 0.3, 0.6]}, "specular": 0.2},
+    "stone": {"texture": {"type": "noise", "scale": 4.0, "a": [0.35, 0.5, 0.35], "b": [0.75, 0.85, 0.6], "seed": 3}},
+    "gem": {"extends": "glass", "color": [0.6, 1.0, 0.75], "ior": 1.7},
+    "rim": {"extends": "lacquer", "color": [0.95, 0.75, 0.25], "reflect": 0.3}
+  },
+  "lights": [
+    {"type": "point", "position": [-3.5, 5.0, 4.0], "color": [1.0, 0.95, 0.85], "intensity": 55},
+    {"type": "directional", "direction": [0.5, 0.8, -0.3], "color": [0.55, 0.65, 0.9], "intensity": 0.6}
+  ],
+  "objects": [
+    {"type": "plane", "point": [0, 0, 0], "normal": [0, 1, 0], "material": "floor"},
+    {"type": "sphere", "center": [-1.6, 1.0, -1.4], "radius": 1.0, "material": "mirror"},
+    {"type": "sphere", "center": [0.15, 0.65, 0.9], "radius": 0.65, "material": "glass"},
+    {"type": "icosphere", "center": [1.7, 0.7, -0.6], "radius": 0.7, "subdivisions": 2, "material": "marble"},
+    {"type": "torus", "center": [-1.55, 0.25, 1.15], "major": 0.55, "minor": 0.22, "segments": 28, "rings": 12, "material": "lacquer"},
+    {"type": "box", "min": [0.55, 0.0, -2.3], "max": [1.45, 1.6, -1.5], "material": "stripes"},
+    {"type": "cylinder", "base": [2.15, 0.0, 0.75], "radius": 0.38, "height": 1.1, "segments": 20, "material": "stone"},
+    {"type": "obj", "path": "assets/gem.obj", "scale": 0.45, "offset": [1.25, 0.27, 1.6], "material": "gem"},
+    {"type": "disk", "center": [-0.2, 0.002, -0.6], "normal": [0, 1, 0], "radius": 0.5, "material": "rim"}
+  ]
+}
