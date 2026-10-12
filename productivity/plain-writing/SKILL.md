@@ -1,13 +1,12 @@
 ---
 name: plain-writing
 description: >-
-  Writes and edits prose in a plain and boring style: simple everyday words,
-  complete sentences, no dashes, no jargon, and no analogies. Use when
-  drafting or revising documents, Notion pages, reports, summaries, READMEs,
-  emails, slides, commit messages, or PR descriptions, or when the user asks
-  to simplify, clean up, tighten, reword, or make writing clearer. Use when
-  the user invokes /plain-writing deslopify or asks to deslopify an agent
-  response. Do not apply to code, only to the words around it.
+  Manual-only plain-writing style, invoked with /plain-writing. Writes and
+  edits prose in a plain and boring style: simple everyday words, complete
+  sentences, no dashes, no jargon, and no analogies. /plain-writing deslopify
+  rewrites the previous agent response, or the text after the command, for a
+  reader with no context. Do not apply to code, only to the words around it.
+disable-model-invocation: true
 license: MIT
 ---
 
