@@ -1,6 +1,7 @@
-"""Tiled Real-ESRGAN upscale. Usage: upscale.py MODEL.pth IN OUT [--fit WxH]
+"""Tiled AI upscale (any spandrel model: ESRGAN, FDAT, PLKSR, DAT...). Usage: upscale.py MODEL IN OUT [--fit WxH]
 Uses Apple GPU (MPS) when available, else CPU. --fit center-crops to that aspect and resizes."""
-import argparse
+import argparse, os
+os.environ.setdefault('PYTORCH_ENABLE_MPS_FALLBACK', '1')  # ops MPS lacks fall back to CPU
 import numpy as np, torch
 from PIL import Image
 from spandrel import ModelLoader
@@ -12,11 +13,11 @@ ap.add_argument('--tile', type=int, default=0, help='tile size (0 = auto)')
 a = ap.parse_args()
 
 dev = 'mps' if torch.backends.mps.is_available() else 'cuda' if torch.cuda.is_available() else 'cpu'
-m = ModelLoader().load_from_file(a.model).model.eval().to(dev)
-S = m.scale if hasattr(m, 'scale') else 4
+desc = ModelLoader().load_from_file(a.model)
+m, S = desc.model.eval().to(dev), desc.scale  # the module itself may lack .scale
 img = np.asarray(Image.open(a.inp).convert('RGB')).astype(np.float32) / 255
 H, W, _ = img.shape
-T = a.tile or (512 if dev != 'cpu' else 192); P = 16
+T = a.tile or (512 if dev != 'cpu' else 192); P = 48  # 16 left visible seams
 x = torch.from_numpy(img).permute(2, 0, 1)[None].to(dev)
 out = np.zeros((H * S, W * S, 3), np.float32)
 print(f'device={dev} input={W}x{H} scale={S}', flush=True)
