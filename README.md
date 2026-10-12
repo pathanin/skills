@@ -24,7 +24,7 @@ Claude Code skills for personal use, grouped by type. Each skill lives at `<cate
 | Skill | Description |
 |---|---|
 | [**pdf-to-md**](productivity/pdf-to-md/SKILL.md) | Convert a PDF, a page range, or one section of it to markdown that keeps the merged-cell tables intact, then verify against the source that no text was lost. |
-| [**plain-writing**](productivity/plain-writing/SKILL.md) | Manual-only `/plain-writing`. Write and edit prose in a plain, boring style — simple words, complete sentences, no dashes, jargon, or analogies. `/plain-writing deslopify` rewrites the previous response for a reader with no context. Vendored from [docwriter-org/plain-writing-skill](https://github.com/docwriter-org/plain-writing-skill) (MIT). |
+| [**plain-writing**](productivity/plain-writing/SKILL.md) | Manual-only `/plain-writing`. Plain, boring prose style; `/plain-writing deslopify` rewrites the last response for a reader with no context. Vendored from [docwriter-org/plain-writing-skill](https://github.com/docwriter-org/plain-writing-skill) (MIT). |
 | [**plan-interview**](productivity/plan-interview/SKILL.md) | Walk through a space of interconnected decisions via structured interview — useful when the path forward is unclear and you need to resolve trade-offs before acting. |
 | [**plan-relax**](productivity/plan-relax/SKILL.md) | Think through a fuzzy or interconnected decision via a relaxed, low-pressure interview — one easy question at a time, ending in a decision summary with defaults filled in. |
 | [**to-prd**](productivity/to-prd/SKILL.md) | Turn the current conversation context into a PRD grounded in existing decision logs, without re-interviewing the user. |

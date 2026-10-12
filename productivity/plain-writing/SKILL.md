@@ -1,11 +1,6 @@
 ---
 name: plain-writing
-description: >-
-  Manual-only plain-writing style, invoked with /plain-writing. Writes and
-  edits prose in a plain and boring style: simple everyday words, complete
-  sentences, no dashes, no jargon, and no analogies. /plain-writing deslopify
-  rewrites the previous agent response, or the text after the command, for a
-  reader with no context. Do not apply to code, only to the words around it.
+description: Manual-only, invoked with /plain-writing. Writes prose in a plain, boring style, with simple words, complete sentences, and no dashes, jargon, or analogies. /plain-writing deslopify rewrites the last response for a reader with no context. Prose only, not code.
 disable-model-invocation: true
 license: MIT
 ---

@@ -1,6 +1,6 @@
 {
   "name": "plain-writing",
-  "description": "Manual-only plain-writing style, invoked with /plain-writing. Writes and edits prose in a plain, boring style: simple everyday words, complete sentences, no dashes, no jargon, no analogies. /plain-writing deslopify rewrites the previous response for a reader with no context. Vendored from docwriter-org/plain-writing-skill (MIT).",
+  "description": "Manual-only, invoked with /plain-writing. Plain, boring prose style, plus /plain-writing deslopify. Vendored from docwriter-org/plain-writing-skill (MIT).",
   "author": {
     "name": "oat"
   }
