@@ -10,8 +10,8 @@ disable-model-invocation: true
 Everything runs on this Mac. Bundled files:
 - `${CLAUDE_SKILL_DIR}/scripts/match.py` - scores every video frame against a thumbnail
 - `${CLAUDE_SKILL_DIR}/scripts/upscale.py` - tiled upscale with any spandrel model file (scale read from the model), uses the Apple GPU (MPS) when available, optional `--fit WxH` crop
-- `${CLAUDE_SKILL_DIR}/scripts/test_upscale.py` - tests for upscale.py (`PY -m unittest discover -s "${CLAUDE_SKILL_DIR}/scripts"`)
-- `${CLAUDE_SKILL_DIR}/scripts/remove_logo.py` - inpaints logos out by bounding box
+- `${CLAUDE_SKILL_DIR}/scripts/remove_logo.py` - removes logos by bounding box with the LaMa inpainting model (`--telea` for a model-free fallback)
+- `${CLAUDE_SKILL_DIR}/scripts/test_upscale.py`, `test_remove_logo.py` - tests (`PY -m unittest discover -s "${CLAUDE_SKILL_DIR}/scripts" -p 'test_*.py'`)
 
 ## 0. One-time setup (check, don't redo)
 
@@ -35,6 +35,9 @@ Models live in `~/.cache/wallpaper-upscale/models/`; set `MD=~/.cache/wallpaper-
 - **Photos (default): `4xNomosWebPhoto_RealPLKSR.safetensors`**, best for web/social JPEGs:
   `curl -L -o "$MD/4xNomosWebPhoto_RealPLKSR.safetensors" https://github.com/Phhofm/models/releases/download/4xNomosWebPhoto_RealPLKSR/4xNomosWebPhoto_RealPLKSR.safetensors`
   sha256 `9be0228f98156a100d6636d99b373ed2785b999723f9adc4cca504329ab157f2`.
+- **Logo removal: `lama/big-lama.pt`** (LaMa, TorchScript, 196 MB), only when logos need removing:
+  `mkdir -p "$MD/lama" && curl -L -o "$MD/lama/big-lama.pt" https://github.com/Sanster/models/releases/download/add_big_lama/big-lama.pt`
+  sha256 `344c77bbcb158f17dd143070d1e789f38a66c04202311ae3a258ef66667a9ea9` (md5 `e3aa4aaa15225a33ec84f9f4bc47e500`, as published by lama-cleaner).
 - Optional models; download one only when the user asks for it or its case applies:
   - Clean, uncompressed camera photos (RAW exports, PNG, high-quality JPEG with no visible block artifacts): `4xNomos2_hq_dat2.pth`, about 10x slower than RealPLKSR. On web JPEGs it magnifies 8x8 compression blocks, so don't use it there.
     `curl -L -o "$MD/4xNomos2_hq_dat2.pth" https://github.com/Phhofm/models/releases/download/4xNomos2_hq_dat2/4xNomos2_hq_dat2.pth`, sha256 `1f2be2b4786b5031776aed90e1818564f5576ab1e44da9355c7f3788ea25bdea`.
@@ -65,9 +68,14 @@ A frame only beats the thumbnail if the video is higher-res than the thumbnail A
 
 ## 3. Optional: remove logos (before upscaling)
 
-View the image, estimate each logo's box in original-resolution pixels, then:
-`PY "${CLAUDE_SKILL_DIR}/scripts/remove_logo.py" src.jpg clean.png x0,y0,x1,y1 x0,y0,x1,y1`
-Check `clean_mask.png` covers the logo and crop-view the patched areas. Inpainting is fine over smoke/sky/flat areas and smudges over detailed art - say so. Keep a with-logo version too.
+Always remove logos from the original source, never from an upscaled image. LaMa works best near its training size (around 512-1000 px), and the upscaler then adds detail to the filled area so it matches the rest. On an upscaled image the logo also has dark upscaler halos that the mask misses. If the user hands you only an upscaled with-logo file, ask for or find the original, then remove the logo and re-upscale.
+
+View the image, estimate each logo's box in original-resolution pixels (include small corner marks and frame brackets), then:
+`PY "${CLAUDE_SKILL_DIR}/scripts/remove_logo.py" src.jpg clean.png x0,y0,x1,y1 x0,y0,x1,y1 [x0,y0,x1,y1:65]`
+- Each box masks pixels brighter than `--thresh` (default 150) plus orange accents, grown by `--grow` px (default 7) to cover JPEG halos. Add `:T` to a narrow box to catch fainter grey parts, such as the thin separator line beside a wordmark; keep those boxes tight so they don't grab light art.
+- Check `clean_mask.png` covers every logo part and nothing else, then crop-view each patched area at 2-3x next to the original. LaMa continues lines and textures (hair strands, blade edges, rock outlines) instead of smearing, but what it draws under a logo is a guess, and it can invent a few stray strokes in flat smoke. Mention what you saw.
+- `--telea` runs OpenCV inpainting without the model. It is fine for tiny marks over flat areas and smears over detailed art.
+Keep a with-logo version too.
 
 ## 4. Upscale and fit
 
