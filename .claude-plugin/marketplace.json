@@ -176,7 +176,7 @@
     },
     {
       "name": "wallpaper-upscale",
-      "description": "Manual-only local wallpaper upscale, invoked with /wallpaper-upscale. Turns an image, YouTube thumbnail or video frame into a high-res Mac wallpaper: best source, Real-ESRGAN upscale, optional logo removal, crop to screen.",
+      "description": "Manual-only local wallpaper upscale, invoked with /wallpaper-upscale. Turns an image, YouTube thumbnail or video frame into a high-res Mac wallpaper: best source, AI upscale (IllustrationJaNai for art, RealPLKSR for photos), optional logo removal, crop to screen.",
       "author": {
         "name": "oat"
       },
