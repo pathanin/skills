@@ -18,7 +18,7 @@ Claude Code skills for personal use, grouped by type. Each skill lives at `<cate
 | [**mobile-screen-design**](design/mobile-screen-design/SKILL.md) | Manual-only `/mobile-screen-design`. Two-pass review or build of a mobile app screen: a defect pass (overlay contrast, media style-consistency, icon axes, mutable state in copy, decision order, action grouping) then a flow pass (scroll context, sticky actions, presets). Each rule is graded by evidence strength, with sources and a debunked-figures list. |
 | [**tufte-clarity**](design/tufte-clarity/SKILL.md) | Apply Tufte's information design principles to UI layouts, web pages, and presentation slides — reduces chrome, improves signal density. |
 | [**tufte-viz**](design/tufte-viz/SKILL.md) | Ideate and critique data visualizations using Tufte's principles: data-ink ratio, chartjunk elimination, graphical integrity, and small multiples. |
-| [**wallpaper-upscale-local**](design/wallpaper-upscale-local/SKILL.md) | Manual-only `/wallpaper-upscale-local`. Turns an image, YouTube thumbnail or video frame into a high-res Mac wallpaper, all on the local machine: picks the best source (frame-matches the video against the thumbnail), upscales it with Real-ESRGAN on the Apple GPU, optionally inpaints logos out, and crops to the screen size. |
+| [**wallpaper-upscale**](design/wallpaper-upscale/SKILL.md) | Manual-only `/wallpaper-upscale`. Turns an image, YouTube thumbnail or video frame into a high-res Mac wallpaper, all on the local machine: picks the best source (frame-matches the video against the thumbnail), upscales it with Real-ESRGAN on the Apple GPU, optionally inpaints logos out, and crops to the screen size. |
 
 ## productivity/
 

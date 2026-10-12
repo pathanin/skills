@@ -1,7 +1,0 @@
-{
-  "name": "wallpaper-upscale-local",
-  "description": "Manual-only local wallpaper upscale, invoked with /wallpaper-upscale-local. Turns an image, YouTube thumbnail or video frame into a high-res Mac wallpaper: best source, Real-ESRGAN upscale, optional logo removal, crop to screen.",
-  "author": {
-    "name": "oat"
-  }
-}
