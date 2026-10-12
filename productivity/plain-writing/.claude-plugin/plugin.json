@@ -1,0 +1,7 @@
+{
+  "name": "plain-writing",
+  "description": "Write and edit prose in a plain, boring style: simple everyday words, complete sentences, no dashes, no jargon, no analogies. Includes /plain-writing deslopify to rewrite the previous response for a reader with no context. Vendored from github.com/docwriter-org/plain-writing-skill (MIT).",
+  "author": {
+    "name": "oat"
+  }
+}

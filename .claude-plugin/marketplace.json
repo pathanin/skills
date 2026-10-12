@@ -111,6 +111,14 @@
       "source": "./mods/pick-list"
     },
     {
+      "name": "plain-writing",
+      "description": "Write and edit prose in a plain, boring style: simple everyday words, complete sentences, no dashes, no jargon, no analogies. Includes /plain-writing deslopify. Vendored from docwriter-org/plain-writing-skill (MIT).",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./productivity/plain-writing"
+    },
+    {
       "name": "plan-interview",
       "description": "Walk through a space of interconnected decisions via structured interview — useful when the path forward is unclear and you need to resolve trade-offs before acting.",
       "author": {
