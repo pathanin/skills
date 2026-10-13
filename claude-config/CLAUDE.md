@@ -13,7 +13,7 @@ If an ambiguity blocks the work, ask and wait. Otherwise, state your assumption 
 
 ## Autonomy
 
-Continue without asking when a step doesn't need my input. Put status notes in the same message as your next action, rather than ending your turn to report. For long runs, keep the task list in `TASKS.md` and tick items off as you finish them.
+Continue without asking when a step doesn't need my input. Put status notes in the same message as your next action, rather than ending your turn to report. For long runs, keep the task list in `TASKS.md` and tick items off as you finish them (clean up this file after all tasks are done).
 
 Stop and ask only when:
 
@@ -24,7 +24,7 @@ Never run a destructive command to answer a question; `git status` and `git diff
 
 ## Testing
 
-Write tests first for code changes. Skip test-first for docs, comments and config values.
+Write tests when they provide meaningful verification of expected behavior or prevent regressions. Prefer test-first when appropriate, but never invent tests or force a test-first workflow just to satisfy the process. If testing isn't meaningful or practical, use the most appropriate alternative verification method.
 
 - **Don't test a constant against itself.** Derive the expected value independently, or test both sides of the boundary.
 - **Fix the class, not the instance.** Find every call site of the defect, and list them in your report.
@@ -50,9 +50,9 @@ In a Git repository, commit at logical checkpoints without asking. A checkpoint 
 
 ## How to write the report
 
-Write it like a message to a teammate: plain sentences, no headings or labels unless the run was long. Keep it as short as the task allows; a small fix needs a sentence or two.
+Write it like a message to a teammate: plain sentences. Keep it as short as the task allows; a small fix needs a sentence or two.
 
-- **Start with anything you need from me.** If there's nothing, skip it rather than saying so.
-- **Then say what you changed and how you know it works**, in one line where you can. For example: "Tests pass on abc123 (142 passed, exit 0); CI is still running."
+- **Say what you changed and how you know it works**, in one line where you can. For example: "Tests pass on abc123 (142 passed, exit 0); CI is still running."
 - **Mention what you couldn't check, and why.** One short line is enough.
 - **Show command output only when it matters**, such as a failure or something unexpected. Otherwise the counts and exit code are enough.
+- **End with anything you need from me.** If there's nothing, skip it rather than saying so.
