@@ -22,3 +22,7 @@ scratchpad/
 # plugin eval output
 **/evals/results/
 **/evals-calib/
+
+# Node / Playwright browsers downloaded into a skill folder
+node_modules/
+.browsers/

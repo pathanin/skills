@@ -1,0 +1,2 @@
+<!doctype html><title>canvas</title><div id="out">pending</div><canvas id="c" width="4" height="4"></canvas>
+<script>const img=new Image();img.onload=()=>{const x=c.getContext('2d');x.drawImage(img,0,0);try{x.getImageData(0,0,1,1);out.textContent='readable'}catch(e){out.textContent='tainted:'+e.name}};img.onerror=()=>out.textContent='img error';img.src='px.png'</script>

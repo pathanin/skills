@@ -1,0 +1,3 @@
+<!doctype html><title>iframe</title><div id="out">pending</div>
+<iframe id="f" src="iframe-child.html"></iframe>
+<script>f.onload=()=>{try{out.textContent='read:'+f.contentDocument.getElementById('c').textContent}catch(e){out.textContent='blocked:'+e.name}}</script>

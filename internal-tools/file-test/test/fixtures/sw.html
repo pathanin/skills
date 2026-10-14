@@ -1,0 +1,2 @@
+<!doctype html><title>sw</title><div id="out">pending</div>
+<script>if(!('serviceWorker' in navigator)){out.textContent='no sw api'}else navigator.serviceWorker.register('sw.js').then(()=>out.textContent='registered',e=>out.textContent='rejected:'+e.name)</script>

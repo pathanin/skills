@@ -1,0 +1,2 @@
+<!doctype html><title>xhr</title><div id="out">pending</div>
+<script>const x=new XMLHttpRequest();x.open('GET','data.json');x.onload=()=>out.textContent='loaded:'+x.status;x.onerror=()=>out.textContent='xhr error';x.send()</script>

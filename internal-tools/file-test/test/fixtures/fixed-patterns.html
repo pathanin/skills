@@ -1,0 +1,15 @@
+<!doctype html><title>fixed patterns</title>
+<div id="worker">pending</div><div id="data">pending</div><div id="mod">pending</div><div id="route">pending</div><div id="canvas">pending</div><div id="frame">pending</div>
+<iframe id="sd" srcdoc="<p id=c>inline child</p>"></iframe>
+<script type="application/json" id="payload">{"value": 42}</script>
+<script>
+  const src = 'onmessage = e => postMessage(e.data * 2)';
+  const w = new Worker(URL.createObjectURL(new Blob([src], {type: 'text/javascript'})));
+  w.onmessage = e => worker.textContent = 'blob worker ' + e.data; w.postMessage(21);
+  data.textContent = 'inline json ' + JSON.parse(payload.textContent).value;
+  history.pushState({}, '', '#/settings'); route.textContent = 'hash ' + location.hash;
+  const img = new Image(); img.onload = () => { const x = document.createElement('canvas').getContext('2d'); x.drawImage(img,0,0); x.getImageData(0,0,1,1); canvas.textContent = 'data url canvas readable'; };
+  img.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  sd.onload = () => { frame.textContent = 'srcdoc ' + sd.contentDocument.getElementById('c').textContent; };
+</script>
+<script type="module">document.getElementById('mod').textContent = 'inline module ok';</script>

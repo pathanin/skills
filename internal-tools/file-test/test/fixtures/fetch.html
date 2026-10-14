@@ -1,0 +1,2 @@
+<!doctype html><title>fetch</title><div id="out">pending</div>
+<script>fetch('./data.json').then(r=>r.json()).then(d=>{document.getElementById('out').textContent=d.value})</script>
