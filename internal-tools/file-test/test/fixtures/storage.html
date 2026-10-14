@@ -1,3 +1,0 @@
-<!doctype html><title>storage</title><div id="out">pending</div>
-<script>let r=[];try{localStorage.setItem('k','v');r.push('ls='+localStorage.getItem('k'))}catch(e){r.push('ls throw '+e.name)}
-document.cookie='a=1';r.push('cookie='+JSON.stringify(document.cookie));r.push('origin='+location.origin);r.push('secure='+isSecureContext);out.textContent=r.join(' ')</script>

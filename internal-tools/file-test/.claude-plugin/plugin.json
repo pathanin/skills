@@ -1,7 +1,0 @@
-{
-  "name": "file-test",
-  "description": "Test single-file HTML pages over real file:// (double-click) in a real browser. Reports blocked modules, fetch, workers, canvas, cookies and paths, including failures the page catches silently.",
-  "author": {
-    "name": "oat"
-  }
-}

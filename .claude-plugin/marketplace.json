@@ -79,14 +79,6 @@
       "source": "./design/extract-dna"
     },
     {
-      "name": "file-test",
-      "description": "Test single-file HTML pages over real file:// (double-click) in a real browser. Reports blocked modules, fetch, workers, canvas, cookies and paths, including failures the page catches silently.",
-      "author": {
-        "name": "oat"
-      },
-      "source": "./internal-tools/file-test"
-    },
-    {
       "name": "fresh-start",
       "description": "Manual-only clean-slate pass, invoked with /fresh-start. Treats existing code as a spec, not a foundation — extracts the behavior it must keep, writes an independent implementation, compares both, and keeps whichever is simpler and correct.",
       "author": {
