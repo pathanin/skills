@@ -135,6 +135,14 @@
       "source": "./productivity/plan-relax"
     },
     {
+      "name": "reply-quote",
+      "description": "Mod: /reply lists the paragraphs of Claude's last reply, your mouse selection and your clipboard, and quotes the one you pick into the prompt. In fullscreen, also a hover ↩ on each paragraph and a \"Reply to selection\" button under selected text.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./mods/reply-quote"
+    },
+    {
       "name": "test-light",
       "description": "Mod: a one-line readout above the prompt showing whether the last test run passed, its counts, how long ago, and how many files were edited since.",
       "author": {

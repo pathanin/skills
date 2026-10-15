@@ -1,0 +1,9 @@
+{
+  "name": "reply-quote",
+  "version": "0.3.0",
+  "description": "Reply to part of Claude's response: /reply lists the last reply's paragraphs, your selection and your clipboard, and quotes your pick into the prompt",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "oat"
+  }
+}
