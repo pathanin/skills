@@ -1,4 +1,4 @@
-<img src="assets/banner.svg" alt="skills" width="100%">
+<img src="assets/banner.gif" alt="skills" width="100%">
 
 # skills
 
