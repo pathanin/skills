@@ -64,7 +64,3 @@ Hook plugins that draw inside Claude Code rather than skills. Test with `claude 
 | Mod | What it does |
 |---|---|
 | [reply-quote](mods/reply-quote/hooks/register.tsx) | `/reply` quotes a paragraph of Claude's last reply, your selection or clipboard into the prompt; hover ↩ in fullscreen. |
-
----
-
-Moved out: **jpeg-concat** is now [pathanin/jpegconcat](https://github.com/pathanin/jpegconcat).
