@@ -82,6 +82,22 @@ function mountMessage($: Engine, extra: object = {}) {
   })
 }
 
+// A drawn tree without its absolutely placed boxes: what takes room on screen.
+function inFlow(node: unknown): unknown {
+  if (Array.isArray(node)) {
+    return node.filter(child => !isAbsolute(child)).map(inFlow)
+  }
+  if (node !== null && typeof node === 'object') {
+    return Object.fromEntries(Object.entries(node).map(([k, v]) => [k, inFlow(v)]))
+  }
+  return node
+}
+
+function isAbsolute(node: unknown): boolean {
+  const props = (node as { props?: { position?: string } } | null)?.props
+  return props?.position === 'absolute'
+}
+
 function mountPicker($: Engine) {
   return $.ui.mount({
     plugin: 'reply-quote',
@@ -225,6 +241,22 @@ describe('fullscreen', () => {
     // Quoted once, the button stays away while the same text is selected.
     await clock.advance(400)
     expect((await ui.findAll({ key: 'reply-selection' })).length).toBe(0)
+  })
+
+  test('"Reply to selection" appears without moving the text', async ($, on) => {
+    // Drawn in the flow, the button pushed the rows below it down while the
+    // person was still selecting, so the highlight slid onto other text.
+    const clock = mock.clock(on)
+    fakeEngine(on, { selection: { text: 'over two', requestId: 'msg-1' } })
+    on('command.register', () => ({ value: { command: 'reply' } }))
+    on('session.start', () => ({ cwd: '/' }))
+    await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
+
+    const ui = await mountMessage($)
+    const before = await ui.drawn()
+    await clock.advance(400)
+    expect((await ui.findAll({ key: 'reply-selection' })).length).toBe(1)
+    expect(inFlow(await ui.drawn())).toEqual(inFlow(before))
   })
 
   test('/reply offers a selection in the list instead of quoting it at once', async ($, on) => {

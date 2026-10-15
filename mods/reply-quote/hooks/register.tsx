@@ -281,17 +281,23 @@ export const register: Register = on => {
                 </Box>
               </Box>
               {selectedHere !== null && selectionAt === i && (
-                <Button
-                  key="reply-selection"
-                  variant="primary"
-                  onPress={async () => {
-                    usedText = selectedHere.text
-                    await update($, selected, () => null)
-                    await fillQuote($, selectedHere.text)
-                  }}
-                >
-                  ↩ Reply to selection
-                </Button>
+                // Placed over the blank row under the paragraph, out of the flow:
+                // taking a row of its own, it pushed the text below it down while
+                // the person was selecting, and the highlight slid onto other text.
+                // Below the paragraph the selection ends in, it never covers it.
+                <Box position="absolute" bottom={-1} right={2}>
+                  <Button
+                    key="reply-selection"
+                    variant="primary"
+                    onPress={async () => {
+                      usedText = selectedHere.text
+                      await update($, selected, () => null)
+                      await fillQuote($, selectedHere.text)
+                    }}
+                  >
+                    ↩ Reply to selection
+                  </Button>
+                </Box>
               )}
             </Box>
           ))}
