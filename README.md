@@ -4,68 +4,67 @@
 
 Claude Code skills for personal use, grouped by type. Each skill lives at `<category>/<skill-name>/SKILL.md`.
 
-## design/
+**[design](#design)** · **[productivity](#productivity)** · **[internal-tools](#internal-tools)** · **[mods](#mods)**
 
-| Skill | Description |
-|---|---|
-| [**chart-viz**](design/chart-viz/SKILL.md) | Redesign, critique, or build charts as a decision framework — resolves chart type, color, decluttering, and emphasis against the question, data shape, medium, and audience rather than a fixed checklist. |
-| [**code-animation**](design/code-animation/SKILL.md) | Manual-only `/code-animation`. Makes an animation entirely in code from your source materials, renders it frame-exact in headless Chromium, and exports MP4, GIF, WebM or ProRes with alpha. Reviews its own work with contact sheets and automatic QA. |
-| [**code-wallpaper**](design/code-wallpaper/SKILL.md) | Manual-only `/code-wallpaper`. Paints a landscape wallpaper entirely in code from one polygon scene, in either of two styles: oil on linen (a multi-bristle stroke engine) or layered paper cut (hand-cut pieces with drop shadows), or oil-paints over the user's own image. Exports a PNG at any resolution (4K, ultrawide, phone), with a fast preview-and-fix loop before the final render. |
-| [**critic-loop**](design/critic-loop/SKILL.md) | Manual-only `/critic-loop`. No reference: one builder works from the project's existing code, design files and docs, or from the request alone in an empty project, and revises against fresh-context critics. Stops when no critic has a blocking issue and every scored critic clears a configurable floor (default 8/10), at a configurable round cap (default 3), or when the builder changes nothing. |
-| [**dashboard-design**](design/dashboard-design/SKILL.md) | Apply expert dashboard design principles when building, auditing, or critiquing dashboards and data tables — enforces data-driven form, progressive disclosure, and invisible UI. |
-| [**design-loop**](design/design-loop/SKILL.md) | Manual-only `/design-loop`. Interviews for a goal and a real-world reference, tears the reference into checkable mechanisms in `bar.md`, then loops a builder against three fresh-context critics (brief, system, craft) per piece until all three pass. Works at any size, from a whole build down to one component. |
-| [**extract-dna**](design/extract-dna/SKILL.md) | Manual-only `/extract-dna`. Forensically measures one design system — image, URL, PDF, video, code, or design file, one sample or up to six of the same system — into a `dna.json` record plus a `dna.md` guide (capped paste-in payload, nuances, do/don't), proving completeness by rebuilding the reference and diffing it numerically. |
-| [**mobile-screen-design**](design/mobile-screen-design/SKILL.md) | Manual-only `/mobile-screen-design`. Two-pass review or build of a mobile app screen: a defect pass (overlay contrast, media style-consistency, icon axes, mutable state in copy, decision order, action grouping) then a flow pass (scroll context, sticky actions, presets). Each rule is graded by evidence strength, with sources and a debunked-figures list. |
-| [**tufte-clarity**](design/tufte-clarity/SKILL.md) | Apply Tufte's information design principles to UI layouts, web pages, and presentation slides — reduces chrome, improves signal density. |
-| [**tufte-viz**](design/tufte-viz/SKILL.md) | Ideate and critique data visualizations using Tufte's principles: data-ink ratio, chartjunk elimination, graphical integrity, and small multiples. |
-| [**wallpaper-upscale**](design/wallpaper-upscale/SKILL.md) | Manual-only `/wallpaper-upscale`. Turns an image, YouTube thumbnail or video frame into a high-res Mac wallpaper, all on the local machine: picks the best source (frame-matches the video against the thumbnail), upscales it on the Apple GPU (IllustrationJaNai FDAT for art, RealPLKSR for photos), optionally inpaints logos out, and crops to the screen size. |
+## Install
 
-## productivity/
-
-| Skill | Description |
-|---|---|
-| [**pdf-to-md**](productivity/pdf-to-md/SKILL.md) | Convert a PDF, a page range, or one section of it to markdown that keeps the merged-cell tables intact, then verify against the source that no text was lost. |
-| [**plain-writing**](productivity/plain-writing/SKILL.md) | Manual-only `/plain-writing`. Plain, boring prose style; `/plain-writing deslopify` rewrites the last response for a reader with no context. Vendored from [docwriter-org/plain-writing-skill](https://github.com/docwriter-org/plain-writing-skill) (MIT). |
-| [**plan-interview**](productivity/plan-interview/SKILL.md) | Walk through a space of interconnected decisions via structured interview — useful when the path forward is unclear and you need to resolve trade-offs before acting. |
-| [**plan-relax**](productivity/plan-relax/SKILL.md) | Think through a fuzzy or interconnected decision via a relaxed, low-pressure interview — one easy question at a time, ending in a decision summary with defaults filled in. |
-| [**to-prd**](productivity/to-prd/SKILL.md) | Turn the current conversation context into a PRD grounded in existing decision logs, without re-interviewing the user. |
-| [**translate-to-thai**](productivity/translate-to-thai/SKILL.md) | Translate text into natural Thai, keeping technical terms, product names, and specific keywords in English where that reads more naturally to a Thai speaker. |
-
-## internal-tools/
-
-| Skill | Description |
-|---|---|
-| [**build-fast**](internal-tools/build-fast/SKILL.md) | Manual-only `/build-fast`. Gets a working first-draft script into the user's hands as fast as possible — the one or two things asked, run on the real input, output that satisfies the need. Everything else serves that: scaffolding cut (tests, config layers, recovery, generality), correctness never; refinement named at handoff but deferred; worker agents only when parallel actually finishes sooner. |
-| [**bump-homebrew**](internal-tools/bump-homebrew/SKILL.md) | Automate releasing a new Homebrew formula version — tags the repo, builds a deterministic tarball, uploads a GitHub Release asset, and updates the formula. |
-| [**fresh-start**](internal-tools/fresh-start/SKILL.md) | Manual-only `/fresh-start`. Treats existing code as a spec, not a foundation — extracts the behavior contract, writes an independent implementation, diffs both against the same inputs, and keeps whichever is simpler and correct (keeping the old code when the rewrite only ties). |
-| [**worktree-swarm**](internal-tools/worktree-swarm/SKILL.md) | Split a multi-part fix/feature into worktree-isolated subagents run in parallel, then manually integrate and verify the results. |
-
-## mods/
-
-Hook plugins (mods) that draw inside Claude Code rather than skills. Each has tests: `claude plugin test mods/<name>`.
-
-| Mod | Description |
-|---|---|
-| [**reply-quote**](mods/reply-quote/hooks/register.tsx) | `/reply` lists the paragraphs of Claude's last reply, your mouse selection and your clipboard, and quotes the one you pick into the prompt. In fullscreen, also a hover ↩ on each paragraph and a "Reply to selection" button under selected text. |
-
-## Installing
-
-These are packaged as plugins via the `local-skills` marketplace (`.claude-plugin/marketplace.json`):
+Packaged as plugins in the `local-skills` marketplace (`.claude-plugin/marketplace.json`). Install by skill name; the category folder is not part of the plugin name.
 
 ```bash
 claude plugin marketplace add pathanin/skills
 claude plugin install <skill-name>@local-skills
-```
 
-Install by skill name — the category directory is repo organization only and is not part of the plugin name.
-
-To pull later updates:
-
-```bash
+# later updates
 claude plugin marketplace update local-skills
 claude plugin update <skill-name>@local-skills
 ```
 
-## Moved out
+**Run** column: `/name` means manual-only, so Claude won't load it on its own and you type the command. `auto` means Claude loads it when the task fits.
 
-- **jpeg-concat** — now its own repo: https://github.com/pathanin/jpegconcat
+## design
+
+| Skill | Run | What it does |
+|---|---|---|
+| [chart-viz](design/chart-viz/SKILL.md) | `/chart-viz` | Picks chart type, color, decluttering and emphasis from the question, data, medium and audience. |
+| [code-animation](design/code-animation/SKILL.md) | `/code-animation` | Code-built animation rendered frame-exact in headless Chromium; exports MP4, GIF, WebM, ProRes with alpha. |
+| [code-wallpaper](design/code-wallpaper/SKILL.md) | `/code-wallpaper` | Code-painted landscape wallpaper, oil on linen or layered paper cut, PNG at any resolution. |
+| [critic-loop](design/critic-loop/SKILL.md) | `/critic-loop` | Builder revises against fresh-context critics until none blocks and all clear a score floor. No reference needed. |
+| [dashboard-design](design/dashboard-design/SKILL.md) | auto | Dashboard and data-table principles: data-driven form, progressive disclosure, invisible UI. |
+| [design-loop](design/design-loop/SKILL.md) | `/design-loop` | Breaks a real-world reference into checkable mechanisms, then loops builder vs. three critics per piece. |
+| [extract-dna](design/extract-dna/SKILL.md) | `/extract-dna` | Measures a design system into `dna.json` + `dna.md`, proven by rebuilding and diffing the reference. |
+| [mobile-screen-design](design/mobile-screen-design/SKILL.md) | `/mobile-screen-design` | Two-pass review or build of a mobile screen (defects, then flow), rules graded by evidence. |
+| [tufte-clarity](design/tufte-clarity/SKILL.md) | auto | Tufte's principles for UI, web pages and slides: less chrome, more signal. |
+| [tufte-viz](design/tufte-viz/SKILL.md) | auto | Tufte's principles for charts: data-ink, no chartjunk, graphical integrity, small multiples. |
+| [wallpaper-upscale](design/wallpaper-upscale/SKILL.md) | `/wallpaper-upscale` | Image, thumbnail or video frame to high-res Mac wallpaper, upscaled locally on the Apple GPU. |
+
+## productivity
+
+| Skill | Run | What it does |
+|---|---|---|
+| [pdf-to-md](productivity/pdf-to-md/SKILL.md) | auto | PDF (or a range or section) to markdown with merged-cell tables intact, checked against the source. |
+| [plain-writing](productivity/plain-writing/SKILL.md) | `/plain-writing` | Plain prose style; `deslopify` rewrites the last reply. Vendored from [docwriter-org/plain-writing-skill](https://github.com/docwriter-org/plain-writing-skill) (MIT). |
+| [plan-interview](productivity/plan-interview/SKILL.md) | auto | Structured interview through interconnected decisions before acting. |
+| [plan-relax](productivity/plan-relax/SKILL.md) | auto | Low-pressure, one-question-at-a-time decision interview ending in a summary with defaults. |
+| [to-prd](productivity/to-prd/SKILL.md) | auto | Turns the current conversation into a PRD grounded in existing decision logs. |
+| [translate-to-thai](productivity/translate-to-thai/SKILL.md) | auto | Natural Thai translation that keeps technical terms and product names in English. |
+
+## internal-tools
+
+| Skill | Run | What it does |
+|---|---|---|
+| [build-fast](internal-tools/build-fast/SKILL.md) | `/build-fast` | Fastest working first-draft script on the real input; scaffolding cut, correctness kept. |
+| [bump-homebrew](internal-tools/bump-homebrew/SKILL.md) | auto | Releases a Homebrew formula version: tag, deterministic tarball, GitHub Release, formula update. |
+| [fresh-start](internal-tools/fresh-start/SKILL.md) | `/fresh-start` | Rewrites from the old code's behavior contract, diffs both, keeps the simpler correct one. |
+| [worktree-swarm](internal-tools/worktree-swarm/SKILL.md) | auto | Splits work across parallel worktree-isolated subagents, then integrates and verifies by hand. |
+
+## mods
+
+Hook plugins that draw inside Claude Code rather than skills. Test with `claude plugin test mods/<name>`.
+
+| Mod | What it does |
+|---|---|
+| [reply-quote](mods/reply-quote/hooks/register.tsx) | `/reply` quotes a paragraph of Claude's last reply, your selection or clipboard into the prompt; hover ↩ in fullscreen. |
+
+---
+
+Moved out: **jpeg-concat** is now [pathanin/jpegconcat](https://github.com/pathanin/jpegconcat).
