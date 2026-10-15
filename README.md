@@ -46,8 +46,7 @@ Hook plugins (mods) that draw inside Claude Code rather than skills. Each has te
 
 | Mod | Description |
 |---|---|
-| [**pick-list**](mods/pick-list/hooks/register.tsx) | Band above the prompt that lists the numbered options (or `#` table rows) from Claude's last reply as checkboxes; picking sends "do 1,3" as your message. Hidden while a turn runs. |
-| [**test-light**](mods/test-light/hooks/register.tsx) | One line above the prompt: ✓/✗ for the last test run, pass/fail counts, how long ago, and how many files were edited since. |
+| [**reply-quote**](mods/reply-quote/hooks/register.tsx) | `/reply` lists the paragraphs of Claude's last reply, your mouse selection and your clipboard, and quotes the one you pick into the prompt. In fullscreen, also a hover ↩ on each paragraph and a "Reply to selection" button under selected text. |
 
 ## Installing
 

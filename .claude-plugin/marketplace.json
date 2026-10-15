@@ -103,14 +103,6 @@
       "source": "./productivity/pdf-to-md"
     },
     {
-      "name": "pick-list",
-      "description": "Mod: a pane that lists the numbered options from Claude's last reply as checkboxes and sends your picks back as \"do 1,3\". /picks reopens it.",
-      "author": {
-        "name": "oat"
-      },
-      "source": "./mods/pick-list"
-    },
-    {
       "name": "plain-writing",
       "description": "Manual-only, invoked with /plain-writing. Plain, boring prose style, plus /plain-writing deslopify. Vendored from docwriter-org/plain-writing-skill (MIT).",
       "author": {
@@ -141,14 +133,6 @@
         "name": "oat"
       },
       "source": "./mods/reply-quote"
-    },
-    {
-      "name": "test-light",
-      "description": "Mod: a one-line readout above the prompt showing whether the last test run passed, its counts, how long ago, and how many files were edited since.",
-      "author": {
-        "name": "oat"
-      },
-      "source": "./mods/test-light"
     },
     {
       "name": "to-prd",
