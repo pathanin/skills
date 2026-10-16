@@ -85,6 +85,16 @@ describe('sprite', () => {
     expect(shown.some(s => !lit(s))).toBe(true)
   })
 
+  test('types with both hands in turn, never one long arm', async () => {
+    const rows = Object.values(TYPING).flatMap(frames => frames.map(([s]) => plain(s)))
+    // Both up, a block on its front; the near hand down by the keys; the far hand down behind.
+    expect(rows.some(r => r[1]!.includes('▐███████') && r[2]!.includes('▙▄▄ '))).toBe(true)
+    expect(rows.some(r => r[1]!.includes('▝███████') && r[2]!.includes('▙▄▄▀'))).toBe(true)
+    expect(rows.some(r => r[1]!.includes('▗███████') && r[2]!.includes('▙▄▄▝▀'))).toBe(true)
+    // The old single arm reached out diagonally from the body, like a trunk.
+    for (const r of rows) expect(r[1]).not.toMatch(/[▚▗]▟/)
+  })
+
   test('no idle animation has the laptop in it', async () => {
     for (const frames of Object.values(ANIMATIONS)) {
       for (const [s] of frames) expect(s.flat().some(r => r.tone !== 'clawd')).toBe(false)

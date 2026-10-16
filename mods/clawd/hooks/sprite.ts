@@ -264,12 +264,18 @@ const LAPTOP_UP = [
   '............................',
 ]
 
-type Hand = 'up' | 'down'
+/** Both hands up, or one of them down on the keys: the near hand, or the far one. */
+type Hands = 'up' | 'near' | 'far'
 
 // Side on, Clawd is as wide as from the front, 13 pixels (columns 11-23), its last cell its far
-// side in shade. Its legs go straight down from both sides, as at the front; the hand comes
-// down from above the keys (column 8, row 2) onto them (row 4).
-function typingGrid(hand: Hand, options: { isBlinking?: boolean; step?: boolean } = {}): Grid {
+// side in shade. Its legs go straight down from both sides, as at the front. Its two hands
+// make a block on its front, one above the other (columns 9-10, rows 2-3), as on the desktop
+// app; to type, one comes down onto the keys (row 4) while the other stays up.
+//     ▐▜██▜██        ▐▜██▜██        ▐▜██▜██
+//  ▚   ▐███████   ▚   ▝███████   ▚   ▗███████
+//   ▙▄▄ ▝▝   ▝▝    ▙▄▄▀▝▝   ▝▝    ▙▄▄▝▀▝   ▝▝
+//    both up        near down      far down
+function typingGrid(hands: Hands, options: { isBlinking?: boolean; step?: boolean } = {}): Grid {
   const on = Array.from({ length: HEIGHT }, () => new Array<string>(WIDTH).fill('.'))
   const set = (x: number, y: number, p: string) => {
     const row = on[y]
@@ -285,23 +291,36 @@ function typingGrid(hand: Hand, options: { isBlinking?: boolean; step?: boolean 
     set(12, 1, '.')
     set(18, 1, '.')
   }
-  // The near arm, reaching for the keys.
-  set(9, 3, 'o')
+  set(10, 2, 'o')
   set(10, 3, 'o')
-  set(8, hand === 'up' ? 2 : 4, 'o')
+  if (hands === 'up') {
+    set(9, 2, 'o')
+    set(9, 3, 'o')
+  } else if (hands === 'near') {
+    // The lower, nearer hand comes down onto the keys; the far one stays up.
+    set(9, 2, 'o')
+    set(8, 4, 'o')
+    set(9, 4, 'o')
+  } else {
+    // The upper, farther hand comes down behind it.
+    set(9, 3, 'o')
+    set(9, 4, 'o')
+    set(10, 4, 'o')
+  }
   const step = options.step ? 1 : 0
   for (const x of [11, 13, 21]) set(x + step, 4, 'o')
   set(23 - step, 4, 's') // the far-side leg, in shade; it steps in, not past the edge
   const crouched = on.map(row => row.join(''))
-  const keys = hand === 'down' ? LAPTOP_DOWN.map((row, y) => (y === 5 ? '..ggggww....................' : row)) : LAPTOP_DOWN
+  const keys = hands !== 'up' ? LAPTOP_DOWN.map((row, y) => (y === 5 ? '..ggggww....................' : row)) : LAPTOP_DOWN
   return overlay(crouched, keys)
 }
 
 const UP = fromGrid(typingGrid('up'))
-const DOWN = fromGrid(typingGrid('down'))
-const DOWN_STEP = fromGrid(typingGrid('down', { step: true }))
+const NEAR = fromGrid(typingGrid('near'))
+const FAR = fromGrid(typingGrid('far'))
+const NEAR_STEP = fromGrid(typingGrid('near', { step: true }))
 const UP_BLINK = fromGrid(typingGrid('up', { isBlinking: true }))
-const DOWN_BLINK = fromGrid(typingGrid('down', { isBlinking: true }))
+const NEAR_BLINK = fromGrid(typingGrid('near', { isBlinking: true }))
 
 const HOLDING = overlay(poseGrid({ look: -1, left: 'up' }), LAPTOP_UP)
 const SET_DOWN = overlay(poseGrid({ look: -1 }), LAPTOP_DOWN)
@@ -325,9 +344,10 @@ export const PUT_AWAY: readonly Frame[] = [
 // Clawd types the whole turn through, but not like a metronome: fast bursts, steadier
 // patches, a blink between keys, now and then a look at what it wrote.
 export const TYPING: Record<string, readonly Frame[]> = {
-  burst: [[DOWN, 80], [UP, 80], [DOWN_STEP, 80], [UP, 80], [DOWN, 80], [UP, 80], [DOWN_STEP, 80], [UP, 80]],
-  steady: [[DOWN, 140], [UP, 160], [DOWN_STEP, 140], [UP, 160], [DOWN, 140], [UP, 160]],
-  blink: [[DOWN, 100], [UP_BLINK, 130], [DOWN_BLINK, 100], [UP, 120]],
+  // Hand over hand: near, far, near, far, with a beat of both up between some keys.
+  burst: [[NEAR, 80], [FAR, 80], [NEAR_STEP, 80], [FAR, 80], [NEAR, 80], [UP, 60], [FAR, 80], [NEAR_STEP, 80], [UP, 60]],
+  steady: [[NEAR, 140], [UP, 110], [FAR, 140], [UP, 110], [NEAR_STEP, 140], [UP, 110], [FAR, 140], [UP, 110]],
+  blink: [[NEAR, 100], [UP_BLINK, 130], [NEAR_BLINK, 100], [FAR, 100], [UP, 100]],
   read: [[UP, 700], [UP_BLINK, 120], [UP, 400]],
 }
 
@@ -361,10 +381,11 @@ export function restMs(roll: number): number {
 /** Every grid drawn at the laptop, for checking that no cell mixes two tones. */
 export const LAPTOP_GRIDS: readonly Grid[] = [
   typingGrid('up'),
-  typingGrid('down'),
-  typingGrid('down', { step: true }),
+  typingGrid('near'),
+  typingGrid('far'),
+  typingGrid('near', { step: true }),
   typingGrid('up', { isBlinking: true }),
-  typingGrid('down', { isBlinking: true }),
+  typingGrid('near', { isBlinking: true }),
   HOLDING,
   SET_DOWN,
 ]

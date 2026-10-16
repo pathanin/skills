@@ -40,6 +40,8 @@ export const register: Register = on => {
     // runs from the take-out to the put-away.
     let isWorking = false
     let isAtLaptop = false
+    // How long the laptop has been out with Claude not working, counted in frames shown.
+    let idleMs = 0
 
     const after = (ms: number, fn: () => void) => {
       timer?.cancel()
@@ -51,6 +53,7 @@ export const register: Register = on => {
       const frame = frames[at]
       if (frame === undefined) return then()
       show(frame[0])
+      if (isAtLaptop && !isWorking) idleMs += frame[1]
       after(frame[1], at === frames.length - 1 ? then : () => play(frames, at + 1, then))
     }
     const rest = () =>
@@ -59,13 +62,10 @@ export const register: Register = on => {
         play(ANIMATIONS[last] ?? [], 0, rest)
       })
     // Between one patch of typing and the next, Clawd looks up to see whether the turn is over,
-    // and puts the laptop away only once it has looked up twice and found it so. A moment's
-    // pause in the turn (each patch takes half a second or more) never has it put away and
-    // taken out again.
-    let idleLooks = 0
+    // and puts the laptop away only once Claude has not been working for a second. A moment's
+    // pause in a turn never has it put away and taken out again.
     const type = (): void => {
-      idleLooks = isWorking ? 0 : idleLooks + 1
-      if (idleLooks < 2) return play(TYPING[pickTyping(Math.random())] ?? [], 0, type)
+      if (isWorking || idleMs < 1000) return play(TYPING[pickTyping(Math.random())] ?? [], 0, type)
       isAtLaptop = false
       play(PUT_AWAY, 0, rest)
     }
@@ -74,9 +74,9 @@ export const register: Register = on => {
     // tick, cutting short whatever idle animation was playing.
     setTyping = working => {
       isWorking = working
+      if (working) idleMs = 0
       if (!working || isAtLaptop) return
       isAtLaptop = true
-      idleLooks = 0
       after(0, () => play(TAKE_OUT, 0, type))
     }
 
