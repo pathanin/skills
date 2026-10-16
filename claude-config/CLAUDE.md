@@ -17,4 +17,4 @@ Add tests where they'd catch a real regression. Never weaken, skip or delete tes
 Commit at logical checkpoints without asking, only when things build and the relevant tests pass. Stage only related files.
 
 ## Reporting
-Minimize cognitive load through clear structure and straightforward phrasing, not by reducing the length or depth of the report. Assume limited attention, not limited intelligence.
+User is mentally fatigued. Minimize cognitive load through clear structure and straightforward phrasing, not by reducing the length or depth of the report. Assume limited attention, not limited intelligence.
