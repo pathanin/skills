@@ -187,41 +187,48 @@ export const register: Register = on => {
     // Read only while Claude works, so a waiting prompt is not redrawn by the ticks.
     const spin = at !== -1 && e.props.isWorking ? SPIN[(await read($, frame)) % SPIN.length] : MARK.in_progress
 
+    // What sits beneath in the band (another mod's drawing, such as clawd's mascot) keeps
+    // its place at the right, whichever order the plugins load in.
+    const beneath = await next(e)
+
     const { Box, Text } = $.ui.resolve(e)
     const total = current.steps.length
     const done = countDone(current)
     const { folded, shown } = fit(current.steps, Math.max(2, e.props.maxRows - 1))
 
     return (
-      <Box flexDirection="column">
-        <Text key="head" wrap="truncate-end">
-          <Text weight="bold">Tasks</Text>
-          <Text dimColor>{`  ${done} of ${total} done`}</Text>
-        </Text>
-        {folded > 0 ? (
-          <Text key="folded" dimColor wrap="truncate-end">
-            <Text color="success">{'✓ '}</Text>
-            {`${folded} more done`}
+      <Box flexDirection="row" alignItems="flex-end">
+        <Box key="tasks" flexDirection="column" flexGrow={1} flexShrink={1}>
+          <Text key="head" wrap="truncate-end">
+            <Text weight="bold">Tasks</Text>
+            <Text dimColor>{`  ${done} of ${total} done`}</Text>
           </Text>
-        ) : null}
-        {shown.map(step => (
-          <Text key={`step-${step.id}`} wrap="truncate-end">
-            {step.status === 'completed' ? (
-              <Text color="success">{`${MARK.completed} `}</Text>
-            ) : step.status === 'in_progress' ? (
-              <Text color="claude">{`${spin} `}</Text>
-            ) : (
-              <Text dimColor>{`${MARK.pending} `}</Text>
-            )}
-            {step.status === 'completed' ? (
-              <Text dimColor strikethrough>{step.content}</Text>
-            ) : step.status === 'in_progress' ? (
-              <Text weight="bold">{step.content}</Text>
-            ) : (
-              <Text>{step.content}</Text>
-            )}
-          </Text>
-        ))}
+          {folded > 0 ? (
+            <Text key="folded" dimColor wrap="truncate-end">
+              <Text color="success">{'✓ '}</Text>
+              {`${folded} more done`}
+            </Text>
+          ) : null}
+          {shown.map(step => (
+            <Text key={`step-${step.id}`} wrap="truncate-end">
+              {step.status === 'completed' ? (
+                <Text color="success">{`${MARK.completed} `}</Text>
+              ) : step.status === 'in_progress' ? (
+                <Text color="claude">{`${spin} `}</Text>
+              ) : (
+                <Text dimColor>{`${MARK.pending} `}</Text>
+              )}
+              {step.status === 'completed' ? (
+                <Text dimColor strikethrough>{step.content}</Text>
+              ) : step.status === 'in_progress' ? (
+                <Text weight="bold">{step.content}</Text>
+              ) : (
+                <Text>{step.content}</Text>
+              )}
+            </Text>
+          ))}
+        </Box>
+        {beneath}
       </Box>
     )
   })

@@ -31,10 +31,9 @@ function flatten(node: Node): string {
 /** The band's rows as the terminal draws them; empty when the mod draws nothing. */
 async function rows($: any, surface: 'terminal' | 'desktop' = 'terminal'): Promise<string[]> {
   const ui = await $.ui.mount({ ...BAND, surface })
-  const drawn = (await ui.drawn()) as { type?: string; children?: unknown[] } | null
+  const tasks = (await ui.find({ key: 'tasks' })) as { children?: unknown[] } | undefined
   await ui.unmount()
-  if (drawn === null || drawn === undefined || drawn.type !== 'Box') return []
-  return (drawn.children ?? []).map(c => flatten(c as Node))
+  return (tasks?.children ?? []).map(c => flatten(c as Node))
 }
 
 // Stands for the engine's own band when the mod passes: a lone Text, never the mod's Box.
@@ -46,6 +45,7 @@ const engineBand = (on: any) =>
 
 describe('update_plan', () => {
   test('draws the plan and moves through it like the desktop list', async ($, on) => {
+    engineBand(on)
     const first = await $.tool.call({ tool: TOOL, items: ITEMS })
     expect(first.result).toBe('Plan shown (3 steps).')
     expect(await rows($)).toEqual(['Tasks  0 of 3 done', '◐ Look at the code', '○ Write the fix', '○ Run the tests'])
@@ -76,8 +76,24 @@ describe('update_plan', () => {
   })
 })
 
+describe('sharing the band', () => {
+  test("keeps another mod's drawing beneath it at the right of the list", async ($, on) => {
+    on('ui.render', { component: 'AbovePrompt' }, ($: any, e: any): any => {
+      const { Box, Text } = $.ui.resolve(e)
+      return h(Box, { key: 'mascot' }, h(Text, null, 'mascot'))
+    })
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+    const drawn = (await ui.drawn()) as any
+    expect(drawn.props.flexDirection).toBe('row')
+    expect(drawn.children.map((c: any) => c.props.key)).toEqual(['tasks', 'mascot'])
+    await ui.unmount()
+  })
+})
+
 describe('the step in progress', () => {
   test('turns slowly while Claude works, and holds still while idle', async ($, on) => {
+    engineBand(on)
     const clock = mock.clock(on)
     await $.tool.call({ tool: TOOL, items: ITEMS })
     expect((await rows($))[1]).toBe('◐ Look at the code')
@@ -87,7 +103,7 @@ describe('the step in progress', () => {
     expect((await rows($))[1]).toBe('◑ Look at the code')
 
     const ui = await $.ui.mount({ ...BAND, surface: 'terminal', props: { ...BAND.props, isWorking: false } })
-    expect(flatten(((await ui.drawn()) as any).children[1])).toBe('◼ Look at the code')
+    expect(flatten(((await ui.find({ key: 'tasks' })) as any).children[1])).toBe('◼ Look at the code')
     await ui.unmount()
   })
 })
@@ -114,6 +130,7 @@ describe('a new request', () => {
   })
 
   test('keeps an unfinished list, and ignores subagent and continuation turns', async ($, on) => {
+    engineBand(on)
     engineTurn(on)
     await $.tool.call({ tool: TOOL, items: ITEMS })
     await $.turn.start({ text: 'keep going', turnId: 't2' })
@@ -128,6 +145,7 @@ describe('a new request', () => {
 
 describe('built-in task tools', () => {
   test('TodoWrite is mirrored while the mod has no list of its own', async ($, on) => {
+    engineBand(on)
     on('tool.call', { tool: 'TodoWrite' }, () => ({ result: { oldTodos: [], newTodos: [] } }) as never)
     await $.tool.call({
       tool: 'TodoWrite',
@@ -140,6 +158,7 @@ describe('built-in task tools', () => {
   })
 
   test('an unfinished update_plan list is not replaced by TodoWrite', async ($, on) => {
+    engineBand(on)
     on('tool.call', { tool: 'TodoWrite' }, () => ({ result: { oldTodos: [], newTodos: [] } }) as never)
     await $.tool.call({ tool: TOOL, items: ITEMS })
     await $.tool.call({ tool: 'TodoWrite', todos: [{ content: 'Other', status: 'pending', activeForm: 'Other' }] })
