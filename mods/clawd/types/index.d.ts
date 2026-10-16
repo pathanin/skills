@@ -1,5 +1,6 @@
-/** Which colour a stretch of Clawd's drawing takes: Clawd's own, or the laptop's grey. */
-export type Tone = 'clawd' | 'laptop'
+/** Which colour a stretch of the drawing takes: Clawd's own, its side in shade, the laptop's
+ * grey, or a key lit as it is pressed. */
+export type Tone = 'clawd' | 'shade' | 'laptop' | 'key'
 
 export type Run = { text: string; tone: Tone }
 

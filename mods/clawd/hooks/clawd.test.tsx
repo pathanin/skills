@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { RenderPropsOf } from 'claude-code'
 
-import { ANIMATIONS, TYPING, draw, pick, pickTyping, plain } from './sprite'
+import { ANIMATIONS, LAPTOP_GRIDS, PUT_AWAY, TAKE_OUT, TYPING, draw, mixedCells, pick, pickTyping, plain } from './sprite'
 
 const REST = ['     ▐▛███▜▌  ', '    ▝▜█████▛▘ ', '      ▘▘ ▝▝   ']
 
@@ -52,27 +52,38 @@ describe('sprite', () => {
     expect(plain(draw())).toEqual(REST)
   })
 
-  test("the laptop is drawn grey, never in a cell of Clawd's own", async () => {
-    const rows = draw({ hasLaptop: true })
-    expect(plain(rows)[1]).toBe('▐▄▄▄▝▜█████▛▘ ')
-    expect(rows[1]![0]).toEqual({ tone: 'laptop', text: '▐▄▄▄' })
-    for (const frames of Object.values(TYPING)) {
-      for (const [pose] of frames) {
-        const laptop = draw(pose).map(row => row.filter(r => r.tone === 'laptop').map(r => r.text).join(''))
-        expect(laptop).toEqual(['▐', '▐▄▄▄', ''])
-      }
+  test('at the laptop, no cell mixes two colours', async () => {
+    for (const grid of LAPTOP_GRIDS) expect(mixedCells(grid)).toEqual([])
+  })
+
+  test('typing is drawn side on over a laptop open on the floor, the hand going up and down', async () => {
+    const shown = Object.values(TYPING).flatMap(frames => frames.map(([s]) => s))
+    for (const sprite of shown) {
+      const laptop = sprite.map(row => row.filter(r => r.tone === 'laptop').map(r => r.text.trim()).join(''))
+      expect(laptop).toEqual(['', '▚', expect.stringMatching(/^▙▄?$/)])
+      expect(sprite[0]!.some(r => r.tone === 'shade')).toBe(true)
+    }
+    // The hand: above the keys on one frame, on them (a key lit) on the next.
+    const lit = (s: (typeof shown)[number]) => s[2]!.some(r => r.tone === 'key')
+    expect(shown.some(lit)).toBe(true)
+    expect(shown.some(s => !lit(s))).toBe(true)
+  })
+
+  test('no idle animation has the laptop in it', async () => {
+    for (const frames of Object.values(ANIMATIONS)) {
+      for (const [s] of frames) expect(s.flat().some(r => r.tone !== 'clawd')).toBe(false)
     }
   })
 
-  test('every frame of every animation keeps the same size, so the band never jumps', async () => {
-    for (const frames of [...Object.values(ANIMATIONS), ...Object.values(TYPING)]) {
-      for (const [pose] of frames) {
-        const rows = plain(draw(pose))
+  test('every frame keeps the same size, so the band never jumps', async () => {
+    for (const frames of [...Object.values(ANIMATIONS), ...Object.values(TYPING), TAKE_OUT, PUT_AWAY]) {
+      for (const [s] of frames) {
+        const rows = plain(s)
         expect(rows.length).toBe(3)
         for (const row of rows) expect(row.length).toBe(14)
       }
     }
-    for (const frames of Object.values(ANIMATIONS)) expect(plain(draw(frames[frames.length - 1]![0]))).toEqual(REST)
+    for (const frames of [...Object.values(ANIMATIONS), PUT_AWAY]) expect(plain(frames[frames.length - 1]![0])).toEqual(REST)
   })
 
   test('picks every animation over the range, never the one just played', async () => {
@@ -87,28 +98,49 @@ describe('sprite', () => {
 })
 
 describe('while Claude works', () => {
-  const hasLaptop = (rows: string[] | null) => rows?.[1]?.startsWith('▐▄▄▄') ?? false
+  // The laptop on the floor, and Clawd crouched at it: the drawings of the typing alone.
+  const TYPING_ROWS = new Set(Object.values(TYPING).flatMap(f => f.map(([s]) => plain(s).join('\n'))))
+  const isTyping = (rows: string[] | null) => TYPING_ROWS.has((rows ?? []).join('\n'))
+  const working = async ($: any, isWorking: boolean) => (await drawn($, 'terminal', { isWorking })).rows
 
-  test('Clawd types on a laptop the whole turn, then puts it away', async ($, on) => {
+  test('Clawd takes out the laptop, types the whole turn, then puts it away', async ($, on) => {
     const clock = mock.clock(on)
     beneath(on)
     await start($, on)
-    expect(hasLaptop((await drawn($)).rows)).toBe(false)
+    expect(isTyping((await drawn($)).rows)).toBe(false)
 
-    await drawn($, 'terminal', { isWorking: true })
+    await working($, true)
+    await clock.advance(1_500) // the laptop comes out
     const poses = new Set<string>()
-    for (let t = 0; t < 30_000; t += 50) {
-      await clock.advance(50)
-      const { rows } = await drawn($, 'terminal', { isWorking: true })
-      expect(hasLaptop(rows)).toBe(true)
+    for (let t = 0; t < 30_000; t += 40) {
+      await clock.advance(40)
+      const rows = await working($, true)
+      // Nothing but typing: no idle animation slips in.
+      expect(isTyping(rows)).toBe(true)
       poses.add((rows ?? []).join('\n'))
     }
-    // Hands up and down, and more besides.
     expect(poses.size).toBeGreaterThan(3)
 
-    await drawn($, 'terminal', { isWorking: false })
-    await clock.advance(10)
+    await working($, false)
+    await clock.advance(3_000) // the patch in hand, then the put-away
     expect((await drawn($)).rows).toEqual(REST)
+  })
+
+  test("a moment's pause in the turn does not put the laptop away", async ($, on) => {
+    const clock = mock.clock(on)
+    beneath(on)
+    await start($, on)
+    await working($, true)
+    await clock.advance(1_500)
+    // A 30ms pause once a second, landing at every point of the typing over the run.
+    for (let blip = 0; blip < 30; blip++) {
+      await working($, false)
+      await clock.advance(30)
+      for (let t = 0; t < 970; t += 97) {
+        expect(isTyping(await working($, true))).toBe(true)
+        await clock.advance(97)
+      }
+    }
   })
 })
 

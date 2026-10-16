@@ -1,8 +1,9 @@
 import { atom, read, update } from 'claude-code'
 import type { Register, Timer } from 'claude-code'
 
-import { ANIMATIONS, TYPING, draw, pick, pickTyping, restMs } from './sprite'
-import type { Frame, Pose } from './sprite'
+import { ANIMATIONS, PUT_AWAY, TAKE_OUT, TYPING, draw, pick, pickTyping, restMs } from './sprite'
+import type { Frame } from './sprite'
+import type { Sprite, Tone } from '../types'
 
 const sprite = atom({ plugin: 'clawd', key: 'sprite' } as const, null)
 const isHidden = atom({ plugin: 'clawd', key: 'isHidden' } as const, false)
@@ -14,7 +15,12 @@ const COLUMNS = REST[0]?.reduce((sum, run) => sum + run.text.length, 0) ?? 0
 // that would squeeze it under this many columns.
 const MIN_COLUMNS = 40
 
-const COLOR = { clawd: 'claude', laptop: 'inactive' } as const
+const COLOR: Record<Tone, { color: 'claude' | 'inactive' | 'text'; dimColor?: boolean }> = {
+  clawd: { color: 'claude' },
+  shade: { color: 'claude', dimColor: true },
+  laptop: { color: 'inactive' },
+  key: { color: 'text' },
+}
 
 export const register: Register = on => {
   // One timer at a time: a rest, or the next frame of an animation.
@@ -29,13 +35,16 @@ export const register: Register = on => {
     if (!surfaces.includes('terminal')) return next(e)
 
     let last: string | null = null
-    let isTyping = false
+    // Whether Claude is working, as the band last said; and whether the laptop is out, which
+    // runs from the take-out to the put-away.
+    let isWorking = false
+    let isAtLaptop = false
 
     const after = (ms: number, fn: () => void) => {
       timer?.cancel()
       timer = $.clock.after(ms, fn)
     }
-    const show = (pose: Pose) => void update($, sprite, () => draw(pose))
+    const show = (drawing: Sprite) => void update($, sprite, () => drawing)
 
     const play = (frames: readonly Frame[], at: number, then: () => void): void => {
       const frame = frames[at]
@@ -48,17 +57,26 @@ export const register: Register = on => {
         last = pick(Math.random(), last)
         play(ANIMATIONS[last] ?? [], 0, rest)
       })
-    const type = (): void => play(TYPING[pickTyping(Math.random())] ?? [], 0, type)
+    // Between one patch of typing and the next, Clawd looks up to see whether the turn is over,
+    // and puts the laptop away only once it has looked up twice and found it so. A moment's
+    // pause in the turn (each patch takes half a second or more) never has it put away and
+    // taken out again.
+    let idleLooks = 0
+    const type = (): void => {
+      idleLooks = isWorking ? 0 : idleLooks + 1
+      if (idleLooks < 2) return play(TYPING[pickTyping(Math.random())] ?? [], 0, type)
+      isAtLaptop = false
+      play(PUT_AWAY, 0, rest)
+    }
 
-    // Called while the band draws, which writes no state: the change lands on the next tick.
+    // Called while the band draws, which writes no state: the laptop comes out on the next
+    // tick, cutting short whatever idle animation was playing.
     setTyping = working => {
-      if (working === isTyping) return
-      isTyping = working
-      after(0, () => {
-        if (working) return type()
-        show({})
-        rest()
-      })
+      isWorking = working
+      if (!working || isAtLaptop) return
+      isAtLaptop = true
+      idleLooks = 0
+      after(0, () => play(TAKE_OUT, 0, type))
     }
 
     await $.command.register({
@@ -107,7 +125,7 @@ export const register: Register = on => {
           {rows.map((row, i) => (
             <Text key={`row-${i}`} wrap="truncate-end">
               {row.map((run, j) => (
-                <Text key={`run-${j}`} color={COLOR[run.tone]}>
+                <Text key={`run-${j}`} {...COLOR[run.tone]}>
                   {run.text}
                 </Text>
               ))}
