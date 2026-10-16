@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { Register, Timer } from 'claude-code'
 
-import { ANIMATIONS, PUT_AWAY, TAKE_OUT, TYPING, draw, pick, pickTyping, restMs } from './sprite'
+import { ANIMATIONS, PUT_AWAY, TAKE_OUT, TYPING, draw, inverted, pick, pickTyping, restMs } from './sprite'
 import type { Frame } from './sprite'
 import type { Sprite, Tone } from '../types'
 
@@ -126,8 +126,8 @@ export const register: Register = on => {
           {rows.map((row, i) => (
             <Text key={`row-${i}`} wrap="truncate-end">
               {row.map((run, j) => (
-                <Text key={`run-${j}`} {...COLOR[run.tone]}>
-                  {run.text}
+                <Text key={`run-${j}`} {...COLOR[run.tone]} inverse={run.isSolid}>
+                  {run.isSolid ? inverted(run.text) : run.text}
                 </Text>
               ))}
             </Text>

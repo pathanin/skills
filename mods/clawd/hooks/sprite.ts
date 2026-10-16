@@ -35,13 +35,33 @@ export function fromGrid(grid: Grid): Sprite {
       const tone = TONES[lit ?? 'o'] ?? 'clawd'
       const bits = pixels.reduce((sum, p, i) => (p === '.' ? sum : sum | (1 << i)), 0)
       const cell = QUADRANT[bits] ?? ' '
+      const isSolid = lit !== undefined && isSolidAt(at, c, r)
       const prev = runs[runs.length - 1]
-      if (prev !== undefined && prev.tone === tone) runs[runs.length - 1] = { tone, text: prev.text + cell }
-      else runs.push({ tone, text: cell })
+      if (prev !== undefined && prev.tone === tone && prev.isSolid === isSolid) {
+        runs[runs.length - 1] = { tone, isSolid, text: prev.text + cell }
+      } else runs.push({ tone, isSolid, text: cell })
     }
     rows.push(runs)
   }
   return rows
+}
+
+// Some terminals, macOS Terminal among them, draw the blocks from the font, and a font's
+// blocks can fall short of the row: a gap above each one and a smaller one below, the row's
+// line spacing. Drawn so, Clawd is cut into stripes. A cell's background fills the whole row,
+// gaps and all, so a cell whose top is lit across is drawn solid, and fills the gap between it
+// and what is lit above it; Clawd's top row is drawn so too, for one even top edge. A cell lit
+// on top with nothing above it (an arm held out) stays a glyph and keeps its own height.
+// Where the blocks fill the row both ways look alike.
+function isSolidAt(at: (x: number, y: number) => string, c: number, r: number): boolean {
+  const [left, right] = [2 * c, 2 * c + 1]
+  if (at(left, 2 * r) === '.' || at(right, 2 * r) === '.') return false
+  return r === 0 || at(left, 2 * r - 1) !== '.' || at(right, 2 * r - 1) !== '.'
+}
+
+/** A solid run's text as drawn: the cells' empty quadrants, each where its glyph had blocks. */
+export function inverted(text: string): string {
+  return [...text].map(cell => QUADRANT[15 ^ QUADRANT.indexOf(cell)] ?? ' ').join('')
 }
 
 /** Cells whose pixels are of more than one tone: what `fromGrid` cannot draw truly. */

@@ -1,7 +1,8 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { RenderPropsOf } from 'claude-code'
 
-import { ANIMATIONS, LAPTOP_GRIDS, PUT_AWAY, TAKE_OUT, TYPING, draw, mixedCells, pick, pickTyping, plain, poseGrid } from './sprite'
+import { ANIMATIONS, LAPTOP_GRIDS, PUT_AWAY, TAKE_OUT, TYPING, draw, inverted, mixedCells, pick, pickTyping, plain, poseGrid } from './sprite'
+import type { Sprite } from '../types'
 
 // The Claude Code logo as the CLI draws it at rest (2.1.301), with room around it.
 const REST = ['      ▐▛███▛█  ', '     ▝▜██████▀ ', '      ▝▝   ▝▝  ']
@@ -18,12 +19,18 @@ const BAND = {
   } as unknown as RenderPropsOf['AbovePrompt'],
 } as const
 
-type Node = { type?: string; key?: string; props?: { key?: string }; children?: unknown[] } | string
+type Node = { type?: string; key?: string; props?: { key?: string; inverse?: boolean }; children?: unknown[] } | string
 
+/** A node's text as the drawing means it: a solid run read back to the blocks it stands for. */
 function text(node: Node): string {
   if (typeof node === 'string') return node
-  return (node.children ?? []).map(c => text(c as Node)).join('')
+  const own = (node.children ?? []).map(c => text(c as Node)).join('')
+  return node.props?.inverse ? inverted(own) : own
 }
+
+/** Each cell of a sprite: '#' drawn solid, '+' drawn as a glyph, ' ' empty. */
+const solidity = (sprite: Sprite) =>
+  sprite.map(row => row.map(r => [...r.text].map(ch => (ch === ' ' ? ' ' : r.isSolid ? '#' : '+')).join('')).join(''))
 
 /** Clawd's rows as drawn, or null when the band is not Clawd's. */
 async function drawn($: any, surface: 'terminal' | 'desktop' = 'terminal', props = {}) {
@@ -99,6 +106,30 @@ describe('sprite', () => {
     // Everything right of the hands' cell on the bottom row: a clear cell, then the four legs.
     const legs = new Set(Object.values(TYPING).flatMap(f => f.map(([s]) => plain(s)[2]!.slice(5))))
     expect([...legs]).toEqual([' ▝▝   ▝▝  '])
+  })
+
+  test('the body is drawn solid, so a font that leaves gaps between rows cannot stripe it', async () => {
+    // At rest: the body solid; the head's left edge, the arms held out and the legs as glyphs.
+    expect(solidity(draw())).toEqual(['      +######  ', '     +#######+ ', '      ++   ++  '])
+    expect(solidity(TYPING.steady![0]![0])).toEqual(['      +######  ', '+    +#######  ', ' ++++ ++   ++  '])
+    // In every frame, a cell lit across its top under a cell lit across its bottom is solid.
+    const frames = [...Object.values(ANIMATIONS), ...Object.values(TYPING), TAKE_OUT, PUT_AWAY].flat()
+    for (const [s] of frames) {
+      const rows = plain(s)
+      const marks = solidity(s)
+      for (let r = 1; r < rows.length; r++) {
+        for (let c = 0; c < rows[r]!.length; c++) {
+          const top = '▀▛▜█'.includes(rows[r]![c]!)
+          const above = '▄▙▟█'.includes(rows[r - 1]![c]!)
+          if (top && above) expect(marks[r]![c]).toBe('#')
+        }
+      }
+    }
+  })
+
+  test('a solid cell is drawn as its empty quadrants, and reads back to its blocks', async () => {
+    expect(inverted('█▛▜▀▐')).toBe(' ▗▖▄▌')
+    expect(inverted(inverted('▐▛███▛█'))).toBe('▐▛███▛█')
   })
 
   test('no idle animation has the laptop in it', async () => {
