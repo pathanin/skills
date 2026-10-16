@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'claude-code/testing'
+import { describe, expect, mock, test } from 'claude-code/testing'
 import type { RenderPropsOf } from 'claude-code'
 
 const TOOL = 'mcp__live-tasks__update_plan'
@@ -48,11 +48,11 @@ describe('update_plan', () => {
   test('draws the plan and moves through it like the desktop list', async ($, on) => {
     const first = await $.tool.call({ tool: TOOL, items: ITEMS })
     expect(first.result).toBe('Plan shown (3 steps).')
-    expect(await rows($)).toEqual(['Tasks  0 of 3 done', '◼ Look at the code', '○ Write the fix', '○ Run the tests'])
+    expect(await rows($)).toEqual(['Tasks  0 of 3 done', '◐ Look at the code', '○ Write the fix', '○ Run the tests'])
 
     const second = await $.tool.call({ tool: TOOL, advance: true })
     expect(second.result).toBe('Plan updated: step 2 of 3 is in progress.')
-    expect(await rows($)).toEqual(['Tasks  1 of 3 done', '✓ Look at the code', '◼ Write the fix', '○ Run the tests'])
+    expect(await rows($)).toEqual(['Tasks  1 of 3 done', '✓ Look at the code', '◐ Write the fix', '○ Run the tests'])
 
     await $.tool.call({ tool: TOOL, done: [2], start: 3 })
     const last = await $.tool.call({ tool: TOOL, advance: true })
@@ -76,6 +76,22 @@ describe('update_plan', () => {
   })
 })
 
+describe('the step in progress', () => {
+  test('turns slowly while Claude works, and holds still while idle', async ($, on) => {
+    const clock = mock.clock(on)
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    expect((await rows($))[1]).toBe('◐ Look at the code')
+    await clock.advance(250)
+    expect((await rows($))[1]).toBe('◓ Look at the code')
+    await clock.advance(250)
+    expect((await rows($))[1]).toBe('◑ Look at the code')
+
+    const ui = await $.ui.mount({ ...BAND, surface: 'terminal', props: { ...BAND.props, isWorking: false } })
+    expect(flatten(((await ui.drawn()) as any).children[1])).toBe('◼ Look at the code')
+    await ui.unmount()
+  })
+})
+
 describe('a new request', () => {
   // Stands for the engine's own start of a turn.
   const engineTurn = (on: any) => on('turn.start', ($: any, e: any) => e)
@@ -94,7 +110,7 @@ describe('a new request', () => {
     expect(await rows($)).toEqual([])
     const next = await $.tool.call({ tool: TOOL, items: [{ content: 'New step', status: 'in_progress' }] })
     expect(next.result).toBe('Plan shown (1 steps).')
-    expect(await rows($)).toEqual(['Tasks  0 of 1 done', '◼ New step'])
+    expect(await rows($)).toEqual(['Tasks  0 of 1 done', '◐ New step'])
   })
 
   test('keeps an unfinished list, and ignores subagent and continuation turns', async ($, on) => {
@@ -120,14 +136,14 @@ describe('built-in task tools', () => {
         { content: 'Two', status: 'in_progress', activeForm: 'Doing two' },
       ],
     })
-    expect(await rows($)).toEqual(['Tasks  1 of 2 done', '✓ One', '◼ Two'])
+    expect(await rows($)).toEqual(['Tasks  1 of 2 done', '✓ One', '◐ Two'])
   })
 
   test('an unfinished update_plan list is not replaced by TodoWrite', async ($, on) => {
     on('tool.call', { tool: 'TodoWrite' }, () => ({ result: { oldTodos: [], newTodos: [] } }) as never)
     await $.tool.call({ tool: TOOL, items: ITEMS })
     await $.tool.call({ tool: 'TodoWrite', todos: [{ content: 'Other', status: 'pending', activeForm: 'Other' }] })
-    expect((await rows($))[1]).toBe('◼ Look at the code')
+    expect((await rows($))[1]).toBe('◐ Look at the code')
   })
 
   test('subagent calls do not touch the list', async ($, on) => {

@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { Register } from 'claude-code'
+import type { Register, Timer } from 'claude-code'
 
 import type { Plan, Step, StepStatus } from '../types'
 import { applyPlanInput, countDone, fit, isFinished, mayMirror } from './plan'
@@ -7,6 +7,7 @@ import type { PlanInput } from './plan'
 
 const plan = atom({ plugin: 'live-tasks', key: 'plan' } as const, null)
 const isHidden = atom({ plugin: 'live-tasks', key: 'isHidden' } as const, false)
+const frame = atom({ plugin: 'live-tasks', key: 'frame' } as const, 0)
 
 const TOOL = 'mcp__live-tasks__update_plan'
 
@@ -51,7 +52,14 @@ The person follows your progress on a live task list drawn above their prompt, n
 
 const MARK: Record<StepStatus, string> = { completed: '✓', in_progress: '◼', pending: '○' }
 
+// The step in progress turns slowly while Claude works: a quiet sign of life, not a spinner.
+const SPIN = ['◐', '◓', '◑', '◒']
+const SPIN_MS = 250
+
 export const register: Register = on => {
+  // Started by the band when it draws a step in progress; stops itself once none is.
+  let ticker: Timer | null = null
+
   on('session.start', async ($, e, next) => {
     const surfaces = await $.session.surfaces()
     if (surfaces.includes('terminal')) {
@@ -167,6 +175,18 @@ export const register: Register = on => {
     const current: Plan | null = await read($, plan)
     if (current === null || current.steps.length === 0 || (await read($, isHidden))) return next(e)
 
+    const at = current.steps.findIndex(s => s.status === 'in_progress')
+    if (at !== -1 && ticker === null) {
+      ticker = $.clock.every(SPIN_MS, async () => {
+        const now: Plan | null = await read($, plan)
+        if (now?.steps.some(s => s.status === 'in_progress')) return update($, frame, n => (n + 1) % SPIN.length)
+        ticker?.cancel()
+        ticker = null
+      })
+    }
+    // Read only while Claude works, so a waiting prompt is not redrawn by the ticks.
+    const spin = at !== -1 && e.props.isWorking ? SPIN[(await read($, frame)) % SPIN.length] : MARK.in_progress
+
     const { Box, Text } = $.ui.resolve(e)
     const total = current.steps.length
     const done = countDone(current)
@@ -189,7 +209,7 @@ export const register: Register = on => {
             {step.status === 'completed' ? (
               <Text color="success">{`${MARK.completed} `}</Text>
             ) : step.status === 'in_progress' ? (
-              <Text color="claude">{`${MARK.in_progress} `}</Text>
+              <Text color="claude">{`${spin} `}</Text>
             ) : (
               <Text dimColor>{`${MARK.pending} `}</Text>
             )}
