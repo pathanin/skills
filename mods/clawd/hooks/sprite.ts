@@ -2,9 +2,10 @@ import type { Run, Sprite, Tone } from '../types'
 
 // Clawd is drawn on a grid of pixels, two across and two down per terminal cell, with the
 // quadrant blocks the Claude Code logo itself uses. At rest it is that logo, cell for cell:
-//    ▐▛███▜▌
-//   ▝▜█████▛▘
-//     ▘▘ ▝▝
+//    ▐▛███▛█
+//   ▝▜██████▀
+//    ▝▝   ▝▝
+// its outer legs straight down from the sides of its body.
 // with room either side to shuffle, and on its left for the laptop. While Claude works it
 // does what the desktop app's Clawd does: turns, takes out a laptop, sets it open on the
 // floor and crouches over it, side on, tapping the keys.
@@ -100,21 +101,22 @@ export function poseGrid(pose: Pose = {}): Grid {
     if (row !== undefined && x0 + x >= 0 && x0 + x < WIDTH) row[x0 + x] = p
   }
 
-  // Head and body: columns 3-14, rows 0-3; the arms' row reaches out to 1-16.
-  for (let y = 0; y <= 3; y++) for (let x = 3; x <= 14; x++) set(x, y)
+  // Head and body: columns 3-15, rows 0-3; the arms' row reaches out to 1-17.
+  for (let y = 0; y <= 3; y++) for (let x = 3; x <= 15; x++) set(x, y)
 
   // Eyes are holes in row 1; shut, the face is plain.
   if (!pose.isBlinking) {
     const look = pose.look ?? 0
     set(5 + look, 1, '.')
-    set(12 + look, 1, '.')
+    set(13 + look, 1, '.')
   }
 
   arm(pose.left ?? 'out', 2, 1, set)
-  arm(pose.right ?? 'out', 15, 16, set)
+  arm(pose.right ?? 'out', 16, 17, set)
 
   const step = pose.step ?? 0
-  if (!pose.isTucked) for (const x of [4, 6, 11, 13]) set(x + step, 4)
+  // Two pairs, the outer leg of each under the body's edge.
+  if (!pose.isTucked) for (const x of [3, 5, 13, 15]) set(x + step, 4)
 
   return on.map(row => row.join(''))
 }
@@ -264,17 +266,33 @@ const LAPTOP_UP = [
 
 type Hand = 'up' | 'down'
 
+// Side on, Clawd is as wide as from the front, 13 pixels (columns 11-23), its last cell its far
+// side in shade. Its legs go straight down from both sides, as at the front; the hand comes
+// down from above the keys (column 8, row 2) onto them (row 4).
 function typingGrid(hand: Hand, options: { isBlinking?: boolean; step?: boolean } = {}): Grid {
-  const eyes = options.isBlinking ? 'oooooooooo' : 'oo.ooo.ooo'
-  const legs = options.step ? 'o.o...o.o.' : '.o.o...o.o'
-  const crouched = [
-    '............ooooooooooss....',
-    `............${eyes}ss....`,
-    hand === 'up' ? '.........o..ooooooooooss....' : '............ooooooooooss....',
-    '..........ooooooooooooss....',
-    hand === 'up' ? `............${legs}......` : `.........o..${legs}......`,
-    '............................',
-  ]
+  const on = Array.from({ length: HEIGHT }, () => new Array<string>(WIDTH).fill('.'))
+  const set = (x: number, y: number, p: string) => {
+    const row = on[y]
+    if (row !== undefined) row[x] = p
+  }
+  for (let y = 0; y <= 3; y++) {
+    for (let x = 11; x <= 21; x++) set(x, y, 'o')
+    set(22, y, 's')
+    set(23, y, 's')
+  }
+  if (!options.isBlinking) {
+    // Both to the left of their cells: looking at the screen.
+    set(12, 1, '.')
+    set(18, 1, '.')
+  }
+  // The near arm, reaching for the keys.
+  set(9, 3, 'o')
+  set(10, 3, 'o')
+  set(8, hand === 'up' ? 2 : 4, 'o')
+  const step = options.step ? 1 : 0
+  for (const x of [11, 13, 21]) set(x + step, 4, 'o')
+  set(23 - step, 4, 's') // the far-side leg, in shade; it steps in, not past the edge
+  const crouched = on.map(row => row.join(''))
   const keys = hand === 'down' ? LAPTOP_DOWN.map((row, y) => (y === 5 ? '..ggggww....................' : row)) : LAPTOP_DOWN
   return overlay(crouched, keys)
 }

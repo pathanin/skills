@@ -1,9 +1,10 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { RenderPropsOf } from 'claude-code'
 
-import { ANIMATIONS, LAPTOP_GRIDS, PUT_AWAY, TAKE_OUT, TYPING, draw, mixedCells, pick, pickTyping, plain } from './sprite'
+import { ANIMATIONS, LAPTOP_GRIDS, PUT_AWAY, TAKE_OUT, TYPING, draw, mixedCells, pick, pickTyping, plain, poseGrid } from './sprite'
 
-const REST = ['     ▐▛███▜▌  ', '    ▝▜█████▛▘ ', '      ▘▘ ▝▝   ']
+// The Claude Code logo as the CLI draws it at rest (2.1.301), with room around it.
+const REST = ['     ▐▛███▛█  ', '    ▝▜██████▀ ', '     ▝▝   ▝▝  ']
 
 const BAND = {
   plugin: 'clawd',
@@ -50,6 +51,21 @@ async function start($: any, on: any) {
 describe('sprite', () => {
   test('at rest it is the Claude Code logo, with room around it', async () => {
     expect(plain(draw())).toEqual(REST)
+  })
+
+  test('the outer legs go straight down from the sides of the body, front and side on', async () => {
+    const outerLegsUnderEdges = (grid: readonly string[]) => {
+      const body = [...grid[3]!].flatMap((p, x) => (p === '.' || x < 3 ? [] : [x]))
+      const legs = [...grid[4]!].flatMap((p, x) => (p === 'o' || p === 's' ? [x] : []))
+      // The body's row under the arms: its first and last pixels, less the arm reaching out.
+      return { left: legs[0], right: legs[legs.length - 1], bodyRight: body[body.length - 1] }
+    }
+    const front = outerLegsUnderEdges(poseGrid())
+    expect(front.right).toBe(front.bodyRight)
+    expect(poseGrid()[3]![front.left!]).toBe('o')
+    expect(poseGrid()[3]![front.left! - 1]).toBe('.')
+    const side = outerLegsUnderEdges(LAPTOP_GRIDS[0]!)
+    expect(side.right).toBe(side.bodyRight)
   })
 
   test('at the laptop, no cell mixes two colours', async () => {
