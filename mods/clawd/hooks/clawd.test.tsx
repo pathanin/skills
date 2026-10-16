@@ -90,9 +90,15 @@ describe('sprite', () => {
     // Both up, a block on its front; the near hand down by the keys; the far hand down behind.
     expect(rows.some(r => r[1]!.includes('▐███████') && r[2]!.includes('▙▄▄ '))).toBe(true)
     expect(rows.some(r => r[1]!.includes('▝███████') && r[2]!.includes('▙▄▄▀'))).toBe(true)
-    expect(rows.some(r => r[1]!.includes('▗███████') && r[2]!.includes('▙▄▄▝▀'))).toBe(true)
+    expect(rows.some(r => r[1]!.includes('▗███████') && r[2]!.includes('▙▄▄▀'))).toBe(true)
     // The old single arm reached out diagonally from the body, like a trunk.
     for (const r of rows) expect(r[1]).not.toMatch(/[▚▗]▟/)
+  })
+
+  test('the legs hold still while it types', async () => {
+    // Everything right of the hands' cell on the bottom row: the four legs.
+    const legs = new Set(Object.values(TYPING).flatMap(f => f.map(([s]) => plain(s)[2]!.slice(5))))
+    expect([...legs]).toEqual(['▝▝   ▝▝  '])
   })
 
   test('no idle animation has the laptop in it', async () => {
