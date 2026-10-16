@@ -1,9 +1,9 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { RenderPropsOf } from 'claude-code'
 
-import { ANIMATIONS, draw, pick } from './sprite'
+import { ANIMATIONS, TYPING, draw, pick, pickTyping, plain } from './sprite'
 
-const REST = ['  ▐▛███▜▌  ', ' ▝▜█████▛▘ ', '   ▘▘ ▝▝   ']
+const REST = ['     ▐▛███▜▌  ', '    ▝▜█████▛▘ ', '      ▘▘ ▝▝   ']
 
 const BAND = {
   plugin: 'clawd',
@@ -48,19 +48,31 @@ async function start($: any, on: any) {
 }
 
 describe('sprite', () => {
-  test('at rest it is the Claude Code logo, one empty column either side', async () => {
-    expect([...draw()]).toEqual(REST)
+  test('at rest it is the Claude Code logo, with room around it', async () => {
+    expect(plain(draw())).toEqual(REST)
+  })
+
+  test("the laptop is drawn grey, never in a cell of Clawd's own", async () => {
+    const rows = draw({ hasLaptop: true })
+    expect(plain(rows)[1]).toBe('▐▄▄▄▝▜█████▛▘ ')
+    expect(rows[1]![0]).toEqual({ tone: 'laptop', text: '▐▄▄▄' })
+    for (const frames of Object.values(TYPING)) {
+      for (const [pose] of frames) {
+        const laptop = draw(pose).map(row => row.filter(r => r.tone === 'laptop').map(r => r.text).join(''))
+        expect(laptop).toEqual(['▐', '▐▄▄▄', ''])
+      }
+    }
   })
 
   test('every frame of every animation keeps the same size, so the band never jumps', async () => {
-    for (const frames of Object.values(ANIMATIONS)) {
+    for (const frames of [...Object.values(ANIMATIONS), ...Object.values(TYPING)]) {
       for (const [pose] of frames) {
-        const rows = draw(pose)
+        const rows = plain(draw(pose))
         expect(rows.length).toBe(3)
-        for (const row of rows) expect(row.length).toBe(11)
+        for (const row of rows) expect(row.length).toBe(14)
       }
-      expect([...draw(frames[frames.length - 1]![0])]).toEqual(REST)
     }
+    for (const frames of Object.values(ANIMATIONS)) expect(plain(draw(frames[frames.length - 1]![0]))).toEqual(REST)
   })
 
   test('picks every animation over the range, never the one just played', async () => {
@@ -68,6 +80,35 @@ describe('sprite', () => {
     for (let i = 0; i < 1000; i++) seen.add(pick(i / 1000, null))
     expect([...seen].sort()).toEqual(Object.keys(ANIMATIONS).sort())
     for (let i = 0; i < 1000; i++) expect(pick(i / 1000, 'blink')).not.toBe('blink')
+    const typing = new Set<string>()
+    for (let i = 0; i < 1000; i++) typing.add(pickTyping(i / 1000))
+    expect([...typing].sort()).toEqual(Object.keys(TYPING).sort())
+  })
+})
+
+describe('while Claude works', () => {
+  const hasLaptop = (rows: string[] | null) => rows?.[1]?.startsWith('▐▄▄▄') ?? false
+
+  test('Clawd types on a laptop the whole turn, then puts it away', async ($, on) => {
+    const clock = mock.clock(on)
+    beneath(on)
+    await start($, on)
+    expect(hasLaptop((await drawn($)).rows)).toBe(false)
+
+    await drawn($, 'terminal', { isWorking: true })
+    const poses = new Set<string>()
+    for (let t = 0; t < 30_000; t += 50) {
+      await clock.advance(50)
+      const { rows } = await drawn($, 'terminal', { isWorking: true })
+      expect(hasLaptop(rows)).toBe(true)
+      poses.add((rows ?? []).join('\n'))
+    }
+    // Hands up and down, and more besides.
+    expect(poses.size).toBeGreaterThan(3)
+
+    await drawn($, 'terminal', { isWorking: false })
+    await clock.advance(10)
+    expect((await drawn($)).rows).toEqual(REST)
   })
 })
 

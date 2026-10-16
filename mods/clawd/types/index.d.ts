@@ -1,5 +1,10 @@
-/** Clawd's drawing: one string per terminal row, all the same width. */
-export type Sprite = readonly string[]
+/** Which colour a stretch of Clawd's drawing takes: Clawd's own, or the laptop's grey. */
+export type Tone = 'clawd' | 'laptop'
+
+export type Run = { text: string; tone: Tone }
+
+/** Clawd's drawing: one row of runs per terminal row, every row the same width. */
+export type Sprite = readonly (readonly Run[])[]
 
 declare module 'claude-code' {
   interface PluginState {

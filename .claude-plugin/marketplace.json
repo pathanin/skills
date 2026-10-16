@@ -32,7 +32,7 @@
     },
     {
       "name": "clawd",
-      "description": "Mod: Clawd, the Claude Code mascot, stands on the prompt's top border in the terminal and plays a random little animation every few seconds (blink, wave, jump, dance, shuffle and more). /clawd shows or hides him.",
+      "description": "Mod: Clawd, the Claude Code mascot, stands on the prompt's top border in the terminal. It types away on a laptop while Claude works, and while idle plays a random little animation every few seconds (blink, wave, jump, dance, shuffle and more). /clawd shows or hides him.",
       "author": {
         "name": "oat"
       },

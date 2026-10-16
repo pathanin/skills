@@ -1,13 +1,17 @@
-import type { Sprite } from '../types'
+import type { Run, Sprite, Tone } from '../types'
 
 // Clawd is drawn on a grid of pixels, two across and two down per terminal cell, with the
 // quadrant blocks the Claude Code logo itself uses. At rest it is that logo, cell for cell:
 //    ▐▛███▜▌
 //   ▝▜█████▛▘
 //     ▘▘ ▝▝
-// with one empty column either side so it can shuffle sideways.
+// with room either side so it can shuffle sideways, and on its left for the laptop it
+// types on while Claude works:
+//   ▐       ▐▛███▜▌
+//   ▐▄▄▄▝▜█████▛▘
+//              ▘▘ ▝▝
 
-export type Arm = 'out' | 'up' | 'down'
+export type Arm = 'out' | 'up' | 'down' | 'tap'
 
 export type Pose = {
   /** Eyes moved left (-1) or right (1) inside the face. */
@@ -21,23 +25,37 @@ export type Pose = {
   isTucked?: boolean
   /** Legs stepped to one side, for walking. */
   step?: -1 | 0 | 1
+  /** The laptop in front of Clawd, on its left. */
+  hasLaptop?: boolean
 }
 
-export const WIDTH = 22 // pixels: 11 cells
+export const WIDTH = 28 // pixels: 14 cells
 export const HEIGHT = 6 // pixels: 3 rows
-const LEFT = 2 // where the logo's own column 0 sits at rest
+const LEFT = 8 // where the logo's own column 0 sits at rest; the laptop takes the cells before it
 
 // Bits of a cell: top-left, top-right, bottom-left, bottom-right.
 const QUADRANT = [' ', '▘', '▝', '▀', '▖', '▌', '▞', '▛', '▗', '▚', '▐', '▜', '▄', '▙', '▟', '█']
 
 export function draw(pose: Pose = {}): Sprite {
   const on = new Array<boolean>(WIDTH * HEIGHT).fill(false)
+  const laptop = new Array<boolean>(WIDTH * HEIGHT).fill(false)
   const x0 = LEFT + (pose.dx ?? 0)
   const set = (x: number, y: number, value = true) => {
     const px = x0 + x
     if (px >= 0 && px < WIDTH && y >= 0 && y < HEIGHT) on[y * WIDTH + px] = value
   }
-  const bit = (x: number, y: number, value: number) => (on[y * WIDTH + x] ? value : 0)
+  const bits = (layer: boolean[], x: number, y: number) =>
+    (layer[y * WIDTH + x] ? 1 : 0) |
+    (layer[y * WIDTH + x + 1] ? 2 : 0) |
+    (layer[(y + 1) * WIDTH + x] ? 4 : 0) |
+    (layer[(y + 1) * WIDTH + x + 1] ? 8 : 0)
+
+  // Seen from the side: the lid standing up, the keyboard running to Clawd's hands. It ends a
+  // cell short of them, as a cell takes one colour.
+  if (pose.hasLaptop) {
+    for (let y = 0; y <= 3; y++) laptop[y * WIDTH + LEFT - 7] = true
+    for (let x = LEFT - 7; x <= LEFT - 1; x++) laptop[3 * WIDTH + x] = true
+  }
 
   // Head and body: columns 3-14, rows 0-3; the arms' row reaches out to 1-16.
   for (let y = 0; y <= 3; y++) for (let x = 3; x <= 14; x++) set(x, y)
@@ -55,17 +73,25 @@ export function draw(pose: Pose = {}): Sprite {
   const step = pose.step ?? 0
   if (!pose.isTucked) for (const x of [4, 6, 11, 13]) set(x + step, 4)
 
-  const rows: string[] = []
+  const rows: Run[][] = []
   for (let r = 0; r < HEIGHT / 2; r++) {
-    let row = ''
+    const runs: Run[] = []
     for (let c = 0; c < WIDTH / 2; c++) {
-      const x = 2 * c
-      const y = 2 * r
-      row += QUADRANT[bit(x, y, 1) | bit(x + 1, y, 2) | bit(x, y + 1, 4) | bit(x + 1, y + 1, 8)]
+      const clawd = bits(on, 2 * c, 2 * r)
+      const tone: Tone = clawd === 0 && bits(laptop, 2 * c, 2 * r) !== 0 ? 'laptop' : 'clawd'
+      const cell = QUADRANT[clawd | (tone === 'laptop' ? bits(laptop, 2 * c, 2 * r) : 0)] ?? ' '
+      const prev = runs[runs.length - 1]
+      if (prev !== undefined && prev.tone === tone) runs[runs.length - 1] = { tone, text: prev.text + cell }
+      else runs.push({ tone, text: cell })
     }
-    rows.push(row)
+    rows.push(runs)
   }
   return rows
+}
+
+/** A sprite's rows as plain text, colours dropped. */
+export function plain(sprite: Sprite): string[] {
+  return sprite.map(row => row.map(run => run.text).join(''))
 }
 
 /** An arm is two pixels: `near` against the body, `far` its tip. */
@@ -76,6 +102,10 @@ function arm(kind: Arm, near: number, far: number, set: (x: number, y: number) =
   } else if (kind === 'up') {
     set(near, 1)
     set(far, 0)
+  } else if (kind === 'tap') {
+    // Lifted off the keys, about to come down on them.
+    set(near, 2)
+    set(far, 1)
   } else {
     set(near, 3)
     set(far, 3)
@@ -165,6 +195,29 @@ export const ANIMATIONS: Record<string, readonly Frame[]> = {
   ],
 }
 
+// While Claude works, Clawd types: both hands in turn, eyes on the screen. It never stops
+// while the turn runs, but varies how: a fast burst, a slower patch, a blink, a pause to
+// read what it wrote, a wiggle in its seat.
+const AT: Pose = { hasLaptop: true, look: -1 }
+const L: Pose = { ...AT, left: 'tap' }
+const R: Pose = { ...AT, right: 'tap' }
+
+export const TYPING: Record<string, readonly Frame[]> = {
+  burst: [[L, 90], [R, 90], [L, 90], [R, 90], [L, 90], [R, 90], [L, 90], [R, 90], [L, 90], [R, 90]],
+  steady: [[L, 150], [AT, 60], [R, 150], [AT, 60], [L, 150], [AT, 60], [R, 150], [AT, 60]],
+  blink: [[L, 110], [{ ...R, isBlinking: true }, 130], [L, 110], [R, 110]],
+  read: [[AT, 500], [{ ...AT, isBlinking: true }, 120], [AT, 300]],
+  wiggle: [[{ ...L, step: -1 }, 120], [{ ...R, step: 1 }, 120], [{ ...L, step: -1 }, 120], [{ ...R, step: 1 }, 120]],
+  enter: [[{ ...AT, right: 'up' }, 250], [{ ...R, right: 'tap' }, 120], [AT, 200]],
+}
+
+const TYPING_WEIGHTS: Record<string, number> = { burst: 5, steady: 4, blink: 2, read: 1, wiggle: 1, enter: 1 }
+
+/** The next patch of typing, `roll` in [0, 1). */
+export function pickTyping(roll: number): string {
+  return weighted(Object.keys(TYPING), TYPING_WEIGHTS, roll)
+}
+
 /** Blinks come up often, as they would; the bigger moves less so. */
 const WEIGHTS: Record<string, number> = {
   blink: 5,
@@ -181,11 +234,14 @@ const WEIGHTS: Record<string, number> = {
 
 /** Picks an animation by weight, `roll` in [0, 1); never the one just played, when there is a choice. */
 export function pick(roll: number, last: string | null): string {
-  const names = Object.keys(ANIMATIONS).filter(n => n !== last)
-  const total = names.reduce((sum, n) => sum + (WEIGHTS[n] ?? 1), 0)
+  return weighted(Object.keys(ANIMATIONS).filter(n => n !== last), WEIGHTS, roll)
+}
+
+function weighted(names: readonly string[], weights: Record<string, number>, roll: number): string {
+  const total = names.reduce((sum, n) => sum + (weights[n] ?? 1), 0)
   let left = roll * total
   for (const name of names) {
-    left -= WEIGHTS[name] ?? 1
+    left -= weights[name] ?? 1
     if (left < 0) return name
   }
   return names[names.length - 1] ?? 'blink'
