@@ -10,9 +10,9 @@ import type { Run, Sprite, Tone } from '../types'
 // does what the desktop app's Clawd does: turns, takes out a laptop, sets it open on the
 // floor and crouches over it, side on, tapping the keys.
 
-export const WIDTH = 28 // pixels: 14 cells
+export const WIDTH = 30 // pixels: 15 cells
 export const HEIGHT = 6 // pixels: 3 rows
-const LEFT = 8 // where the logo's own column 0 sits at rest
+const LEFT = 10 // where the logo's own column 0 sits at rest
 
 // A grid is HEIGHT strings of WIDTH pixels: '.' empty, 'o' Clawd, 's' Clawd's side in shade,
 // 'g' the laptop, 'w' a key lit as it is pressed. A cell takes one colour, so the pixels that
@@ -256,8 +256,8 @@ const LAPTOP_DOWN = [
 
 // Held up, about to be set down (or just picked up).
 const LAPTOP_UP = [
-  '..g.........................',
-  '...ggggg....................',
+  '....g.......................',
+  '.....ggggg..................',
   '............................',
   '............................',
   '............................',
@@ -267,15 +267,16 @@ const LAPTOP_UP = [
 /** Both hands up, or one of them down on the keys: the near hand, or the far one. */
 type Hands = 'up' | 'near' | 'far'
 
-// Side on, Clawd is as wide as from the front, 13 pixels (columns 11-23), its last cell its far
+// Side on, Clawd is as wide as from the front, 13 pixels (columns 13-25), its last cell its far
 // side in shade. Its legs go straight down from both sides, as at the front. Its two hands
-// make a block on its front, one above the other (columns 9-10, rows 2-3), as on the desktop
-// app; to type, one comes down onto the keys (row 4) while the other stays up.
-// The legs hold still the whole time: a hand never comes down into a leg's cell.
-//     ▐▜██▜██        ▐▜██▜██        ▐▜██▜██
-//  ▚   ▐███████   ▚   ▝███████   ▚   ▗███████
-//   ▙▄▄ ▝▝   ▝▝    ▙▄▄▀▝▝   ▝▝    ▙▄▄▀▝▝   ▝▝
-//    both up        near down      far down
+// make a block on its front, one above the other (columns 10-12, rows 2-3), as on the desktop
+// app; to type, one comes down onto the keys (row 4) while the other stays up. The hand that
+// comes down lands in the cell at the keyboard's end, a cell clear of the legs, which hold
+// still the whole time.
+//      ▐▜██▜██          ▐▜██▜██          ▐▜██▜██
+//  ▚   ████████     ▚    ▀███████    ▚    ▄███████
+//   ▙▄▄  ▝▝   ▝▝     ▙▄▄▀ ▝▝   ▝▝     ▙▄▄▀ ▝▝   ▝▝
+//    both up          near down        far down
 function typingGrid(hands: Hands, options: { isBlinking?: boolean } = {}): Grid {
   const on = Array.from({ length: HEIGHT }, () => new Array<string>(WIDTH).fill('.'))
   const set = (x: number, y: number, p: string) => {
@@ -283,33 +284,32 @@ function typingGrid(hands: Hands, options: { isBlinking?: boolean } = {}): Grid 
     if (row !== undefined) row[x] = p
   }
   for (let y = 0; y <= 3; y++) {
-    for (let x = 11; x <= 21; x++) set(x, y, 'o')
-    set(22, y, 's')
-    set(23, y, 's')
+    for (let x = 13; x <= 23; x++) set(x, y, 'o')
+    set(24, y, 's')
+    set(25, y, 's')
   }
   if (!options.isBlinking) {
     // Both to the left of their cells: looking at the screen.
-    set(12, 1, '.')
-    set(18, 1, '.')
+    set(14, 1, '.')
+    set(20, 1, '.')
   }
-  set(10, 2, 'o')
-  set(10, 3, 'o')
-  if (hands === 'up') {
-    set(9, 2, 'o')
-    set(9, 3, 'o')
-  } else if (hands === 'near') {
-    // The lower, nearer hand comes down onto the keys; the far one stays up.
-    set(9, 2, 'o')
+  // The wrists, and the hands that are up: the near one in row 2, the far one in row 3.
+  set(12, 2, 'o')
+  set(12, 3, 'o')
+  if (hands !== 'far') {
+    set(10, 2, 'o')
+    set(11, 2, 'o')
+  }
+  if (hands !== 'near') {
+    set(10, 3, 'o')
+    set(11, 3, 'o')
+  }
+  if (hands !== 'up') {
     set(8, 4, 'o')
     set(9, 4, 'o')
-  } else {
-    // The upper, farther hand comes down past it; the near one stays up.
-    set(9, 3, 'o')
-    set(8, 4, 'o')
-    set(9, 4, 'o')
   }
-  for (const x of [11, 13, 21]) set(x, 4, 'o')
-  set(23, 4, 's') // the far-side leg, in shade
+  for (const x of [13, 15, 23]) set(x, 4, 'o')
+  set(25, 4, 's') // the far-side leg, in shade
   const crouched = on.map(row => row.join(''))
   const keys = hands !== 'up' ? LAPTOP_DOWN.map((row, y) => (y === 5 ? '..ggggww....................' : row)) : LAPTOP_DOWN
   return overlay(crouched, keys)

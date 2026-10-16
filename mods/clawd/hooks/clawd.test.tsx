@@ -4,7 +4,7 @@ import type { RenderPropsOf } from 'claude-code'
 import { ANIMATIONS, LAPTOP_GRIDS, PUT_AWAY, TAKE_OUT, TYPING, draw, mixedCells, pick, pickTyping, plain, poseGrid } from './sprite'
 
 // The Claude Code logo as the CLI draws it at rest (2.1.301), with room around it.
-const REST = ['     ▐▛███▛█  ', '    ▝▜██████▀ ', '     ▝▝   ▝▝  ']
+const REST = ['      ▐▛███▛█  ', '     ▝▜██████▀ ', '      ▝▝   ▝▝  ']
 
 const BAND = {
   plugin: 'clawd',
@@ -88,17 +88,17 @@ describe('sprite', () => {
   test('types with both hands in turn, never one long arm', async () => {
     const rows = Object.values(TYPING).flatMap(frames => frames.map(([s]) => plain(s)))
     // Both up, a block on its front; the near hand down by the keys; the far hand down behind.
-    expect(rows.some(r => r[1]!.includes('▐███████') && r[2]!.includes('▙▄▄ '))).toBe(true)
-    expect(rows.some(r => r[1]!.includes('▝███████') && r[2]!.includes('▙▄▄▀'))).toBe(true)
-    expect(rows.some(r => r[1]!.includes('▗███████') && r[2]!.includes('▙▄▄▀'))).toBe(true)
+    expect(rows.some(r => r[1]!.includes('████████') && r[2]!.includes('▙▄▄  '))).toBe(true)
+    expect(rows.some(r => r[1]!.includes('▀███████') && r[2]!.includes('▙▄▄▀ '))).toBe(true)
+    expect(rows.some(r => r[1]!.includes('▄███████') && r[2]!.includes('▙▄▄▀ '))).toBe(true)
     // The old single arm reached out diagonally from the body, like a trunk.
     for (const r of rows) expect(r[1]).not.toMatch(/[▚▗]▟/)
   })
 
   test('the legs hold still while it types', async () => {
-    // Everything right of the hands' cell on the bottom row: the four legs.
+    // Everything right of the hands' cell on the bottom row: a clear cell, then the four legs.
     const legs = new Set(Object.values(TYPING).flatMap(f => f.map(([s]) => plain(s)[2]!.slice(5))))
-    expect([...legs]).toEqual(['▝▝   ▝▝  '])
+    expect([...legs]).toEqual([' ▝▝   ▝▝  '])
   })
 
   test('no idle animation has the laptop in it', async () => {
@@ -112,7 +112,7 @@ describe('sprite', () => {
       for (const [s] of frames) {
         const rows = plain(s)
         expect(rows.length).toBe(3)
-        for (const row of rows) expect(row.length).toBe(14)
+        for (const row of rows) expect(row.length).toBe(15)
       }
     }
     for (const frames of [...Object.values(ANIMATIONS), PUT_AWAY]) expect(plain(frames[frames.length - 1]![0])).toEqual(REST)
