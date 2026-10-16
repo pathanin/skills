@@ -1,0 +1,9 @@
+{
+  "name": "clawd",
+  "version": "0.1.0",
+  "description": "Clawd, the Claude Code mascot, sits on the prompt's top border in the terminal and plays a random little animation every few seconds.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "oat"
+  }
+}

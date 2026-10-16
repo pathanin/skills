@@ -31,6 +31,14 @@
       "source": "./design/chart-viz"
     },
     {
+      "name": "clawd",
+      "description": "Mod: Clawd, the Claude Code mascot, stands on the prompt's top border in the terminal and plays a random little animation every few seconds (blink, wave, jump, dance, shuffle and more). /clawd shows or hides him.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./mods/clawd"
+    },
+    {
       "name": "code-animation",
       "description": "Manual-only code animation, invoked with /code-animation. Turns your source materials (brand, character sheet, storyboard, music) into a scene written in code, renders it frame-exact in headless Chromium, and exports MP4, GIF, WebM or ProRes with alpha.",
       "author": {
