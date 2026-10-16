@@ -2,7 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
 import type { Plan, Step, StepStatus } from '../types'
-import { applyPlanInput, countDone, fit, mayMirror } from './plan'
+import { applyPlanInput, countDone, fit, isFinished, mayMirror } from './plan'
 import type { PlanInput } from './plan'
 
 const plan = atom({ plugin: 'live-tasks', key: 'plan' } as const, null)
@@ -72,6 +72,15 @@ export const register: Register = on => {
 
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear') await update($, plan, () => null)
+    return next(e)
+  })
+
+  // A finished list belongs to the request it was made for: the person's next prompt starts
+  // with an empty band, as in the desktop app, even if the model sends no new list for it.
+  on('turn.start', async ($, e, next) => {
+    if (e.agentId === undefined && e.text !== '') {
+      await update($, plan, current => (current !== null && isFinished(current) ? null : current))
+    }
     return next(e)
   })
 

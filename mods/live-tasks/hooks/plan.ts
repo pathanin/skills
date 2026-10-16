@@ -71,9 +71,13 @@ export function countDone(plan: Plan): number {
   return plan.steps.filter(s => s.status === 'completed').length
 }
 
+export function isFinished(plan: Plan): boolean {
+  return plan.steps.every(s => s.status === 'completed')
+}
+
 /** A list of this mod's own tool stays until it is finished; built-ins may then replace it. */
 export function mayMirror(current: Plan | null): boolean {
-  return current === null || current.source !== 'plan' || current.steps.every(s => s.status === 'completed')
+  return current === null || current.source !== 'plan' || isFinished(current)
 }
 
 /**

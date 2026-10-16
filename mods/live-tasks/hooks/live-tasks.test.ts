@@ -76,6 +76,40 @@ describe('update_plan', () => {
   })
 })
 
+describe('a new request', () => {
+  // Stands for the engine's own start of a turn.
+  const engineTurn = (on: any) => on('turn.start', ($: any, e: any) => e)
+
+  const finish = async ($: any) => {
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    await $.tool.call({ tool: TOOL, done: [1, 2, 3] })
+  }
+
+  test('clears a finished list when the next prompt starts a turn', async ($, on) => {
+    engineBand(on)
+    engineTurn(on)
+    await finish($)
+    expect((await rows($))[0]).toBe('Tasks  3 of 3 done')
+    await $.turn.start({ text: 'also make it the default', turnId: 't2' })
+    expect(await rows($)).toEqual([])
+    const next = await $.tool.call({ tool: TOOL, items: [{ content: 'New step', status: 'in_progress' }] })
+    expect(next.result).toBe('Plan shown (1 steps).')
+    expect(await rows($)).toEqual(['Tasks  0 of 1 done', '◼ New step'])
+  })
+
+  test('keeps an unfinished list, and ignores subagent and continuation turns', async ($, on) => {
+    engineTurn(on)
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    await $.turn.start({ text: 'keep going', turnId: 't2' })
+    expect((await rows($))[0]).toBe('Tasks  0 of 3 done')
+
+    await $.tool.call({ tool: TOOL, done: [1, 2, 3] })
+    await $.turn.start({ text: 'sub prompt', turnId: 't3', agentId: 'sub-1' })
+    await $.turn.start({ text: '', turnId: 't4' })
+    expect((await rows($))[0]).toBe('Tasks  3 of 3 done')
+  })
+})
+
 describe('built-in task tools', () => {
   test('TodoWrite is mirrored while the mod has no list of its own', async ($, on) => {
     on('tool.call', { tool: 'TodoWrite' }, () => ({ result: { oldTodos: [], newTodos: [] } }) as never)
