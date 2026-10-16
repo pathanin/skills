@@ -60,7 +60,7 @@ describe('sprite', () => {
     const shown = Object.values(TYPING).flatMap(frames => frames.map(([s]) => s))
     for (const sprite of shown) {
       const laptop = sprite.map(row => row.filter(r => r.tone === 'laptop').map(r => r.text.trim()).join(''))
-      expect(laptop).toEqual(['', '▚', expect.stringMatching(/^▙▄?$/)])
+      expect(laptop).toEqual(['', '▚', expect.stringMatching(/^▙▄▄?$/)])
       expect(sprite[0]!.some(r => r.tone === 'shade')).toBe(true)
     }
     // The hand: above the keys on one frame, on them (a key lit) on the next.

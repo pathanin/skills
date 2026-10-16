@@ -15,9 +15,10 @@ const COLUMNS = REST[0]?.reduce((sum, run) => sum + run.text.length, 0) ?? 0
 // that would squeeze it under this many columns.
 const MIN_COLUMNS = 40
 
-const COLOR: Record<Tone, { color: 'claude' | 'inactive' | 'text'; dimColor?: boolean }> = {
+// The shaded side is a fixed darker orange: a dimmed 'claude' is drawn grey in some terminals.
+const COLOR: Record<Tone, { color: string }> = {
   clawd: { color: 'claude' },
-  shade: { color: 'claude', dimColor: true },
+  shade: { color: '#a8563c' },
   laptop: { color: 'inactive' },
   key: { color: 'text' },
 }

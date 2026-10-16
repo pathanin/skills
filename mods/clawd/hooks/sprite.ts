@@ -246,16 +246,16 @@ const WEIGHTS: Record<string, number> = {
 const LAPTOP_DOWN = [
   '............................',
   '............................',
+  'g...........................',
+  '.g..........................',
   '..g.........................',
-  '...g........................',
-  '....g.......................',
-  '....gggg....................',
+  '..gggggg....................',
 ]
 
 // Held up, about to be set down (or just picked up).
 const LAPTOP_UP = [
-  '....g.......................',
-  '.....ggg....................',
+  '..g.........................',
+  '...ggggg....................',
   '............................',
   '............................',
   '............................',
@@ -275,7 +275,7 @@ function typingGrid(hand: Hand, options: { isBlinking?: boolean; step?: boolean 
     hand === 'up' ? `............${legs}......` : `.........o..${legs}......`,
     '............................',
   ]
-  const keys = hand === 'down' ? LAPTOP_DOWN.map((row, y) => (y === 5 ? '....ggww....................' : row)) : LAPTOP_DOWN
+  const keys = hand === 'down' ? LAPTOP_DOWN.map((row, y) => (y === 5 ? '..ggggww....................' : row)) : LAPTOP_DOWN
   return overlay(crouched, keys)
 }
 

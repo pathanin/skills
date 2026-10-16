@@ -1,6 +1,6 @@
 {
   "name": "clawd",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Clawd, the Claude Code mascot, sits on the prompt's top border in the terminal: it types on a laptop while Claude works, and plays a random little animation every few seconds while idle.",
   "types": "./types/index.d.ts",
   "author": {
