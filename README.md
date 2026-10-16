@@ -63,4 +63,5 @@ Hook plugins that draw inside Claude Code rather than skills. Test with `claude 
 
 | Mod | What it does |
 |---|---|
+| [live-tasks](mods/live-tasks/hooks/register.tsx) | Live task list above the prompt in the terminal, checked off as Claude works, like the desktop app's. `/live-tasks` shows, hides or clears it. |
 | [reply-quote](mods/reply-quote/hooks/register.tsx) | `/reply` quotes a paragraph of Claude's last reply, your selection or clipboard into the prompt; hover ↩ in fullscreen. |
