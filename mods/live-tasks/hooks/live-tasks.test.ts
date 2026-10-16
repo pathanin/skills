@@ -103,3 +103,34 @@ describe('built-in task tools', () => {
     expect(await rows($)).toEqual([])
   })
 })
+
+describe('transcript rows', () => {
+  const row = (isErrored: boolean) =>
+    ({
+      plugin: 'live-tasks',
+      surface: 'terminal',
+      component: 'ToolUse',
+      props: { tool_use_id: 'tu1', tool: TOOL, input: {}, isRunning: false, isErrored, isInterrupted: false },
+    }) as const
+
+  test("update_plan's row draws nothing in the terminal, like the desktop app", async ($, on) => {
+    engineRow(on)
+    const ui = await $.ui.mount(row(false) as never)
+    expect(flatten((await ui.drawn()) as Node)).toBe('')
+    await ui.unmount()
+  })
+
+  test('a failed update_plan call keeps its row', async ($, on) => {
+    engineRow(on)
+    const ui = await $.ui.mount(row(true) as never)
+    expect(flatten((await ui.drawn()) as Node)).toBe('engine row')
+    await ui.unmount()
+  })
+})
+
+// Stands for the engine's own tool row.
+const engineRow = (on: any) =>
+  on('ui.render', { component: 'ToolUse' }, ($: any, e: any) => {
+    const { Text } = $.ui.resolve(e)
+    return h(Text, null, 'engine row')
+  })

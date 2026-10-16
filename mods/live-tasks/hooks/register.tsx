@@ -143,6 +143,16 @@ export const register: Register = on => {
     return { text: hide ? 'Live task list hidden.' : 'Live task list shown.' }
   })
 
+  // The list above the prompt already shows each update, as the desktop app's does, so the
+  // tool's own transcript rows draw nothing. A failed call keeps its row.
+  on('ui.render', { component: 'ToolUse', props: { tool: TOOL } }, ($, e, next) =>
+    e.surface === 'terminal' && !e.props.isErrored ? <Fragment /> : next(e),
+  )
+
+  on('ui.render', { component: 'ToolResult', props: { tool: TOOL } }, ($, e, next) =>
+    e.surface === 'terminal' && !e.props.isErrored ? <Fragment /> : next(e),
+  )
+
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.surface !== 'terminal' || e.props.hasSurvey) return next(e)
     const current: Plan | null = await read($, plan)
