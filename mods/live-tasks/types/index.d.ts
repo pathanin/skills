@@ -9,6 +9,6 @@ export type Plan = { source: PlanSource; steps: Step[] }
 
 declare module 'claude-code' {
   interface PluginState {
-    'live-tasks': { plan: Plan | null; isHidden: boolean; frame: number }
+    'live-tasks': { plan: Plan | null; isHidden: boolean; frame: number; isWaiting: boolean }
   }
 }
