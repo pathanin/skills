@@ -316,8 +316,8 @@ corroborate the record; the anchor is what proves it.
    defaults — an off-white ground, pill-shaped buttons, monospace labels, numbered
    "01/02/03" section labels, italic accent words in headlines. Use none of these
    unless `dna.json` records them. When you notice yourself reaching for one, the
-   record is missing a field: add it in step 5 below rather than styling around the
-   gap.
+   record is missing a field: add it via item 5 below rather than styling around
+   the gap.
 3. **Render** it to PNG at the reference's exact pixel dimensions (headless browser,
    or the `open-pencil` MCP's `render` / `export_image` if that server responds).
 4. **Diff** numerically:
@@ -401,7 +401,7 @@ first, and the user would rather know now.
 
 ## Stop and ask
 
-These are the only points where the run waits for the user. Everything else is a
+The run waits for the user only in the first two cases below. Everything else is a
 judgement call you make yourself and record in `confidence`.
 
 - The source is unreadable (auth wall, SPA shell, blocked fetch) → use the fallback
