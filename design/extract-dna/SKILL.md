@@ -95,21 +95,22 @@ guess is a lie that ships.
 Produce a flat inventory of literal observations. Measure, do not describe.
 
 Run the measurement script rather than eyeballing — estimated colour coverage is
-exactly where pixel fidelity dies:
+exactly where pixel fidelity dies. If `${CLAUDE_SKILL_DIR}` is not an absolute
+path, use the "Base directory for this skill" path shown when the skill loads.
 
 ```bash
 # Palette is TWO passes. The bare pass shows you the buckets; the quantizer merges
 # anything under ~1% into its nearest large bucket, so a hex it prints may be a blend
 # of two real roles and exist nowhere in the design.
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/measure.py" palette <reference-image> --colors 8
+python3 "${CLAUDE_SKILL_DIR}/scripts/measure.py" palette <reference-image> --colors 8
 
 # Now read the small roles off the image yourself — accent type, link colour, inverted
 # grounds, each imagery mass — and pin every one. Record THIS run's numbers.
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/measure.py" palette <reference-image> --colors 8 \
+python3 "${CLAUDE_SKILL_DIR}/scripts/measure.py" palette <reference-image> --colors 8 \
   --role '#accent' --role '#link' --role '#paper' --role '#ink' ...
 
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/measure.py" margins <reference-image>
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/measure.py" squint <reference-image> --out squint.png
+python3 "${CLAUDE_SKILL_DIR}/scripts/measure.py" margins <reference-image>
+python3 "${CLAUDE_SKILL_DIR}/scripts/measure.py" squint <reference-image> --out squint.png
 ```
 
 Requires Pillow and numpy. If either is missing, say so, fall back to visual
@@ -323,7 +324,7 @@ corroborate the record; the anchor is what proves it.
 4. **Diff** numerically:
 
    ```bash
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/measure.py" diff <reference.png> <rebuild.png> --role '<accent hex>'
+   python3 "${CLAUDE_SKILL_DIR}/scripts/measure.py" diff <reference.png> <rebuild.png> --role '<accent hex>'
    ```
 
    Pin every small role with `--role`. An accent under ~1% of canvas gets
