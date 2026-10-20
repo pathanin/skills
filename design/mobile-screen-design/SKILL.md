@@ -23,7 +23,7 @@ Output: numbered findings, most severe first. Each finding (a) carries its rule 
 
 Report every finding you can tie to a rule, including minor ones; severity ordering is how the user filters, so leave nothing out to keep the list short. Keep each finding to its tag, the element, the problem and the fix — two or three lines. Explanations of the rule itself belong to this file, not the review.
 
-For a screenshot, read the pixels rather than guessing from the whole image. Where contrast or size decides a finding (D1, body contrast, hit regions) and you can run code, crop the region at full resolution with Pillow and compute the contrast ratio or measure the size; state the number in the finding. Without tooling, mark the value as estimated.
+For a screenshot, read the pixels rather than guessing from the whole image. Where contrast or size decides a finding (D1, body contrast, the drawn size of a small control) and you can run code, crop the region at full resolution with Pillow and compute the contrast ratio or measure the size; state the number in the finding. Without tooling, mark the value as estimated. The drawn size is not the hit region, which a screenshot cannot show.
 
 **When a rule cannot be evaluated from the material provided, say so and name what you would need.** A fabricated finding sends the user to fix something that may be fine, and a silently dropped rule reads as a pass. A single screenshot cannot show you the other media the surface can receive (D1), the sibling set the asset will sit in (D2), the usage distribution behind a preset (F3), or hit-area and font-scale behavior (`[C]`). List those as *unevaluated* with the missing input beside each.
 
