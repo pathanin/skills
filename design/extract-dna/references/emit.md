@@ -171,8 +171,9 @@ only.
 
 ## After the files are written
 
-Report back in three lines: the resolved absolute path, the
-`reconstruction.final_metrics` verdict, and the top three entries from `confidence`. That is the whole handoff — the user should
+Report back in three lines, leading with the outcome: the resolved absolute path, the
+`reconstruction.final_metrics` verdict, and the top three entries from `confidence`.
+That is the whole handoff, so leave out a recap of the steps you ran — the user should
 know where the spec is weakest before they use it, not after.
 
 **If the reconstruction ended at four passes with a bar still red**, both files are still

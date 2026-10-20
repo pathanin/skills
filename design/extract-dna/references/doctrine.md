@@ -79,5 +79,5 @@ For every property you are considering recording, ask exactly this:
 
 Yes → load-bearing, it goes in. No → trivia, and trivia dilutes attention.
 
-Run this honestly. Most extractions fail not by missing things but by recording
+Ask it of every property, including the ones that feel obvious. Most extractions fail not by missing things but by recording
 everything at equal weight, which is the same as recording nothing.
