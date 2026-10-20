@@ -68,8 +68,8 @@ script's own printout is not evidence about itself:
 
 ## 2. Solo or parallel
 
-**Default solo. For one script under a couple hundred lines, spawning is slower than
-writing it** — the prompt and the integration cost more than the build, and that covers
+Default solo. For one script under a couple hundred lines, spawning is slower than
+writing it — the prompt and the integration cost more than the build, and that covers
 most of what this skill gets asked for. Two asked-for things is not a reason to spawn.
 
 Parallel work is a speed bet, and it loses more often than it looks. Spawn only when all

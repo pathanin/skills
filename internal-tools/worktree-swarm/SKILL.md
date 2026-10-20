@@ -7,10 +7,10 @@ description: Split a multi-part fix/feature into independently-scoped pieces and
 
 For a task with 2-4 pieces that could be built concurrently but touch overlapping files:
 
-1. **Split the work** into pieces scoped so their diffs overlap as little as possible. Prefer splitting by concern (e.g. "validation logic" vs "dropdown component") over splitting by file region. Assign each file to exactly one agent and say so in every prompt ("do NOT touch X, Y — other agents own those concurrently"). Where two pieces must meet (a request param, an error code, a function signature), **pin the contract verbatim in both prompts** — "implement exactly this, do not improvise" — so you aren't reconciling two inventions at merge time.
+1. **Split the work** into pieces scoped so their diffs overlap as little as possible. Prefer splitting by concern (e.g. "validation logic" vs "dropdown component") over splitting by file region. Assign each file to exactly one agent and say so in every prompt ("don't touch X, Y — other agents own those concurrently"). Where two pieces must meet (a request param, an error code, a function signature), **pin the contract verbatim in both prompts** — "implement exactly this, don't improvise" — so you aren't reconciling two inventions at merge time.
 2. **Before launching, survey what the worktree won't have** (see *Untracked files* below) and fold the answer into every prompt.
 3. **Launch one `Agent` call per piece, in parallel (one message, multiple tool calls), each with `isolation: "worktree"` and an explicit `model` (see *Choosing the model*).** Fresh agents have zero context — each prompt must be fully self-contained: relevant file paths, exact current code snippets, hard constraints (ids/APIs that must not change), the git hygiene rules below, and what to hand back (a `git diff --stat` + short summary + real test output).
-4. **Do not treat the raw diffs as mergeable patches** (see *Integrating* below).
+4. **Treat the returned diffs as changes to port, not patches to merge as-is** — they may be built on an older base (see *Integrating* below).
 5. **Integrate sequentially, verify after each merge** (syntax check, grep for ids/selectors that must survive, a quick functional smoke test). You are the integrator; the agents are not responsible for the merged result.
 6. **Clean up**: `git worktree remove <path> --force`, delete the branch, and delete any rescue tags once a piece is merged.
 
@@ -22,7 +22,7 @@ Keep pieces small enough that a bad one is cheap to redo solo instead of re-merg
 
 - If the user names a model, use it. A model named without a piece applies to every agent; one named with a piece applies to that agent only, and the rest take the default below.
 - Otherwise default to `sonnet`, and raise a piece to `opus` when it needs real judgment — an unclear root cause, a design decision, or a diff that will be awkward to integrate.
-- State the per-piece model choice when you report the launch, so the user can override before the work lands.
+- State the per-piece model choice in the same message as the `Agent` calls, so the user can override before the work lands.
 
 ## Git state is shared across worktrees
 
@@ -70,4 +70,4 @@ After each merge, grep for the specific things the intervening commits added, to
 
 ## Reporting back
 
-Relay what the agents found, not just that they finished — especially where an agent's empirical result contradicts the brief you gave it (a bug's real mechanism, a threshold that was wrong). Note anything each agent explicitly left unfixed, and any test that has no coverage because it isn't deterministically reproducible.
+Relay what the agents found, not just that they finished — especially where an agent's empirical result contradicts the brief you gave it (a bug's real mechanism, a threshold that was wrong). Note anything each agent explicitly left unfixed, and any test that has no coverage because it isn't deterministically reproducible. Lead with the merged outcome and keep the rest to what the user needs to act on.

@@ -9,7 +9,7 @@ disable-model-invocation: true
 
 You are the director and the animator. This skill is the studio: a fixed pipeline, already built and tested, so you never have to work out again how to render frames. Put your effort into what the materials mean and what the animation should be.
 
-The creative decisions are yours: concept, staging, timing, style, and how each character moves and why. The materials set the constraints. Within them, take a clear point of view and commit to it. Don't settle for a generic or safe version of the brief. Where the materials leave the look open, steer clear of the stock defaults: a cream or off-white background, italic accent words in titles, numbered "01/02/03" labels, monospace captions, pill-shaped buttons. (The `#f4efe6` in the examples below is only a placeholder.) The engine gives you no taste and makes no choices for you.
+The creative decisions are yours: concept, staging, timing, style, and how each character moves and why. The materials set the constraints. Within them, take a clear point of view and commit to it. Don't settle for a generic or safe version of the brief. Where the materials leave the look open, steer clear of the stock defaults: a cream or off-white background, italic accent words in titles, numbered "01/02/03" labels, monospace captions, pill-shaped buttons. (The `#f4efe6` in the examples below is a placeholder: take the real background from the materials.) The engine gives you no taste and makes no choices for you.
 
 ## How the pipeline works
 
