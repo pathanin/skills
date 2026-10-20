@@ -1,0 +1,36 @@
+{
+  "name": "limits",
+  "version": "0.2.2-app.1",
+  "description": "Your 5-hour and weekly usage limits, with reset countdowns and context fill, in a band above the prompt. App-only copy of Ryan-LT/claude-mods limits (upstream deb6d8b): by default it runs only in the Claude desktop app, not the terminal.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Ryan-LT",
+    "url": "https://github.com/Ryan-LT"
+  },
+  "repository": "https://github.com/Ryan-LT/claude-mods",
+  "homepage": "https://github.com/Ryan-LT/claude-mods/tree/main/limits",
+  "license": "MIT",
+  "keywords": [
+    "usage",
+    "rate-limit",
+    "limits",
+    "quota",
+    "weekly-limit",
+    "context-window",
+    "status",
+    "statusline",
+    "monitoring"
+  ],
+  "userConfig": {
+    "show": {
+      "type": "string",
+      "title": "Where",
+      "description": "app runs it only in the Claude desktop app (nothing in the terminal: no band, no usage checks, no toasts); everywhere runs it in the terminal too, as upstream does.",
+      "default": "app",
+      "options": [
+        "app",
+        "everywhere"
+      ]
+    }
+  }
+}

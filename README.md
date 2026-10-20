@@ -64,5 +64,6 @@ Hook plugins that draw inside Claude Code rather than skills. Test with `claude 
 | Mod | What it does |
 |---|---|
 | [clawd](mods/clawd/hooks/register.tsx) | Clawd, the Claude Code mascot, stands on the prompt's top border in the terminal: types on a laptop while Claude works, plays a random animation while idle. `/clawd` shows or hides him. |
+| [limits](mods/limits/README.md) | Your 5-hour and weekly usage limits, reset countdowns and context fill above the prompt, in the desktop app only. App-only copy of [Ryan-LT/claude-mods](https://github.com/Ryan-LT/claude-mods) `limits`. |
 | [live-tasks](mods/live-tasks/hooks/register.tsx) | Live task list above the prompt in the terminal, checked off as Claude works, like the desktop app's. `/live-tasks` shows, hides or clears it. |
 | [reply-quote](mods/reply-quote/hooks/register.tsx) | `/reply` quotes a paragraph of Claude's last reply, your selection or clipboard into the prompt; hover ↩ in fullscreen. |
