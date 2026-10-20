@@ -59,11 +59,11 @@ claude plugin update <skill-name>@local-skills
 
 ## mods
 
-Hook plugins that draw inside Claude Code rather than skills. Test with `claude plugin test mods/<name>`.
+Hook plugins that change Claude Code itself. Test with `claude plugin test mods/<name>`.
 
-| Mod | What it does |
-|---|---|
-| [clawd](mods/clawd/hooks/register.tsx) | Clawd, the Claude Code mascot, stands on the prompt's top border in the terminal: types on a laptop while Claude works, plays a random animation while idle. `/clawd` shows or hides him. |
-| [limits](mods/limits/README.md) | Your 5-hour and weekly usage limits, reset countdowns and context fill above the prompt, in the desktop app only. App-only copy of [Ryan-LT/claude-mods](https://github.com/Ryan-LT/claude-mods) `limits`. |
-| [live-tasks](mods/live-tasks/hooks/register.tsx) | Live task list above the prompt in the terminal, checked off as Claude works, like the desktop app's. `/live-tasks` shows, hides or clears it. |
-| [reply-quote](mods/reply-quote/hooks/register.tsx) | `/reply` quotes a paragraph of Claude's last reply, your selection or clipboard into the prompt; hover ↩ in fullscreen. |
+| Mod | Runs in | What it does |
+|---|---|---|
+| [clawd](mods/clawd/hooks/register.tsx) | CLI | Clawd on the prompt border: types while Claude works, idles with small animations. `/clawd` toggles him. |
+| [limits](mods/limits/README.md) | App | 5-hour and weekly usage, reset countdowns and context fill above the prompt. From [Ryan-LT/claude-mods](https://github.com/Ryan-LT/claude-mods). |
+| [live-tasks](mods/live-tasks/hooks/register.tsx) | CLI | The app's pinned task list above the prompt, checked off as Claude works. `/live-tasks` shows, hides or clears it. |
+| [reply-quote](mods/reply-quote/hooks/register.tsx) | CLI | `/reply` quotes a paragraph of the last reply, your selection or clipboard into the prompt. Fullscreen: hover a paragraph for ↩. |
