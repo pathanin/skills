@@ -17,6 +17,8 @@ Upstream runs everywhere the plugin is installed. This copy adds one option, `sh
 - `app` (default): runs only in sessions the Claude desktop app starts (`CLAUDE_CODE_ENTRYPOINT=claude-desktop`). A terminal session draws nothing, makes no usage requests and raises no toasts.
 - `everywhere`: upstream's behaviour.
 
+It also refreshes usage every 30 seconds instead of upstream's 2 minutes (`SLOT` in `hooks/register.tsx`), still one request per slot shared by every open session.
+
 The change is in `hooks/register.tsx` (`isRunning`, and the first line of each hook). The upstream tests run under `everywhere`; two more tests cover `app`.
 
 ## Updating from upstream

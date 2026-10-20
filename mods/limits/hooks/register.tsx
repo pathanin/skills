@@ -20,10 +20,10 @@ const LONG_LABEL: Record<string, string> = {
 const ALERT_AT = [75, 90, 100]
 const MINUTE = 60_000
 /**
- * Auto refresh runs once per slot of this length, on the clock (:00, :02, :04 …), so its timing is
- * steady; every open session shares one slot, so only one of them asks.
+ * Auto refresh runs once per slot of this length, on the clock (:00, :30 of each minute), so its
+ * timing is steady; every open session shares one slot, so only one of them asks.
  */
-const SLOT = 2 * MINUTE
+const SLOT = 30_000
 /** A main-thread turn this old is taken as over, should its end never have been heard. */
 const BUSY_MAX = 10 * MINUTE
 /** The refresh button's own floor between presses. */
@@ -203,7 +203,7 @@ const fetchUsage = async ($: EngineInterface): Promise<SessionRateLimit[] | null
 
 /**
  * Asks Anthropic for the real figures: no model request, so no tokens, and the slot and press gaps
- * keep it to one ask per two minutes across every open session.
+ * keep it to one ask per 30 seconds across every open session.
  */
 const refresh = async ($: EngineInterface, why: 'press' | 'auto') => {
   if (await read($, refreshing)) return

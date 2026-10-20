@@ -185,7 +185,7 @@ test('a reading that names only one window keeps the other on the bar', EVERYWHE
   await ui.unmount()
 })
 
-test('auto refresh asks once per 2-minute slot', EVERYWHERE, async ($, on) => {
+test('auto refresh asks once per 30-second slot', EVERYWHERE, async ($, on) => {
   on('ui.render', () => ({ type: 'engine', ref: 0 }))
   mock.store(on)
   const clock = mock.clock(on, { now: Date.now() })
@@ -196,9 +196,9 @@ test('auto refresh asks once per 2-minute slot', EVERYWHERE, async ($, on) => {
   const asks = usageApi(on, () => ({ five_hour: { utilization: 20, resets_at: inHours(3) } }))
   await $.session.start({ cwd: '/tmp', surface: 'desktop', isInteractive: true })
   await clock.advance(10 * 60_000)
-  // Ten minutes is five slots, plus the one the start falls in.
-  expect(asks.n).toBeGreaterThanOrEqual(5)
-  expect(asks.n).toBeLessThanOrEqual(6)
+  // Ten minutes is twenty slots, plus the one the start falls in.
+  expect(asks.n).toBeGreaterThanOrEqual(20)
+  expect(asks.n).toBeLessThanOrEqual(21)
 })
 
 test('a chat that never saw session.start still pulls the shared reading and shows both limits', EVERYWHERE, async ($, on) => {
