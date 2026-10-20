@@ -1,6 +1,6 @@
 {
   "name": "live-tasks",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Live task list above the prompt in the terminal, like the desktop app's pinned plan.",
   "types": "./types/index.d.ts",
   "author": {

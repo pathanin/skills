@@ -12,7 +12,10 @@ const isWaiting = atom({ plugin: 'live-tasks', key: 'isWaiting' } as const, fals
 
 const TOOL = 'mcp__live-tasks__update_plan'
 
-const DESCRIPTION = `Keep the live task list the person sees above the prompt while you work. Every request that edits files or runs more than one command gets one; only a single-command answer or pure conversation does not.
+// The whole guidance lives here, not in a prompt.compose section: where an organization manages
+// Claude Code, cc-plugin-sec-default passes prompt.compose over the plugins a person installs,
+// while a tool's description still reaches the model.
+const DESCRIPTION = `Keep the live task list the person sees above the prompt while you work. The person follows your progress on this list, not by reading your messages, so keeping it is part of doing the task; use it in place of TodoWrite, TaskCreate and TaskUpdate. Every request that edits files or runs more than one command gets one; only a single-command answer or pure conversation does not.
 
 Never spend a message on this tool alone: send it in the same message as another tool call (in parallel), so it costs no extra round trip.
 - First call: with the very first tool call of the turn, even one that only reads or lists files: {"items": [...]}, the whole plan in order, short imperative phrases (at most ~7 words, no numbering), the step you are starting "in_progress", the rest "pending". If you must look around first, make "Look at how X is set up" step one and refine the list once you know.
@@ -43,13 +46,6 @@ const INPUT_SCHEMA = {
     start: { type: 'number' },
   },
 }
-
-const SECTION = {
-  id: 'live-tasks:instructions',
-  scope: 'session',
-  text: `# Live task list
-The person follows your progress on a live task list drawn above their prompt, not by reading your messages, so keeping it is part of doing the task. The tool ${TOOL} is that list: use it in place of TodoWrite, TaskCreate and TaskUpdate. For every request that involves editing files or running more than one command, the very first tool call of the turn (even one that only reads a file) goes out together with ${TOOL} carrying the whole plan; as each step finishes, {"advance": true} rides along with the call that starts the next step; if the plan changes or the person redirects you, send the whole list again. Only a single-command answer or pure conversation goes without one. Do not restate the plan as a list in your text.`,
-} as const
 
 // Added to a Stop hook's feedback (such as /goal's) that sends Claude back to work after its list
 // was finished: without it the model works on under a list that says everything is done.
@@ -102,7 +98,8 @@ export const register: Register = on => {
   })
 
   // Claude stops, but not always for good: a Stop hook (/goal's) may send it straight back to
-  // work, or a background task or a wakeup will start it again later.
+  // work, or a background task or a wakeup will start it again later. Where an organization
+  // manages Claude Code, cc-plugin-sec-default passes classic.* over this hook and it does not run.
   on('classic.Stop', async ($, e, next) => {
     const stopped = await next(e)
     if (stopped.block !== undefined) {
@@ -115,12 +112,6 @@ export const register: Register = on => {
     await update($, isWaiting, () => pending > 0)
     return stopped
   }).catch(($, e, next) => next(e))
-
-  on('prompt.compose', async ($, e, next) => {
-    const composed = await next(e)
-    if (!e.surfaces.includes('terminal') || !e.tools.includes(TOOL)) return composed
-    return { sections: [...composed.sections, SECTION] }
-  })
 
   // The mod's own tool: the desktop app's update_plan, drawn in the terminal.
   on('tool.call', { tool: TOOL }, async ($, e) => {

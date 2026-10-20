@@ -266,3 +266,25 @@ const engineRow = (on: any) =>
     const { Text } = $.ui.resolve(e)
     return h(Text, null, 'engine row')
   })
+
+describe('its guidance', () => {
+  // Where an organization manages Claude Code, cc-plugin-sec-default passes prompt.compose over
+  // the plugins a person installs, so the tool's own description has to carry all of it.
+  test('rides in the tool description, and the mod adds no system-prompt section', async ($, on) => {
+    const registered: { name: string; description: string }[] = []
+    on('session.surfaces', () => ({ value: ['terminal'] }))
+    on('tool.register', ($: any, e: any) => {
+      registered.push(e)
+      return { value: { tool: `mcp__live-tasks__${e.name}` } }
+    })
+    on('command.register', () => ({ value: { command: 'live-tasks' } }))
+    on('session.start', ($: any, e: any) => e)
+    on('prompt.compose', () => ({ sections: [] }))
+    await $.session.start({ cwd: '.', surface: 'terminal', isInteractive: true } as any)
+    const tool = registered.find(t => t.name === 'update_plan')
+    expect(tool?.description).toContain('in place of TodoWrite, TaskCreate and TaskUpdate')
+    expect(tool?.description).toContain('not by reading your messages')
+    const composed = await $.prompt.compose({ model: 'm', promptModel: 'm', surfaces: ['terminal'], tools: [TOOL] } as any)
+    expect(composed.sections).toEqual([])
+  })
+})
