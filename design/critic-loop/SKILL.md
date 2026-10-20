@@ -13,7 +13,7 @@ disable-model-invocation: true
 
 # Critic Loop
 
-Five steps: intake, context, preflight, loop, handback. Do not build before the loop starts.
+Five steps: intake, context, preflight, loop, handback. Leave all building to the loop's builder, so the critics only ever judge work they did not make and the builder does not judge its own.
 
 There is no reference and no `bar.md`. The standard is the project itself: what already exists sets the conventions, and the critics hold the builder to them. If the user names something to match, stop and suggest `/design-loop` instead.
 
@@ -35,7 +35,7 @@ Pass the goal to the workflow as the user's words with the flags removed.
 
 When the goal leaves a choice open, do not ask about it. Examples: which error type to raise, an ordering nobody stated, or whether one check also covers another. Pick nothing yourself. List each one as an **open choice** in the brief critic's brief. The brief critic never blocks on an open choice, whichever way the builder goes.
 
-Echo the resolved config in one line before going on: goal, floor, cap, critics. Then list the open choices, if any.
+Echo the resolved config in one line: goal, floor, cap, critics. Then list the open choices, if any. Put this in the same message as your next tool call, because a message with no tool call ends the turn. Asking for a missing goal or an invalid value is the only stop-and-wait point before the loop.
 
 ## 2. Context
 
@@ -51,7 +51,7 @@ State every exception exactly. "No px except 1px borders" leaves open whether a 
 
 **Empty project:** if there is nothing to be consistent with, skip `context.md`, drop the consistency critic, and say the build is greenfield from the request. Do not invent conventions to fill the gap. A consistency critic grading against made-up rules is grading noise.
 
-Show `context.md` in one block and continue. Do not wait for approval unless the user asked to review it.
+Show `context.md` in one block, in the same message as your next tool call, and continue. Wait for approval only if the user asked to review it.
 
 ## 3. Preflight
 
@@ -61,7 +61,7 @@ A check, not a question. Report it in one block:
 - Record the starting commit (`git rev-parse HEAD`) as the diff base for the consistency critic, and note whether the tree was already dirty. If it was, pass `git status --porcelain` and a line on what the user changed as `dirty`. The builder then leaves those changes alone and does not commit them, and every critic ignores them. With no git repo, or a repo with no commits yet (`rev-parse` fails), pass an empty base, and the critic reads the files the builder lists instead.
 - Name any generation tools the goal needs (image, voice, video) and confirm they are connected.
 
-Print what works, what is missing, and **which critic goes blind**. Drop a blind critic and say so. Never run it on a guess. If every critic would be dropped, stop and tell the user. A loop with no one judging is a single build.
+Print what works, what is missing, and **which critic goes blind**, in the same message as the call that starts the loop. Drop a blind critic and say so. Never run it on a guess. If every critic would be dropped, stop and tell the user. A loop with no one judging is a single build.
 
 ## 4. Loop
 
@@ -81,7 +81,7 @@ Write each critic's brief for this run. The script already tells every critic no
 | --- | --- | --- | --- | --- | --- |
 | **Brief** | A stated requirement is not met. Anything the request did not ask for is never blocking. | pass/fail | rendered output | `sonnet` | Simple judgment |
 | **Consistency** | The change clearly breaks a line of `context.md`. Any listed line, however small, is always blocking. Anything not listed is never blocking, and neither is an `[inferred]` line, a line the critic has to interpret, or a breach already present at the starting commit that the change does not add to. | pass/fail | rendered output **and the diff** | `sonnet` | Reusing a component, token, or pattern is a property of the code, so this is the one critic allowed to read it |
-| **Craft** | A defect a user would actually hit on realistic use for this goal, shown with evidence. Contrived edge cases, taste, and polish are gaps, not blocking. | scored | rendered output only, never code | `opus` | **Never downgrade.** A cheap craft critic passes everything and the loop ends on round one. |
+| **Craft** | A defect a user would actually hit on realistic use for this goal, shown with evidence. Contrived edge cases, taste, and polish are gaps, not blocking. | scored | rendered output only, never code | `opus` | Keep it on `opus`: a cheap craft critic passes everything and the loop ends on round one. |
 
 The blocking rule is what makes the loop converge. With one shared rule ("anything an expert would reject"), a fresh craft critic found new blockers in every round of every test run, and the loop never passed on work that was objectively fine.
 
@@ -121,6 +121,8 @@ A critic that errored or returned nothing is not a pass. It blocks the round unt
 `--max-rounds` is a budget ceiling, not a target. The exit is passing. Running out of rounds is reported as unresolved, never as a quiet pass.
 
 ## 5. Handback
+
+Lead with the outcome (passed, stalled, or hit the cap), then give the items below for that case and nothing more. No recap of each round beyond what they ask for.
 
 On a pass, report the round it passed on, each critic's final verdict or score, the files changed, and anything the builder declined, with its reason. The user may disagree with a decline.
 
