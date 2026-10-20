@@ -144,65 +144,16 @@ describe('a new request', () => {
 })
 
 describe('a stop', () => {
-  // Stands for /goal's Stop hook, which sends Claude back to work.
-  const goal = (on: any) => on('classic.Stop', () => ({ block: 'Goal not met yet.' }))
-  const shell = { id: 'b1', type: 'shell', status: 'running', description: 'Watch CI' }
-  // Stands for the engine's own Stop with no settings hook blocking it.
-  const engineStop = (on: any) => on('classic.Stop', () => ({}))
-
-  test("clears a finished list and asks for a new one when a Stop hook sends Claude back", async ($, on) => {
+  // Where an organization manages Claude Code, cc-plugin-sec-default passes classic.* over the
+  // plugins a person installs, so the mod leaves Stop alone everywhere: no skipped-hook warning.
+  test("leaves a Stop hook's feedback and a finished list alone", async ($, on) => {
     engineBand(on)
-    goal(on)
+    on('classic.Stop', () => ({ block: 'Goal not met yet.' }))
     await $.tool.call({ tool: TOOL, items: ITEMS })
     await $.tool.call({ tool: TOOL, done: [1, 2, 3] })
-    const stopped = await $.classic.Stop({ stop_hook_active: false })
-    expect(stopped.block).toContain('Goal not met yet.')
-    expect(stopped.block).toContain(TOOL)
-    expect(await rows($)).toEqual([])
-  })
-
-  test('leaves an unfinished list and the feedback alone', async ($, on) => {
-    engineBand(on)
-    goal(on)
-    await $.tool.call({ tool: TOOL, items: ITEMS })
     const stopped = await $.classic.Stop({ stop_hook_active: false })
     expect(stopped.block).toBe('Goal not met yet.')
-    expect((await rows($))[0]).toBe('Tasks  0 of 3 done')
-  })
-
-  test('a plain stop leaves a finished list in place', async ($, on) => {
-    engineBand(on)
-    engineStop(on)
-    await $.tool.call({ tool: TOOL, items: ITEMS })
-    await $.tool.call({ tool: TOOL, done: [1, 2, 3] })
-    const stopped = await $.classic.Stop({ stop_hook_active: false })
-    expect(stopped.block).toBeUndefined()
     expect((await rows($))[0]).toBe('Tasks  3 of 3 done')
-  })
-
-  test('the step in progress turns while Claude waits on background work, until it is back', async ($, on) => {
-    engineBand(on)
-    engineStop(on)
-    on('turn.start', ($: any, e: any) => e)
-    const clock = mock.clock(on)
-    const idle = { ...BAND, surface: 'terminal' as const, props: { ...BAND.props, isWorking: false } }
-    const mark = async () => {
-      const ui = await $.ui.mount(idle)
-      const drawn = flatten(((await ui.find({ key: 'tasks' })) as any).children[1])
-      await ui.unmount()
-      return drawn
-    }
-    await $.tool.call({ tool: TOOL, items: ITEMS })
-    await $.classic.Stop({ stop_hook_active: false, background_tasks: [shell] } as never)
-    expect(await mark()).toBe('◐ Look at the code')
-    await clock.advance(250)
-    expect(await mark()).toBe('◓ Look at the code')
-
-    await $.turn.start({ text: '', turnId: 't2' })
-    expect(await mark()).toBe('◼ Look at the code')
-
-    await $.classic.Stop({ stop_hook_active: false, background_tasks: [] } as never)
-    expect(await mark()).toBe('◼ Look at the code')
   })
 })
 

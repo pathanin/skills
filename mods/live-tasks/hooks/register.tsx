@@ -8,7 +8,6 @@ import type { PlanInput } from './plan'
 const plan = atom({ plugin: 'live-tasks', key: 'plan' } as const, null)
 const isHidden = atom({ plugin: 'live-tasks', key: 'isHidden' } as const, false)
 const frame = atom({ plugin: 'live-tasks', key: 'frame' } as const, 0)
-const isWaiting = atom({ plugin: 'live-tasks', key: 'isWaiting' } as const, false)
 
 const TOOL = 'mcp__live-tasks__update_plan'
 
@@ -47,10 +46,6 @@ const INPUT_SCHEMA = {
   },
 }
 
-// Added to a Stop hook's feedback (such as /goal's) that sends Claude back to work after its list
-// was finished: without it the model works on under a list that says everything is done.
-const RESUMED = `The live task list was finished, so it is now cleared. This sends you back to work: send a new list with ${TOOL} ({"items": [...]}) together with your next tool call.`
-
 const MARK: Record<StepStatus, string> = { completed: '✓', in_progress: '◼', pending: '○' }
 
 // The step in progress turns slowly while Claude works: a quiet sign of life, not a spinner.
@@ -82,7 +77,6 @@ export const register: Register = on => {
   on('session.end', async ($, e, next) => {
     if (e.reason === 'clear') {
       await update($, plan, () => null)
-      await update($, isWaiting, () => false)
     }
     return next(e)
   })
@@ -90,28 +84,11 @@ export const register: Register = on => {
   // A finished list belongs to the request it was made for: the person's next prompt starts
   // with an empty band, as in the desktop app, even if the model sends no new list for it.
   on('turn.start', async ($, e, next) => {
-    if (e.agentId === undefined) await update($, isWaiting, () => false)
     if (e.agentId === undefined && e.text !== '') {
       await update($, plan, current => (current !== null && isFinished(current) ? null : current))
     }
     return next(e)
   })
-
-  // Claude stops, but not always for good: a Stop hook (/goal's) may send it straight back to
-  // work, or a background task or a wakeup will start it again later. Where an organization
-  // manages Claude Code, cc-plugin-sec-default passes classic.* over this hook and it does not run.
-  on('classic.Stop', async ($, e, next) => {
-    const stopped = await next(e)
-    if (stopped.block !== undefined) {
-      const current: Plan | null = await read($, plan)
-      if (current?.source !== 'plan' || !isFinished(current)) return stopped
-      await update($, plan, () => null)
-      return { ...stopped, block: `${stopped.block}\n\n${RESUMED}` }
-    }
-    const pending = (e.background_tasks?.length ?? 0) + (e.session_crons?.length ?? 0)
-    await update($, isWaiting, () => pending > 0)
-    return stopped
-  }).catch(($, e, next) => next(e))
 
   // The mod's own tool: the desktop app's update_plan, drawn in the terminal.
   on('tool.call', { tool: TOOL }, async ($, e) => {
@@ -199,9 +176,9 @@ export const register: Register = on => {
         ticker = null
       })
     }
-    // Read only while Claude works, or waits on background work it will come back to, so an
-    // idle prompt is not redrawn by the ticks.
-    const isTurning = at !== -1 && (e.props.isWorking || (await read($, isWaiting)))
+    // Read only while Claude works, so an idle prompt is not redrawn by the ticks. (Waiting on
+    // background work would need classic.Stop, which a managed organization passes over.)
+    const isTurning = at !== -1 && e.props.isWorking
     const spin = isTurning ? SPIN[(await read($, frame)) % SPIN.length] : MARK.in_progress
 
     // What sits beneath in the band (another mod's drawing, such as clawd's mascot) keeps
