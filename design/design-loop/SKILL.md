@@ -69,7 +69,7 @@ Every line must be something a critic can check by looking.
 
 Three is the floor, and it is a floor on *checkable* lines, not on ambition — a small goal that yields three real mechanisms runs the loop exactly like a large one. Only when the reference genuinely offers fewer than three is there nothing for a critic to settle; say so and build it in a single pass instead.
 
-Show `bar.md` to the user in the same message as your first Phase 4 tool call, so the run does not stall on it.
+Show `bar.md` to the user in the same message as your first Phase 4 tool call, then carry on. It is shown so the user can see the bar, not for approval: its job is to be a fixed, checkable standard every round is judged against, and it comes from the reference, not from what the user signs off on.
 
 ## Phase 4: Loop
 
