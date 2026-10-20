@@ -20,6 +20,10 @@ Automate releasing a new version of a Homebrew formula end-to-end. Works with an
 
 ## Workflow
 
+The only points where you stop and wait for the user are the questions in Steps 1–3
+and the confirmation in Step 5. Everywhere else, put any note to the user in the
+same message as the next command: a message with no tool call ends the turn.
+
 ### Step 1 — Determine the new version tag
 
 If the user provided a version in their message, use it. Normalize first: if it
@@ -45,7 +49,7 @@ git remote get-url origin
 # Default branch (e.g. "origin/main" → main)
 git symbolic-ref --short refs/remotes/origin/HEAD
 
-# Formula files — list ALL matches, do not truncate
+# Formula files — list every match; a truncated list can hide the one to bump
 find . -maxdepth 2 -path './Formula/*.rb'
 
 # gh CLI authenticated?
@@ -83,7 +87,8 @@ Derive names:
 Read the formula file. Identify the formula's **top-level** `url` and `sha256`
 lines (the ones directly in the formula body — not lines inside `bottle do`,
 `resource`, or `head` blocks). Show both lines to the user so they can confirm
-they're bumping the right thing, and record their exact text — Step 9 edits
+they're bumping the right thing (in the same message as the Step 4 commands, or in
+the Step 5 confirmation), and record their exact text — Step 9 edits
 exactly these strings and nothing else.
 
 Sanity check: extract the current version from the `url` line. If the new
@@ -142,9 +147,10 @@ it, otherwise stop and report the mismatch.
 ### Step 7 — Build the tarball and compute SHA256
 
 Use `git archive` to produce a byte-stable tarball from the exact tagged commit.
-This is deterministic: the same tag always yields the same bytes. **Always
-rebuild the tarball in this step — never reuse a file left over from a previous
-attempt.**
+This is deterministic: the same tag always yields the same bytes. Always
+rebuild the tarball in this step rather than reusing a file left over from a
+previous attempt: a leftover may come from another commit or prefix, and its hash
+would not match what this tag produces.
 
 ```bash
 git archive --format=tar.gz --prefix={tarball-prefix} {tag} -o /tmp/{asset-filename}

@@ -3,15 +3,15 @@ name: to-prd
 description: Turn the current conversation context into a PRD aligned with existing decision logs. Use when user wants to create a PRD from the current context.
 ---
 
-This skill takes the current conversation context and produces a PRD grounded in the product's existing decision history. Do NOT interview the user — synthesize what you already know.
+This skill takes the current conversation context and produces a PRD grounded in the product's existing decision history. Synthesize what you already know rather than interviewing the user: the context is already in the conversation, and a round of questions makes them repeat it.
 
 ## Process
 
 1. Read the decision log files the user already has. Extract relevant prior decisions, constraints, and rationale that apply to this feature area. Use the product's domain vocabulary throughout the PRD.
 
-2. Identify the key stakeholders and actors affected by this feature. Check with the user that you have the right ones before proceeding.
+2. Identify the key stakeholders and actors affected by this feature. Check with the user that you have the right ones, and wait for their answer before writing; this is the one question the skill asks.
 
-3. Write the PRD using the template below. Flag any section where you had to make assumptions due to gaps in the decision logs — mark those assumptions clearly so the user can validate them.
+3. Write the PRD using the template below. Flag any section where you had to make assumptions due to gaps in the decision logs — mark those assumptions clearly so the user can validate them. User Stories should be extensive; keep every other section to what the context supports, and leave out filler and recaps.
 
 4. Save or share the PRD in whatever format the user prefers (document, file, paste).
 
@@ -61,7 +61,7 @@ Reference relevant entries from the decision log where applicable.
 
 ## Out of Scope
 
-Explicitly list what is NOT being addressed in this PRD and, where useful, why. This prevents scope creep and sets clear expectations with stakeholders.
+Explicitly list what this PRD does not address and, where useful, why. This prevents scope creep and sets clear expectations with stakeholders.
 
 ## Success Metrics
 
