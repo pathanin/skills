@@ -157,10 +157,59 @@ describe('a stop', () => {
   })
 })
 
+/**
+ * Starts the session the way the CLI does (`terminal`) or the desktop app does (an SDK host:
+ * no surface, nobody at a REPL), and answers with what the mod registered.
+ */
+async function startSession($: any, on: any, where: 'cli' | 'app') {
+  const tools: string[] = []
+  const commands: string[] = []
+  on('tool.register', ($: any, e: any) => {
+    tools.push(e.name)
+    return { value: { tool: `mcp__live-tasks__${e.name}` } }
+  })
+  on('command.register', ($: any, e: any) => {
+    commands.push(e.name)
+    return { value: { command: e.name } }
+  })
+  on('session.start', ($: any, e: any) => e)
+  await $.session.start(
+    (where === 'cli'
+      ? { cwd: '.', surface: 'terminal', isInteractive: true }
+      : { cwd: '.', surface: null, isInteractive: false }) as any,
+  )
+  return { tools, commands }
+}
+
+describe('where it runs', () => {
+  test('the CLI gets the update_plan tool and the /live-tasks command', async ($, on) => {
+    const { tools, commands } = await startSession($, on, 'cli')
+    expect(tools).toEqual(['update_plan'])
+    expect(commands).toEqual(['live-tasks'])
+  })
+
+  test('the desktop app gets neither', async ($, on) => {
+    const { tools, commands } = await startSession($, on, 'app')
+    expect(tools).toEqual([])
+    expect(commands).toEqual([])
+  })
+
+  test('the desktop app keeps no mirror of TodoWrite or the Task tools', async ($, on) => {
+    engineBand(on)
+    on('tool.call', { tool: 'TodoWrite' }, () => ({ result: { oldTodos: [], newTodos: [] } }) as never)
+    on('tool.call', { tool: 'TaskCreate' }, () => ({ result: { task: { id: '1', subject: 'One' } } }) as never)
+    await startSession($, on, 'app')
+    await $.tool.call({ tool: 'TodoWrite', todos: [{ content: 'One', status: 'pending', activeForm: 'One' }] })
+    await $.tool.call({ tool: 'TaskCreate', subject: 'One', description: 'One' } as never)
+    expect(await rows($)).toEqual([])
+  })
+})
+
 describe('built-in task tools', () => {
   test('TodoWrite is mirrored while the mod has no list of its own', async ($, on) => {
     engineBand(on)
     on('tool.call', { tool: 'TodoWrite' }, () => ({ result: { oldTodos: [], newTodos: [] } }) as never)
+    await startSession($, on, 'cli')
     await $.tool.call({
       tool: 'TodoWrite',
       todos: [
@@ -174,6 +223,7 @@ describe('built-in task tools', () => {
   test('an unfinished update_plan list is not replaced by TodoWrite', async ($, on) => {
     engineBand(on)
     on('tool.call', { tool: 'TodoWrite' }, () => ({ result: { oldTodos: [], newTodos: [] } }) as never)
+    await startSession($, on, 'cli')
     await $.tool.call({ tool: TOOL, items: ITEMS })
     await $.tool.call({ tool: 'TodoWrite', todos: [{ content: 'Other', status: 'pending', activeForm: 'Other' }] })
     expect((await rows($))[1]).toBe('◐ Look at the code')
@@ -182,6 +232,7 @@ describe('built-in task tools', () => {
   test('subagent calls do not touch the list', async ($, on) => {
     engineBand(on)
     on('tool.call', { tool: 'TodoWrite' }, () => ({ result: { oldTodos: [], newTodos: [] } }) as never)
+    await startSession($, on, 'cli')
     await $.tool.call({ tool: 'TodoWrite', agentId: 'sub-1', todos: [{ content: 'Sub', status: 'pending', activeForm: 'Sub' }] } as never)
     expect(await rows($)).toEqual([])
   })

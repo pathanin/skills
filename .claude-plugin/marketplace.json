@@ -104,7 +104,7 @@
     },
     {
       "name": "live-tasks",
-      "description": "Mod: a live task list above the prompt in the terminal, like the desktop app's pinned plan. Claude sends the plan with its first tool call and checks steps off as it works; /live-tasks shows, hides or clears it.",
+      "description": "Mod: a live task list above the prompt in the Claude Code CLI (off in the desktop app), like the desktop app's pinned plan. Claude sends the plan with its first tool call and checks steps off as it works; /live-tasks shows, hides or clears it.",
       "author": {
         "name": "oat"
       },

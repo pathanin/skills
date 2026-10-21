@@ -55,17 +55,19 @@ const SPIN_MS = 250
 export const register: Register = on => {
   // Started by the band when it draws a step in progress; stops itself once none is.
   let ticker: Timer | null = null
+  // The mod is for the CLI alone: the desktop app pins its own plan, and a session it runs (an
+  // SDK host, like a -p run) starts with no terminal. Read again on each reload's session.start.
+  let isCli = false
 
   on('session.start', async ($, e, next) => {
-    const surfaces = await $.session.surfaces()
-    if (surfaces.includes('terminal')) {
-      await $.tool.register({
-        name: 'update_plan',
-        description: DESCRIPTION,
-        inputSchema: INPUT_SCHEMA,
-        isDeferred: false,
-      })
-    }
+    isCli = e.surface === 'terminal'
+    if (!isCli) return next(e)
+    await $.tool.register({
+      name: 'update_plan',
+      description: DESCRIPTION,
+      inputSchema: INPUT_SCHEMA,
+      isDeferred: false,
+    })
     await $.command.register({
       name: 'live-tasks',
       description: 'Show, hide or clear the live task list.',
@@ -104,6 +106,7 @@ export const register: Register = on => {
 
   // The built-in task tools are mirrored while the mod's own list is not in charge.
   on('tool.call', { tool: 'TodoWrite' }, async ($, e, next) => {
+    if (!isCli) return next(e)
     const ran = await next(e)
     if (e.agentId !== undefined || ran.deny !== undefined || ran.isError === true) return ran
     if (!mayMirror(await read($, plan))) return ran
@@ -113,6 +116,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   on('tool.call', { tool: 'TaskCreate' }, async ($, e, next) => {
+    if (!isCli) return next(e)
     const ran = await next(e)
     if (e.agentId !== undefined || ran.deny !== undefined || ran.isError === true) return ran
     const id = ran.result.task.id
@@ -125,6 +129,7 @@ export const register: Register = on => {
   }).catch(($, e, next) => next(e))
 
   on('tool.call', { tool: 'TaskUpdate' }, async ($, e, next) => {
+    if (!isCli) return next(e)
     const ran = await next(e)
     if (e.agentId !== undefined || ran.deny !== undefined || ran.isError === true) return ran
     await update($, plan, current => {

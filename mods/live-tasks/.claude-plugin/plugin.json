@@ -1,7 +1,7 @@
 {
   "name": "live-tasks",
-  "version": "0.2.4",
-  "description": "Live task list above the prompt in the terminal, like the desktop app's pinned plan.",
+  "version": "0.2.5",
+  "description": "Live task list above the prompt in the Claude Code CLI, like the desktop app's pinned plan. Off in the desktop app.",
   "types": "./types/index.d.ts",
   "author": {
     "name": "oat"
