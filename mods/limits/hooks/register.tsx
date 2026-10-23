@@ -380,6 +380,8 @@ const bandSvg = (meters: Meter[]) => {
 /** What the refresh button and the gap before it take, in px on the desktop and in cells in the terminal. */
 const REFRESH_PX = 70
 const REFRESH_CELLS = 10
+/** Band px per desktop cell, measured in the app: the band at full window width, 85 cells, is about 750 band px. */
+const DESKTOP_CELL_PX = 8.8
 
 /** Cells one terminal meter takes: label, bar, percent, detail, reset. */
 const meterCells = (m: Meter) =>
@@ -387,12 +389,12 @@ const meterCells = (m: Meter) =>
 
 /**
  * Every meter when they fit on one line with the refresh button; otherwise the 5-hour limit alone.
- * The desktop reports its width in cells; the band's text runs at CH px a cell, so that converts it.
+ * The desktop reports its width in cells of DESKTOP_CELL_PX band px each.
  */
 const fitMeters = (meters: Meter[], columns: number, isTerminal: boolean): Meter[] => {
   const needed = isTerminal
     ? meters.reduce((n, m) => n + meterCells(m), 0) + 3 * meters.length + REFRESH_CELLS
-    : Math.ceil((bandSvg(meters).width + REFRESH_PX) / CH)
+    : Math.ceil((bandSvg(meters).width + REFRESH_PX) / DESKTOP_CELL_PX)
   if (columns >= needed) return meters
   const short = meters.filter(m => m.kind === 'five_hour')
   return short.length > 0 ? short : meters.slice(0, 1)

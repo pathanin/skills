@@ -354,6 +354,8 @@ const screenshotBand = async (
   on: On,
   surface: 'desktop' | 'terminal',
   bodyColumns: number,
+  /** Near the widest figures the band shows: two-digit percents, `6d23h`, `999.9k/1M`. */
+  isLong = false,
 ) => {
   on('ui.render', () => ({ type: 'engine', ref: 0 }))
   mock.store(on)
@@ -361,10 +363,12 @@ const screenshotBand = async (
   on('ui.status', () => ({ value: undefined }) as never)
   on('ui.toast', () => ({ value: undefined }) as never)
   await $.session.measure({
-    context: { tokens: 140_400, window: 1_000_000, percent: 14 },
+    context: isLong
+      ? { tokens: 999_900, window: 1_000_000, percent: 99 }
+      : { tokens: 140_400, window: 1_000_000, percent: 14 },
     rateLimits: [
-      { kind: 'five_hour', percentUsed: 8, resetsAt: inHours(4 + 41 / 60) },
-      { kind: 'seven_day', percentUsed: 17, resetsAt: inHours(3 * 24 + 21) },
+      { kind: 'five_hour', percentUsed: isLong ? 88 : 8, resetsAt: inHours(4 + 41 / 60) },
+      { kind: 'seven_day', percentUsed: isLong ? 88 : 17, resetsAt: inHours(isLong ? 6 * 24 + 23.5 : 3 * 24 + 21) },
     ],
     changed: ['context', 'rateLimits'],
   })
@@ -385,8 +389,8 @@ test('a narrow desktop band shows the 5-hour limit alone, and every limit in its
   await ui.unmount()
 })
 
-test('the desktop band at its widest (91 cells) shows every limit', EVERYWHERE, async ($, on) => {
-  const ui = await screenshotBand($, on, 'desktop', 91)
+test('the desktop band at full window width (85 cells) shows every limit, even with long figures', EVERYWHERE, async ($, on) => {
+  const ui = await screenshotBand($, on, 'desktop', 85, true)
   const { source } = await svgOf(ui)
   for (const label of ['5hr', 'week', 'context']) expect(source).toContain(label)
   await ui.unmount()
