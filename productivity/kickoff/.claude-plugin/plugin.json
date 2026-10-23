@@ -1,0 +1,7 @@
+{
+  "name": "kickoff",
+  "description": "Manual-only project kickoff, invoked with /kickoff. Turns a vague idea into a short BRIEF.md, asking only about the gaps that would change the build.",
+  "author": {
+    "name": "oat"
+  }
+}

@@ -95,6 +95,14 @@
       "source": "./internal-tools/fresh-start"
     },
     {
+      "name": "kickoff",
+      "description": "Manual-only project kickoff, invoked with /kickoff. Turns a vague idea into a short BRIEF.md, asking only about the gaps that would change the build.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./productivity/kickoff"
+    },
+    {
       "name": "limits",
       "description": "Mod: your 5-hour and weekly usage limits, reset countdowns and context fill in a band above the prompt, in the Claude desktop app only (the terminal shows nothing). App-only copy of Ryan-LT/claude-mods limits.",
       "author": {

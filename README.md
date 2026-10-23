@@ -41,6 +41,7 @@ claude plugin update <skill-name>@local-skills
 
 | Skill | Run | What it does |
 |---|---|---|
+| [kickoff](productivity/kickoff/SKILL.md) | `/kickoff` | Vague idea to a short `BRIEF.md`, asking only the Why/Who/What/Which/Whether/When gaps that change the build. |
 | [pdf-to-md](productivity/pdf-to-md/SKILL.md) | auto | PDF (or a range or section) to markdown with merged-cell tables intact, checked against the source. |
 | [plain-writing](productivity/plain-writing/SKILL.md) | `/plain-writing` | Plain prose style; `deslopify` rewrites the last reply. Vendored from [docwriter-org/plain-writing-skill](https://github.com/docwriter-org/plain-writing-skill) (MIT). |
 | [plan-interview](productivity/plan-interview/SKILL.md) | auto | Structured interview through interconnected decisions before acting. |
