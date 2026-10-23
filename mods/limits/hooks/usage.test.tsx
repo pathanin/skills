@@ -347,3 +347,55 @@ test('low usage early in a window stays green even on a run-out pace', EVERYWHER
   expect(pct.props.color).toBe('success')
   await ui.unmount()
 })
+
+/** The screenshot's figures: 5hr 8%, week 17%, context 14% of 1M. */
+const screenshotBand = async (
+  $: Parameters<Parameters<typeof test>[2]>[0],
+  on: On,
+  surface: 'desktop' | 'terminal',
+  bodyColumns: number,
+) => {
+  on('ui.render', () => ({ type: 'engine', ref: 0 }))
+  mock.store(on)
+  on('session.measure', ($, e) => ({ changed: e.changed }))
+  on('ui.status', () => ({ value: undefined }) as never)
+  on('ui.toast', () => ({ value: undefined }) as never)
+  await $.session.measure({
+    context: { tokens: 140_400, window: 1_000_000, percent: 14 },
+    rateLimits: [
+      { kind: 'five_hour', percentUsed: 8, resetsAt: inHours(4 + 41 / 60) },
+      { kind: 'seven_day', percentUsed: 17, resetsAt: inHours(3 * 24 + 21) },
+    ],
+    changed: ['context', 'rateLimits'],
+  })
+  return $.ui.mount({ ...BAND, surface, props: { ...BAND.props, bodyColumns } })
+}
+
+const svgOf = async (ui: Awaited<ReturnType<typeof screenshotBand>>) =>
+  ((await ui.findAll({ type: 'Svg' }))[0] as unknown as { props: { source: string; alt: string } }).props
+
+test('a narrow desktop band shows the 5-hour limit alone, and every limit in its alt text', EVERYWHERE, async ($, on) => {
+  const ui = await screenshotBand($, on, 'desktop', 62)
+  const { source, alt } = await svgOf(ui)
+  expect(source).toContain('5hr')
+  expect(source).not.toContain('week')
+  expect(source).not.toContain('context')
+  expect(alt).toContain('Weekly')
+  expect(await ui.find({ key: 'refresh' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('the desktop band at its widest (91 cells) shows every limit', EVERYWHERE, async ($, on) => {
+  const ui = await screenshotBand($, on, 'desktop', 91)
+  const { source } = await svgOf(ui)
+  for (const label of ['5hr', 'week', 'context']) expect(source).toContain(label)
+  await ui.unmount()
+})
+
+test('a narrow terminal band shows the 5-hour limit alone', EVERYWHERE, async ($, on) => {
+  const ui = await screenshotBand($, on, 'terminal', 40)
+  expect(await ui.find({ type: 'Text', text: '5hr ' })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: 'week ' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: 'context ' })).toBeUndefined()
+  await ui.unmount()
+})

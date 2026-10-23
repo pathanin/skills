@@ -261,6 +261,8 @@ const ensureTicker = ($: EngineInterface) => {
 
 /** One limit, reduced to what the band shows. */
 type Meter = {
+  /** The limit's kind, or `context`. */
+  kind: string
   label: string
   pct: number
   color: string
@@ -296,6 +298,7 @@ const toMeter = (raw: Limit, at: number): Meter => {
   const level = runsOut && l.percentUsed >= PACE_FLOOR ? 'error' : tone(l.percentUsed)
   const reset = l.resetsAt ? fmtSpan(Date.parse(l.resetsAt) - at) : undefined
   return {
+    kind: l.kind,
     label: labelOf(l.kind),
     pct: l.percentUsed,
     color: level,
@@ -372,6 +375,27 @@ const bandSvg = (meters: Meter[]) => {
     width,
     height: H,
   }
+}
+
+/** What the refresh button and the gap before it take, in px on the desktop and in cells in the terminal. */
+const REFRESH_PX = 70
+const REFRESH_CELLS = 10
+
+/** Cells one terminal meter takes: label, bar, percent, detail, reset. */
+const meterCells = (m: Meter) =>
+  m.label.length + 1 + 8 + 1 + fmtPct(m.pct).length + (m.detail ? m.detail.length + 1 : 0) + (m.reset ? m.reset.length + 3 : 0)
+
+/**
+ * Every meter when they fit on one line with the refresh button; otherwise the 5-hour limit alone.
+ * The desktop reports its width in cells; the band's text runs at CH px a cell, so that converts it.
+ */
+const fitMeters = (meters: Meter[], columns: number, isTerminal: boolean): Meter[] => {
+  const needed = isTerminal
+    ? meters.reduce((n, m) => n + meterCells(m), 0) + 3 * meters.length + REFRESH_CELLS
+    : Math.ceil((bandSvg(meters).width + REFRESH_PX) / CH)
+  if (columns >= needed) return meters
+  const short = meters.filter(m => m.kind === 'five_hour')
+  return short.length > 0 ? short : meters.slice(0, 1)
 }
 
 /** Terminal bar: thin line, with a tick at "now" in the window. */
@@ -486,6 +510,7 @@ export const register: Register = (on, options) => {
     if (ctx?.percent !== undefined && ctx.tokens !== undefined) {
       const detail = `${fmtTokens(ctx.tokens)}/${fmtTokens(ctx.window)}`
       meters.push({
+        kind: 'context',
         label: 'context',
         pct: ctx.percent,
         color: tone(ctx.percent),
@@ -501,10 +526,13 @@ export const register: Register = (on, options) => {
       <Button key="refresh" label={`⟳ ${ageText}`} onPress={() => void refresh($, 'press')} />
     )
 
+    // A narrow band shows the 5-hour limit alone; the alt text still names every limit.
+    const shown = fitMeters(meters, e.props.bodyColumns, e.surface === 'terminal')
+
     if (e.surface !== 'terminal') {
       const { Box, Button, Svg, Text } = $.ui.resolve(e)
       if (meters.length === 0) return withBelow(<Text dimColor>Limits show after the first reply</Text>)
-      const band = bandSvg(meters)
+      const band = bandSvg(shown)
       return withBelow(
         <Box flexDirection="row" flexWrap="nowrap" alignItems="center" columnGap={2}>
           <Svg
@@ -523,7 +551,7 @@ export const register: Register = (on, options) => {
 
     return withBelow(
       <Box flexDirection="row" flexWrap="wrap" columnGap={3}>
-        {meters.map(m => (
+        {shown.map(m => (
           <Box flexDirection="row">
             <Text dimColor>{m.label} </Text>
             {barRuns(m).map(r => (
