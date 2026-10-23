@@ -15,12 +15,22 @@ Everything runs on this Mac. Bundled files:
 
 ## 0. One-time setup (check, don't redo)
 
-The skill folder is a plugin cache snapshot that is replaced on every update, so keep the venv and models outside it, in `~/.cache/wallpaper-upscale`. If `~/.cache/wallpaper-upscale/.venv/bin/python` doesn't exist, create it:
+The skill folder is a plugin cache snapshot that is replaced on every update, so keep the venv and models outside it, in `~/.cache/wallpaper-upscale`. Check that the venv actually runs (a Homebrew Python update can leave `bin/python` as a broken link, which a plain existence check misses):
 ```
-mkdir -p ~/.cache/wallpaper-upscale/models
-python3 -m venv ~/.cache/wallpaper-upscale/.venv
-~/.cache/wallpaper-upscale/.venv/bin/pip install torch spandrel opencv-python-headless pillow numpy
+~/.cache/wallpaper-upscale/.venv/bin/python -c "import torch, spandrel"
 ```
+- If the `.venv` folder is missing, create it. Use Homebrew's stable `opt` path, not plain `python3`, so patch updates don't break the link:
+  ```
+  mkdir -p ~/.cache/wallpaper-upscale/models
+  /opt/homebrew/opt/python@3.14/bin/python3.14 -m venv ~/.cache/wallpaper-upscale/.venv
+  ~/.cache/wallpaper-upscale/.venv/bin/pip install torch spandrel opencv-python-headless pillow numpy
+  ```
+- If the folder exists but the check fails with "no such file", the Python link is dangling. Repair it in place (keeps the installed packages); remove the dead link first or `--upgrade` fails:
+  ```
+  L=~/.cache/wallpaper-upscale/.venv/bin/python3.14; [ -L "$L" ] && [ ! -e "$L" ] && rm "$L"
+  /opt/homebrew/opt/python@3.14/bin/python3.14 -m venv --upgrade ~/.cache/wallpaper-upscale/.venv
+  ```
+  If the check then fails on an import, rerun the `pip install` line above.
 Below, `PY` means `~/.cache/wallpaper-upscale/.venv/bin/python`.
 
 Also needed: `ffmpeg`/`ffprobe` and `yt-dlp` (`brew install ffmpeg yt-dlp` if `which` finds them missing).
