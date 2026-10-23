@@ -59,9 +59,9 @@ test('one compact line: limit, bar, percent, reset or run-out', EVERYWHERE, asyn
   })
 
   const term = await $.ui.mount({ ...BAND, surface: 'terminal' })
-  expect(await term.find({ type: 'Text', text: 'ctx ' })).toBeDefined()
+  expect(await term.find({ type: 'Text', text: 'context ' })).toBeDefined()
   expect(await term.find({ type: 'Text', text: '84.2k/200k' })).toBeDefined()
-  for (const text of ['5hr', 'wk', '27%', '63%', /2h/, /[23]d/]) {
+  for (const text of ['5hr', 'week', '27%', '63%', /2h/, /[23]d/]) {
     expect(await term.find({ type: 'Text', text })).toBeDefined()
   }
   expect(await term.find({ type: 'Text', text: /out / })).toBeUndefined()
