@@ -378,8 +378,19 @@ const screenshotBand = async (
 const svgOf = async (ui: Awaited<ReturnType<typeof screenshotBand>>) =>
   ((await ui.findAll({ type: 'Svg' }))[0] as unknown as { props: { source: string; alt: string } }).props
 
-test('a narrow desktop band shows the 5-hour limit alone, and every limit in its alt text', EVERYWHERE, async ($, on) => {
-  const ui = await screenshotBand($, on, 'desktop', 62)
+test('a narrow desktop band drops the context first and keeps both limits', EVERYWHERE, async ($, on) => {
+  const ui = await screenshotBand($, on, 'desktop', 62, true)
+  const { source, alt } = await svgOf(ui)
+  expect(source).toContain('5hr')
+  expect(source).toContain('week')
+  expect(source).not.toContain('context')
+  expect(alt).toContain('Context')
+  expect(await ui.find({ key: 'refresh' })).toBeDefined()
+  await ui.unmount()
+})
+
+test('a very narrow desktop band shows the 5-hour limit alone, and every limit in its alt text', EVERYWHERE, async ($, on) => {
+  const ui = await screenshotBand($, on, 'desktop', 45)
   const { source, alt } = await svgOf(ui)
   expect(source).toContain('5hr')
   expect(source).not.toContain('week')

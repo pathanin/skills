@@ -1,6 +1,6 @@
 {
   "name": "limits",
-  "version": "0.2.2-app.6",
+  "version": "0.2.2-app.7",
   "description": "Your 5-hour and weekly usage limits, with reset countdowns and context fill, in a band above the prompt. App-only copy of Ryan-LT/claude-mods limits (upstream deb6d8b): by default it runs only in the Claude desktop app, not the terminal.",
   "types": "./types/index.d.ts",
   "author": {

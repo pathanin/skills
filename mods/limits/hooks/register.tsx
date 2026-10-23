@@ -388,15 +388,18 @@ const meterCells = (m: Meter) =>
   m.label.length + 1 + 8 + 1 + fmtPct(m.pct).length + (m.detail ? m.detail.length + 1 : 0) + (m.reset ? m.reset.length + 3 : 0)
 
 /**
- * Every meter when they fit on one line with the refresh button; otherwise the 5-hour limit alone.
- * The desktop reports its width in cells of DESKTOP_CELL_PX band px each.
+ * As many meters as fit on one line with the refresh button: every one, then without the context,
+ * then the 5-hour limit alone. The desktop reports its width in cells of DESKTOP_CELL_PX band px each.
  */
 const fitMeters = (meters: Meter[], columns: number, isTerminal: boolean): Meter[] => {
-  const needed = isTerminal
-    ? meters.reduce((n, m) => n + meterCells(m), 0) + 3 * meters.length + REFRESH_CELLS
-    : Math.ceil((bandSvg(meters).width + REFRESH_PX) / DESKTOP_CELL_PX)
-  if (columns >= needed) return meters
+  const fits = (ms: Meter[]) =>
+    columns >=
+    (isTerminal
+      ? ms.reduce((n, m) => n + meterCells(m), 0) + 3 * ms.length + REFRESH_CELLS
+      : Math.ceil((bandSvg(ms).width + REFRESH_PX) / DESKTOP_CELL_PX))
+  const limits = meters.filter(m => m.kind !== 'context')
   const short = meters.filter(m => m.kind === 'five_hour')
+  for (const ms of [meters, limits]) if (fits(ms)) return ms
   return short.length > 0 ? short : meters.slice(0, 1)
 }
 
