@@ -57,6 +57,9 @@ const fmtPct = (p: number | undefined): string =>
 const tone = (p: number | undefined): string =>
   p === undefined ? 'inactive' : p >= 85 ? 'error' : p >= 60 ? 'warning' : 'success'
 
+/** Percent used before a run-out pace can turn a limit red. */
+const PACE_FLOOR = 25
+
 const labelOf = (kind: string): string => LABEL[kind] ?? kind.replace(/_/g, ' ').toUpperCase()
 const longLabelOf = (kind: string): string => LONG_LABEL[kind] ?? kind.replace(/_/g, ' ')
 
@@ -289,7 +292,8 @@ const toMeter = (raw: Limit, at: number): Meter => {
   const pace = paceOf(l, at)
   const runsOut = pace?.runsOutIn !== undefined ? fmtSpan(pace.runsOutIn) : undefined
   // On track to run out before the reset: the bar and percent go red, no extra text.
-  const level = runsOut ? 'error' : tone(l.percentUsed)
+  // Below PACE_FLOOR the projection rests on too little usage to mean anything, so only the percent sets the colour.
+  const level = runsOut && l.percentUsed >= PACE_FLOOR ? 'error' : tone(l.percentUsed)
   const reset = l.resetsAt ? fmtSpan(Date.parse(l.resetsAt) - at) : undefined
   return {
     label: labelOf(l.kind),

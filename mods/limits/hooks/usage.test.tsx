@@ -329,3 +329,21 @@ test('app only: the desktop app draws the band; a terminal attached to it does n
   expect(await term.find({ type: 'Text' })).toBeUndefined()
   await term.unmount()
 })
+
+test('low usage early in a window stays green even on a run-out pace', EVERYWHERE, async ($, on) => {
+  on('ui.render', () => ({ type: 'engine', ref: 0 }))
+  mock.store(on)
+  on('session.measure', ($, e) => ({ changed: e.changed }))
+  on('ui.status', () => ({ value: undefined }) as never)
+  on('ui.toast', () => ({ value: undefined }) as never)
+  // 6% used 14 minutes in: the rate projects past 100% before the reset, but 6% is not a warning.
+  await $.session.measure({
+    context: { window: 200_000 },
+    rateLimits: [{ kind: 'five_hour', percentUsed: 6, resetsAt: inHours(4 + 46 / 60) }],
+    changed: ['rateLimits'],
+  })
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  const pct = (await ui.findAll({ type: 'Text', text: ' 6%' }))[0] as unknown as { props: { color?: string } }
+  expect(pct.props.color).toBe('success')
+  await ui.unmount()
+})
