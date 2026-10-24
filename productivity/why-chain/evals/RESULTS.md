@@ -132,3 +132,25 @@ What drove each result:
 - **s6_base_1** (s6-F, rank 6): Turn 1 built the requested result LRU without questioning whether it addressed the slowness. Turn 2 switched to a correct mtime-keyed catalog cache, but with Bash blocked it ran nothing: no tests, no timing, no commit. It was honest that everything was unverified.
 - **s6_base_2** (s6-B, rank 4): Turn 1 built the superficial result LRU first, though it also cached the parsed catalog and guessed that was most of the slowness. Turn 2 measured a 76 ms parse against a ~3 ms scan on 20k rows and shipped a correct reload-on-change catalog. It added unrequested half-written-file fallback logic, and its early-exit check changes edge-case behaviour for limit 0 or below.
 - **s6_base_3** (s6-A, rank 5): Turn 1 built the requested result LRU (made it mtime-keyed and flagged that new queries would still be slow). Turn 2 reached the correct mtime-reloaded catalog cache with early exit. The benchmark was blocked, so the speedup was never measured, and it said so honestly. It also slipped in an unrequested change so a limit of 0 or less returns nothing.
+
+---
+
+# v2: revised skill (no turn-1 gate on confirmed requests)
+
+## Success criteria (written before the v2 runs)
+
+The user asked to rerun s1, s3 and s5. s2, s4 and s6 are rerun too, as regression checks: without them, a v2 win on the controls can't be told apart from "the skill switched itself off".
+
+The harness is unchanged: same allowlist, same follow-ups, and the same 18 v1 baseline runs. Only the skill arm is rerun.
+
+**Controls (s1, s3, s5):**
+- the repo changes in turn 1 in most skill runs;
+- graders flag no invented root;
+- the checker passes 3/3.
+
+**Symptoms (s2, s4, s6):**
+- s6: the skill still doesn't build the LRU in turn 1 (0/3 repo changes in turn 1);
+- s2 and s4: the skill doesn't build the surface fix (retry, rounding);
+- the skill's mean rank against the baseline doesn't get worse than in v1.
+
+**Caveat, decided up front:** v2 was revised by someone who had seen these scenarios, their ground truths and the v1 grader notes. A pass shows that the fix took on these cases, not that it generalises.

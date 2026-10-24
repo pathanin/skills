@@ -21,7 +21,7 @@ Read what you were given: the request, notes, files, the repo, logs, git history
 Then build the chain one link at a time. Each link is "A, because B", and each one is either **known** (backed by evidence you can point to: a file and line, a log, a measurement, something the user saw first-hand) or **assumed**.
 
 - **Answer from evidence first.** If the code, logs, data or history can answer a why, go and look: read the code, run `git log`, reproduce the problem, measure it. Read-only investigation needs no permission.
-- **Ask the user only for what only they know**: motive, history, constraints, what they have seen. Ask one or two whys at a time. Give your best guess and two or three concrete options so confirming is easier than writing an answer, and say which one you would pick.
+- **Ask the user only for what only they know, and only when the answer would change what you build**: motive, history, constraints, what they have seen. Ask one or two whys at a time. Give your best guess and two or three concrete options so confirming is easier than writing an answer, and say which one you would pick.
 - **People are not root causes.** "Someone forgot" or "the dev made a mistake" ends nothing. Ask why the system let that mistake through.
 - **Labels are not causes.** "The code is bad", "it's slow", "it's legacy": ask what exactly, where, and measured how.
 - **Causes branch.** When an answer has two or more real contributors, list them, follow the one that explains most of the symptom, and note the others so they are not lost.
@@ -39,7 +39,8 @@ Ask one more why past your candidate. If that answer is out of reach (physics, l
 
 ## Honesty
 
-- **The request may already be the root.** If the chain bottoms out at what the user asked for, say so in one line, show the short chain, and ask for the go-ahead as usual. Inventing a deeper problem to look insightful is the main way this skill goes wrong.
+- **The request is often already the root.** If the chain bottoms out at what the user asked for, say so in one line, show the short chain, and build it (see "When to build" below). Inventing a deeper problem to look insightful is the main way this skill goes wrong.
+- **Depth needs evidence.** Go deeper than the request only when something you saw (code, output, a reproduction, the user's own words) shows the request won't meet the need. "It might be worse than they said" or "they may also want X" is not a link. Note it once under Other branches; don't build it or ask about it.
 - **A symptom fix can be the right call.** If the root fix costs far more than the symptom, or the symptom is urgent, say that plainly and propose both: the patch now, the root fix named for later.
 - The user agreeing is a decision, not evidence. A link stays assumed until something shows it.
 - Don't invent facts: numbers, user complaints, API limits, timings. Check what you can and mark the rest as assumed.
@@ -58,17 +59,28 @@ The root cause is a hypothesis until something tests it. Before building:
 2. **Use the cheapest check that could fail**: reproduce the symptom, read a log, measure, toggle the suspected cause, write a ten-line experiment, or ask one user one question.
 3. **Run read-only checks yourself.** A check that changes the repo, data, or anything outside it needs a yes first.
 4. **Read the result honestly.**
-   - **Holds**: build.
+   - **Holds**: go to step 5 to decide whether to build now.
    - **Refuted**: go back to the last link that held and branch from there. Don't bend the story to fit the result.
    - **Inconclusive**: say so, then pick a sharper check or go ahead with the risk named.
 
 Once the fix is built, check that the original symptom is gone. That is the test of the whole chain, not just the root.
 
-Stay read-only until the user says go, apart from investigation and read-only checks. That holds even when the fix is one line and the chain confirmed the request: the user ran this to look before acting, so building is their call. Once code exists, it has already answered the question.
+## 5. When to build
+
+Decide from the chain:
+
+- **The chain confirms the request** (vs. request: same), **and nothing you saw contradicts it**: build it in this turn, test it, and report the chain with the result. This covers two cases:
+  - a request whose purpose why ends at the request itself: a capability asked for with its reason, and no symptom behind it to explain;
+  - a request that fixes a symptom, where a check that could have refuted it held.
+
+  Don't stop for a go-ahead, and don't ask questions whose answer wouldn't change the build. The user already decided, and the chain agrees.
+- **The fix differs from the request, partly or fully, or the deciding check was refuted or couldn't run**: stay read-only apart from investigation and read-only checks. Show the chain and ask before building. Changing course is the user's call, and once code exists it has already answered the question.
+
+Either way, build only what the chain needs. Extra hardening, neighbouring features and "while we're here" changes go under Other branches, one line each, not into the build. "Go ahead with what you recommend" approves the fix you proposed; it doesn't widen it.
 
 ## The chain
 
-Show the result in chat in this shape, then ask for the go-ahead to build. Drop lines that don't apply.
+Show the result in chat in this shape. If the chain confirmed the request and you built it, include the result. Otherwise end by asking for the go-ahead. Drop lines that don't apply.
 
 ```
 Request: <what we were about to do, as given>
