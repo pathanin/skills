@@ -1,0 +1,1 @@
+Our partner's webhook endpoint flaps whenever they deploy, and we end up dropping order events. Add retries with exponential backoff to webhook delivery: up to 3 attempts total, on 5xx responses and connection errors.

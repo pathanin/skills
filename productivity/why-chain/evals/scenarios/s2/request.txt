@@ -1,0 +1,1 @@
+test_weekly_digest keeps failing on CI at random and blocking merges, and it goes green when we re-run the job. Wrap it in a retry (3 attempts) so it stops blocking people.

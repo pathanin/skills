@@ -1,0 +1,1 @@
+Product search is slow. Put an LRU cache on search() in shop/search.py so repeated queries come back instantly.

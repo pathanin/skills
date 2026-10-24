@@ -1,0 +1,7 @@
+order_id,created_at,amount,status,register
+A-1001,2026-10-05T16:02:11Z,6.75,paid,web
+A-1002,2026-10-05T17:45:40Z,12.40,paid,web
+A-1003,2026-10-05T18:10:03Z,4.50,refunded,web
+A-1004,2026-10-05T21:33:57Z,23.10,paid,kiosk
+A-1005,2026-10-06T15:20:19Z,9.25,paid,web
+A-1006,2026-10-06T19:02:44Z,31.80,paid,web

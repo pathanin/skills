@@ -1,0 +1,1 @@
+Finance checks our daily report against the POS end-of-day totals every morning. Most days are off, sometimes by a few dollars and sometimes by a couple hundred, but the monthly totals usually line up. Go ahead with what you recommend.

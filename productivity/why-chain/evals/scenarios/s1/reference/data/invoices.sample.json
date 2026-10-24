@@ -1,0 +1,5 @@
+[
+  {"id": "INV-1001", "customer": "Northwind Traders", "email": "ap@northwind.example", "amount": "1200.00", "issued_on": "2026-09-01", "status": "paid"},
+  {"id": "INV-1002", "customer": "Blue Fern Studio", "email": "Hello@BlueFern.example", "amount": "349.5", "issued_on": "2026-09-03", "status": "open"},
+  {"id": "INV-1003", "customer": "Okafor Logistics", "email": "billing@okafor.example", "amount": "88.20", "issued_on": "2026-09-03", "status": "paid"}
+]

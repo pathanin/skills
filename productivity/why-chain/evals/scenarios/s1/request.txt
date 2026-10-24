@@ -1,0 +1,1 @@
+Finance says the invoice export comes out garbled in Excel whenever a customer name has a comma in it, like "Smith, Jones & Co". Switch billing/export.py over to the csv module so fields get quoted properly.

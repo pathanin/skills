@@ -1,0 +1,1 @@
+We set these in the environment block of our Compose file. Some of the deployments won't mount a settings.ini at all. Go ahead with what you recommend.

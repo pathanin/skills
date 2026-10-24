@@ -1,0 +1,1 @@
+Per the partner, during a deploy their endpoint returns 503 or refuses connections for a few seconds, and they deploy a few times a week. Delivery runs in our background worker, so it's fine for it to block for a few seconds. Go ahead with what you recommend.

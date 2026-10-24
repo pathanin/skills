@@ -1,0 +1,1 @@
+Customers say every search takes a noticeable moment. In the logs almost every query is different (people type product names), and it's slow even the first time anyone searches for something. The catalog has about 20k products. The ERP rewrites data/catalog.csv a few times a day, and the service isn't restarted when that happens. Go ahead with what you recommend.

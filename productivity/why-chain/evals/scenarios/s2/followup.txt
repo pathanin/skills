@@ -1,0 +1,1 @@
+It fails roughly every other CI run, and now and then locally too. Re-running the job usually turns it green. The test was added a few weeks ago and has been like this since. Go ahead with what you recommend.

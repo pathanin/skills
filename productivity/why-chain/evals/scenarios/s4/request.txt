@@ -1,0 +1,1 @@
+The daily sales report doesn't match the POS end-of-day numbers; the totals are off on most days. Probably a rounding issue, so round each order amount to cents with ROUND_HALF_UP before summing in sales/report.py.

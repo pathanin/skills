@@ -1,0 +1,1 @@
+We're moving the inventory service into Docker and don't want to bake a settings.ini into the image. Make every setting overridable by an env var named APP_<SETTING> (APP_PORT, APP_DB_PATH, and so on), with the env var winning over the file.
