@@ -1,6 +1,10 @@
 # why-chain eval: results
 
-Run 2026-10-24, scored and graded 2026-10-25. Six scenarios × two arms (`/why-chain` vs plain request) × 3 reps = 36 two-turn headless sessions. Scenario design and method: `scenarios/INDEX.md`, `grader_prompt.md`. Regenerate the tables below with `python3 analyze.py` (needs the gitignored `runs/`, `results.json`, `blind_key.json`, `graders/`).
+Run 2026-10-24, scored and graded 2026-10-25. Six scenarios × two arms (`/why-chain` vs plain request) × 3 reps = 36 two-turn headless sessions. Scenario design and method: `scenarios/INDEX.md`, `grader_prompt.md`. Regenerate the tables with `python3 analyze.py v1` or `python3 analyze.py v2` (needs the gitignored `v1/` and `v2/` folders).
+
+> **Latest: v2 (skill commit `2809e9a`) wins 4 of 6 scenarios, up from 2 in v1.** It now builds clear requests in turn 1 and still holds off on symptom requests. s4 is still a loss, and s2 is still slightly behind. See the v2 section at the end.
+
+# v1: original skill
 
 n = 3 per arm per scenario, so read every row as anecdote with structure, not a significant result.
 
@@ -154,3 +158,50 @@ The harness is unchanged: same allowlist, same follow-ups, and the same 18 v1 ba
 - the skill's mean rank against the baseline doesn't get worse than in v1.
 
 **Caveat, decided up front:** v2 was revised by someone who had seen these scenarios, their ground truths and the v1 grader notes. A pass shows that the fix took on these cases, not that it generalises.
+
+## v2 results
+
+Ran 2026-10-25 with skill commit `2809e9a` (same model, `claude-opus-5-5`; Claude Code 2.1.310, against 2.1.308 for v1). Only the skill arm was rerun. Six fresh blind graders each ranked the 3 new skill runs against the same 3 v1 baseline runs.
+
+### Verdict: 4 wins, 2 losses (v1: 2 wins, 3 losses, 1 about even)
+
+| scenario | type | changed repo in turn 1: v1 → v2 (base) | mean rank v1 → v2 (base v1 / v2) | who did better in v2 |
+|---|---|---|---|---|
+| s1 | control | 0/3 → **3/3** (3/3) | 2.0 → **2.0** (5.0 / 5.0) | skill |
+| s2 | symptom | 0/3 → 0/3 (2/3) | 4.0 → 4.0 (3.0 / 3.0) | base (slightly) |
+| s3 | control | 0/3 → **3/3** (3/3) | 4.7 → **2.0** (2.3 / 5.0) | skill (was base) |
+| s4 | symptom | 0/3 → 0/3 (2/3) | 4.7 → 4.7 (2.3 / 2.3) | base |
+| s5 | control | 0/3 → **3/3** (3/3) | 5.0 → **2.0** (2.0 / 5.0) | skill (was base) |
+| s6 | symptom | 0/3 → 0/3 (3/3) | 2.0 → 2.0 (5.0 / 5.0) | skill |
+
+**Checker scripts:** all 18 v2 skill runs pass (v1: 17/18). The `s5_skill_2` over-build did not recur: no v2 run added a queue, outbox or new return shape.
+
+**Against the success criteria written before the runs:**
+- Controls: all three criteria met.
+  - The repo changed in turn 1 in 9 of 9 runs.
+  - No grader flagged an invented root. The one scope note: an s3 run added a rule rejecting empty values.
+  - The checker passed 9 of 9.
+- Symptoms: all three criteria met.
+  - s6: 0 of 3 runs built in turn 1.
+  - s2 and s4: no run built the retry or the rounding.
+  - The skill's rank against the baseline didn't drop in s2, s4 or s6; it is unchanged in all three.
+
+### What changed and what didn't
+
+- **On the controls, the skill went from bottom three to top three in every scenario.** The v2 runs built in turn 1. Graders ranked them highest mostly for verification: they reproduced the bug, or wrote a test and watched it fail before fixing.
+- **On symptoms, behaviour is unchanged by design.** The skill still shows the chain and asks when the fix differs from the request.
+  - **s6:** that is still a clear win.
+  - **s4:** it is still a loss. The baseline went straight to the timezone fix, and graders preferred that to stopping to ask, even though the user's stated cause was wrong.
+  - **s2:** still slightly behind. The baseline found the root without help.
+  - Making the skill build a *different* fix without asking would be the next lever. It would also remove the user's chance to say no to a change of course, so it isn't done here.
+- **Overhead:** about the same as the baseline.
+  - Cost is $1.10 per run against $1.08.
+  - Runs average 100 s against 92 s and 19.7 turns against 17.8.
+  - s5 is the most expensive: $1.89 against $1.42. The extra goes into test-first work.
+
+### Caveats specific to v2
+
+- **Tuned on the eval set.** See the criteria section. A pass shows that the fix took on these six cases, not that it generalises.
+- **The rank jumps on s3 and s5 are partly relative.** Graders rank the skill runs against the baselines, so when the skill runs rise, the baseline runs are pushed to 4–6. Across the two grading passes, the three baselines kept the same order among themselves on s4, s5 and s6. Two of them swapped places on s1 and s2, and all three were reshuffled on s3. So treat a gap of one or two places as noise.
+  - What doesn't depend on the graders: turn-1 changes went from 0/9 to 9/9, and the checkers went from 8/9 to 9/9.
+- **A first v2 attempt was invalid and was thrown away.** The runs were placed inside this repo, and headless `dontAsk` refused every Edit and Write there, so nothing was built. The valid runs used a scratch folder outside the repo, as v1 did. `run_one.sh` now says to do this.

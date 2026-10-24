@@ -2,6 +2,7 @@ runs/
 graders/
 results.json
 blind_key.json
-runs.log
+runs*.log
 __pycache__/
 v1/
+v2/

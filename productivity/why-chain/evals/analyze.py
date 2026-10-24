@@ -1,9 +1,11 @@
 """Unblind the grades and print per-scenario tables as Markdown.
 
-Usage: python3 analyze.py
-Reads: results.json, blind_key.json, graders/<s>/grades.json (all written earlier).
+Usage: python3 analyze.py [data_dir]
+Reads: results.json, blind_key.json, graders/<s>/grades.json under data_dir
+(default: this folder; pass v1 for the archived first round).
 """
 import json
+import sys
 from pathlib import Path
 from statistics import mean
 
@@ -18,11 +20,12 @@ def fmt(xs):
 
 
 def main():
-    results = {r["run"]: r for r in json.loads((E / "results.json").read_text())}
-    key = json.loads((E / "blind_key.json").read_text())
+    d = E / sys.argv[1] if len(sys.argv) > 1 else E
+    results = {r["run"]: r for r in json.loads((d / "results.json").read_text())}
+    key = json.loads((d / "blind_key.json").read_text())
     for rid, run in key.items():
         s = rid.split("-")[0]
-        g = json.loads((E / "graders" / s / "grades.json").read_text())
+        g = json.loads((d / "graders" / s / "grades.json").read_text())
         # A grader may write the bare letter ("A") instead of the full id ("s2-A").
         gid = rid if rid in g["runs"] else rid.split("-")[1]
         results[run]["grade"] = g["runs"][gid]

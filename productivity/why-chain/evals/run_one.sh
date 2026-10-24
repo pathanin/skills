@@ -1,6 +1,8 @@
 #!/bin/bash
 # Usage: run_one.sh <scenario> <arm: skill|base> <rep>
 # Runs one two-turn headless session in a fresh copy of the scenario fixture.
+# Set EVAL_DIR to a folder outside this repo (with scenarios/ copied in): runs placed
+# inside the repo had every Edit and Write refused under dontAsk.
 set -u
 E=${EVAL_DIR:-$(cd "$(dirname "$0")" && pwd)}
 P=$(cd "$(dirname "$0")/.." && pwd)
