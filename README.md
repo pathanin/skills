@@ -48,6 +48,7 @@ claude plugin update <skill-name>@local-skills
 | [plan-relax](productivity/plan-relax/SKILL.md) | auto | Low-pressure, one-question-at-a-time decision interview ending in a summary with defaults. |
 | [to-prd](productivity/to-prd/SKILL.md) | auto | Turns the current conversation into a PRD grounded in existing decision logs. |
 | [translate-to-thai](productivity/translate-to-thai/SKILL.md) | auto | Natural Thai translation that keeps technical terms and product names in English. |
+| [why-chain](productivity/why-chain/SKILL.md) | `/why-chain` | Asks why until it reaches the root cause behind a request, rebuilds the fix from there, and tests the root before building. |
 
 ## internal-tools
 

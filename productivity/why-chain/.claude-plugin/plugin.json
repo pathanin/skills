@@ -1,0 +1,7 @@
+{
+  "name": "why-chain",
+  "description": "Manual-only root-cause dig, invoked with /why-chain. Asks why until it reaches the cause behind what we are about to do, rebuilds the fix from that root, and tests the root cause as a hypothesis before anything is built.",
+  "author": {
+    "name": "oat"
+  }
+}
