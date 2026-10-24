@@ -6,7 +6,13 @@ n = 3 per arm per scenario, so read every row as anecdote with structure, not a 
 
 ## Verdict
 
-**Mixed. The skill helps when the request is a symptom of a deeper problem, and hurts on clear requests.**
+**The skill loses on balance: 2 wins (s1, s6), 3 losses (s3, s4, s5), and roughly even on s2.**
+
+- **It won where the baseline would otherwise build the surface fix (s6) or over-reach (s1).**
+- **It added friction with no benefit where the baseline found the cause unaided (s2, s4).**
+- **It caused harm on two of the three clear-request controls (s3, s5).**
+
+Being a symptom scenario isn't enough for the skill to win: the baseline found the root cause by itself in s2 and s4.
 
 | scenario | type | grader mean rank (skill / base, 1 = best of 6) | who did better |
 |---|---|---|---|
@@ -19,7 +25,7 @@ n = 3 per arm per scenario, so read every row as anecdote with structure, not a 
 
 What drove each result:
 - **s6 is the clearest win.** All three skill runs questioned the LRU request, measured load against scan, and shipped a reload-on-change catalog cache. All three baseline runs built the superficial LRU first and corrected course only after the follow-up.
-- **s1 is a win, but not for the skill's main purpose.** The skill runs reproduced the bug before fixing it, then kept scope tight. The baseline runs all added a formula-injection guard nobody asked for.
+- **s1 is a win, but not for the skill's main purpose.** Two of the three skill runs reproduced the bug before fixing it; the third had its shell blocked. All three kept scope tight. The baseline runs all added a formula-injection guard nobody asked for.
 - **s2 and s4: the baseline found the root cause unaided.** All six runs of each found it, so the skill added only friction. The baseline also changed the repo in turn 1 without asking (2/3 runs in each), but graders weighed that only lightly.
 - **s3 and s5: the skill caused harm on clear requests.**
   - s3: every skill run ended turn 1 by asking for a go-ahead on a clear request. Two of them then added work nobody asked for (`.dockerignore`, unknown-variable warnings).
@@ -31,9 +37,12 @@ What drove each result:
 
 - **The checkers barely separate the arms.** 35 of 36 runs pass, because the follow-up message lets nearly every run reach a correct end state. Read the checker table as "no arm broke things, except s5_skill_2", not as a tie on quality.
 - **The skill never acts in turn 1: 0 of 18 skill runs changed the repo, against 16 of 18 baseline runs.** That is the skill's design, and it is right on symptom requests. On clear requests it is friction, and it goes against the user's global "work without checking in" rule.
-- **Shell denials hit verification.** Under `--permission-mode dontAsk`, compound shell commands (`for …; do cat …`, `cd … && …`) were refused. Graders repeatedly noted runs that "couldn't verify because Bash was blocked".
-  - The skill arm had slightly more denials: 2.1 per run against 1.6.
-  - Both arms are affected, so this mostly adds noise to the verification score, not bias. A future rerun should allow those command shapes.
+- **Shell denials limited verification.** Under `--permission-mode dontAsk`, many shell commands were refused, and graders often noted runs that "couldn't verify because Bash was blocked".
+  - **What got refused** (66 denials in total): `for` loops (25), `python3`/`python` (14), `git` (8), commands that start by setting a variable (`VAR=… cmd`, 10) and `cd …` (5).
+  - **Turn 1 is even:** a denial hit 16 of 18 skill runs and 17 of 18 baseline runs.
+  - **Turn 2 leans against the skill:** 15 denials across 12 skill runs, against 9 across 9 baseline runs. The skill does its building and checking in turn 2, so it hit more of them there.
+  - **s4 tilts slightly against the skill.** The two top-ranked baseline runs had a working shell early; all three skill runs had a turn-1 denial.
+  - **Effect:** a mild tilt against the skill on the verification scores, not a reversal of any result. A future rerun should allow these command shapes.
 - **Blinding was imperfect.** Skill replies use a recognisable template. Graders were told format doesn't count, and the checker scores can't see format.
 - **Graders are single LLM judges per scenario,** one ranking of six. Rank differences of one or two places within a scenario are within noise.
 - **One grade file used bare IDs.** The s2 grader wrote `A` instead of `s2-A`. `analyze.py` accepts both forms; no scores were edited.
