@@ -40,12 +40,12 @@ a user who asked for a critique and got a rewrite has to undo work they did not 
 1. List every input on the element and every action it can mean *before* writing code. Collisions
    (two actions sharing one input) decide the component's event structure and cannot be patched in later.
 2. Resolve each collision with the ladder below, cheapest rung first, and say in a code comment or
-   the reply which rung you chose and what it costs. **The user's stated behavior is the acceptance
-   test, and it outranks the ladder's cost order.** If they asked for "single click opens the
-   preview" and called "double-click opens the preview AND renames" the bug, a fix that still shows
-   the preview on a double-click has re-shipped the bug, however cheap its rung. Build what they
-   asked; if a cheaper rung would change what they asked for, offer it in the reply rather than
-   building it.
+   the reply which rung you chose and what it costs. **The user's complaint tells you what felt
+   wrong; it is not always the right spec.** Fix what made it feel wrong. If a better-grounded
+   behavior differs from what they literally asked for (for example, keeping preview-on-click and
+   removing the flicker instead of delaying every click by half a second), you may build it, but
+   lead the reply with the difference and why, and make the literal version a one-line switch. A
+   deviation mentioned only in a notes file looks like the bug came back.
 3. Implement the recovery path (undo, soft delete, cancel) as a working feature, not a toast that
    only says "Deleted".
 4. Run the Build gate at the end. Report each item as satisfied or as an open issue, one line each.
@@ -105,9 +105,11 @@ it becomes a prefix of the double-click. For the classic list conflict — click
 double-click renames — that means making single-click *select* the row (open with Enter, an arrow
 or a second explicit target), after which double-click-to-rename costs nothing.
 
-The test is whether the user experiences the first action as part of what they meant. Selecting a
-row before renaming it passes; a preview panel flashing open, a page changing, or a sound playing
-before the rename does not — that is still two competing actions, and it belongs on L2.
+The test is whether the first action is a harmless prefix: it doesn't navigate away, move focus,
+open or resize anything that shifts the layout, start media, or change data. Selecting a row
+passes. Updating an already-open, fixed-size preview pane to show the same item passes too; that
+is how Finder and Explorer behave. Opening a panel that wasn't there, changing the page or playing a
+sound fails: those are competing actions, and they belong on L2 or on separate inputs.
 
 ### L2. Wait — let time disambiguate
 
@@ -147,9 +149,12 @@ without making anyone wait.
 
 Inference trades certainty for speed: it will sometimes be wrong. Make a wrong guess cheap:
 
-- **Show the guess before it commits, as the outcome itself.** Open the gap where the dragged item
-  will land, so the list already looks the way it will after release. A thin line or a "position 42"
-  label is an abstract marker the user has to translate; the gap needs no reading.
+- **Show the guess before it commits, close to the outcome.** For drag-reordering there are two
+  sound choices. Letting neighbours slide apart to make room shows the new order directly, and suits
+  short flat lists. A strong insertion line keeps the list still, which helps fast aiming in long or
+  dense lists, and it is required in trees and layer panels, where only a line plus indent can show
+  "inside" versus "between". Don't rely on a text label ("position 42") as the main signal: it has
+  to be read, not seen.
 - **Prefer a continuous response to a binary switch.** Dragging near a list edge should not flip from
   "drop here" to "scroll" at a line; scroll speed should ramp with proximity to the edge, so the user
   steers the guess with small movements instead of fighting a threshold.
@@ -295,7 +300,8 @@ Report each line as satisfied or as an open issue.
    consequence and verb.
 8. Nothing is reachable only through double-click, hover, long-press, swipe or drag, and the
    alternatives sit in menus, buttons and tooltips rather than in on-screen instruction text.
-9. The behavior the user described as the bug is gone, as they would experience it.
+9. Whatever made the user's complaint feel wrong is gone; any deviation from their literal request
+   leads the reply, with the reason and a one-line switch back.
 10. Slow actions show progress; confirmations name the object; deleted items say where they went;
     errors appear on the element that failed; anything that opens can be closed.
 

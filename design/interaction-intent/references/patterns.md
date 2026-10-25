@@ -91,9 +91,10 @@ Show on keyboard focus as well as hover; dismiss on Escape without moving focus 
 
 ## 4. Drag reorder with edge autoscroll
 
-- Open a gap at the computed insertion index on every move (animate neighbours with transform),
-  so the list already shows the result before release. Prefer the gap to a thin line or a position
-  label, which the user has to translate.
+- Show the insertion point on every move. Flat, short lists: animate neighbours apart (transform)
+  to make room. Long or dense lists: a strong insertion line keeps rows still for fast aiming.
+  Trees and layer panels: a line plus indent, the only way to show "inside" versus "between".
+  Don't make a text label the main signal.
 - Autoscroll zone of ~48–80 px at each edge of the scroll container. Speed is a ramp, not a switch:
 
 ```ts

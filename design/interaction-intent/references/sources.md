@@ -65,3 +65,17 @@ outside sources. Use this file when a claim is questioned. Each entry says where
 - WCAG 1.4.13 Content on Hover or Focus: hover content must be dismissible, hoverable and persistent.
 - WCAG 2.2.1 Timing Adjustable: time limits must be adjustable, which applies by analogy to undo windows.
 - Hover-based inference does nothing on touch screens and is invisible to keyboard users.
+
+## Rules added from hands-on testing
+
+A blind A/B comparison of the skill's own demos (5 tasks, one reviewer, October 2026) shaped the
+"Feedback the user can feel" section and three rules that were then checked against outside sources:
+
+| Rule | Status | Source |
+|---|---|---|
+| Show progress for slow work, keep errors near their cause | Documented heuristic | Nielsen's "visibility of system status"; NN/g response-time limits |
+| Alternatives in menus/buttons, not on-screen instructions | Expert consensus | WCAG 2.5.1 and 2.5.7 require the alternative, not instructions; discoverability guidance generally |
+| Keyboard reorder: Space pick up, arrows move, Space drop, Escape cancel | Common practice, no formal standard | WAI-ARIA APG has no reorder pattern; drag-and-drop libraries converge on these keys |
+| Drop preview: make room for flat lists, insertion line for dense lists and trees | Practitioner guidance, both valid | SAP Fiori drag-and-drop reorder; Fluid Project list-ordering pattern; GNOME reorderable-list discussion (line clearer, gap avoids jump) |
+| Preview-on-select passes the double-click-extends-click test if the pane is already open and fixed | Inference from the Macintosh rule plus Finder/Explorer behavior | One reviewer flagged it once; kept as acceptable, with the deviation surfaced up front |
+
