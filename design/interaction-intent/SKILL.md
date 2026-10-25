@@ -29,7 +29,10 @@ the cheapest one that is actually safe, then make its cost as small as possible.
 **Scope boundary:** this skill owns *how an input is interpreted, when it commits, and how it is
 reversed*. It does not own *what is visible and where* (progressive disclosure, hover-reveal of
 controls, popovers vs pages, table formatting) — that is dashboard and layout guidance. When both
-apply, this skill decides behavior; the other decides placement.
+apply, this skill decides behavior; the other decides placement. The states, undo paths and
+alternatives this skill adds should fit into a design that looks as clean as it would without them:
+reuse existing surfaces (one toast area, one menu) rather than adding a panel, banner or label for
+each.
 
 ## Step 0: Identify your mode
 
@@ -237,6 +240,14 @@ When you keep one, make it do work a reflexive "OK" cannot:
 - Don't make the destructive choice the default focus for a high-stakes action.
 - Pair it with an undo or grace period wherever the system can support one.
 
+**A question is not a warning.** Everything above is about "are you sure?", which asks the user to
+repeat a decision they already made. A prompt that asks for a decision they haven't made yet is
+different: "Notify the 6 attendees?" (Send / Don't send), "Delete just this event or the whole
+series?", "Keep both files or replace?". The software can't infer the answer, so asking is correct
+even when the action can be undone. Keep it light: put it in the flow (an inline choice, a small
+popover at the point of action) with the choices as verbs, and remember the answer where that's
+safe ("Always notify for this calendar").
+
 Equally, flag the opposite error: a modal on a frequent, reversible action (deleting a task,
 archiving a message, removing a filter) is a finding in its own right; the fix is to act first and keep a way back (L4).
 
@@ -297,7 +308,8 @@ Report each line as satisfied or as an open issue.
 6. Buttons commit on release; menus open on press and choose on release; drags and holds cancel with
    Escape or by returning to the start.
 7. Confirmation modals appear only where the modal rules above qualify them, and each one names the object,
-   consequence and verb.
+   consequence and verb. Decisions the software can't infer (notify or not, this one or the series) are
+   asked in the flow, not replaced by undo.
 8. Nothing is reachable only through double-click, hover, long-press, swipe or drag, and the
    alternatives sit in menus, buttons and tooltips rather than in on-screen instruction text.
 9. Whatever made the user's complaint feel wrong is gone; any deviation from their literal request

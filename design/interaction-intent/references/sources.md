@@ -78,4 +78,5 @@ A blind A/B comparison of the skill's own demos (5 tasks, one reviewer, October 
 | Keyboard reorder: Space pick up, arrows move, Space drop, Escape cancel | Common practice, no formal standard | WAI-ARIA APG has no reorder pattern; drag-and-drop libraries converge on these keys |
 | Drop preview: make room for flat lists, insertion line for dense lists and trees | Practitioner guidance, both valid | SAP Fiori drag-and-drop reorder; Fluid Project list-ordering pattern; GNOME reorderable-list discussion (line clearer, gap avoids jump) |
 | Preview-on-select passes the double-click-extends-click test if the pane is already open and fixed | Inference from the Macintosh rule plus Finder/Explorer behavior | One reviewer flagged it once; kept as acceptable, with the deviation surfaced up front |
-
+| A prompt asking for an undecided choice (notify attendees?) is not an "are you sure?" | Platform practice | Google Calendar's "send update emails" prompt; NN/g's case against confirmations targets repeated decisions, not new ones. Raised by the round-3 calendar comparison |
+| Added states and undo paths should not crowd the visual design | Reviewer observation, repeated | 3 notes across rounds 2 and 3 that the without-skill demo looked cleaner |
