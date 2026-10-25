@@ -7,6 +7,7 @@ set -u
 E=${EVAL_DIR:-$(cd "$(dirname "$0")" && pwd)}
 P=$(cd "$(dirname "$0")/.." && pwd)
 s=$1; arm=$2; rep=$3
+HOOK="$(cd "$(dirname "$0")" && pwd)/allow_bash_hook.py"
 D=$E/runs/${s}_${arm}_${rep}
 rm -rf "$D"; mkdir -p "$D"
 cp -R "$E/scenarios/$s/fixture" "$D/repo"
@@ -15,7 +16,10 @@ git init -q && git add -A && git -c user.name=dev -c user.email=dev@example.com 
 
 ALLOW='Read,Grep,Glob,Edit,Write,Bash(git:*),Bash(python3:*),Bash(pytest:*),Bash(cd:*),Bash(ls:*),Bash(cat:*),Bash(wc:*),Bash(time:*),Bash(head:*),Bash(tail:*),Bash(grep:*),Bash(find:*),Bash(echo:*),Bash(printf:*),Bash(awk:*),Bash(sed:*),Bash(sort:*),Bash(uniq:*),Bash(diff:*),Bash(mkdir:*),Bash(touch:*),Bash(cp:*),Bash(mv:*),Bash(for:*),Bash(seq:*),Bash(xargs:*),Bash(tr:*),Bash(cut:*),Bash(true:*),Bash(sleep:*),Bash(env:*)'
 DENY='Bash(pip:*),Bash(pip3:*),Bash(python3 -m pip:*),Bash(crontab:*),Bash(launchctl:*),Bash(brew:*),Bash(curl:*),Bash(wget:*),Bash(git push:*),WebFetch,WebSearch'
-FLAGS=(--output-format stream-json --verbose --permission-mode dontAsk --allowedTools "$ALLOW" --disallowedTools "$DENY")
+# v3+: the Bash sandbox (writes stay in the run, no network) plus a hook that allows every
+# other Bash command. The prefix allowlist alone refused loops, heredocs and `VAR=… cmd`.
+SETTINGS=$(python3 -c 'import json,sys; print(json.dumps({"sandbox": {"enabled": True, "autoAllowBashIfSandboxed": True}, "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 " + sys.argv[1]}]}]}}))' "$HOOK")
+FLAGS=(--output-format stream-json --verbose --permission-mode dontAsk --settings "$SETTINGS" --allowedTools "$ALLOW" --disallowedTools "$DENY")
 [ "$arm" = skill ] && FLAGS+=(--plugin-dir "$P")
 
 req=$(cat "$E/scenarios/$s/request.txt")
