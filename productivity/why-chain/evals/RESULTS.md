@@ -205,3 +205,26 @@ Ran 2026-10-25 with skill commit `2809e9a` (same model, `claude-opus-5-5`; Claud
 - **The rank jumps on s3 and s5 are partly relative.** Graders rank the skill runs against the baselines, so when the skill runs rise, the baseline runs are pushed to 4–6. Across the two grading passes, the three baselines kept the same order among themselves on s4, s5 and s6. Two of them swapped places on s1 and s2, and all three were reshuffled on s3. So treat a gap of one or two places as noise.
   - What doesn't depend on the graders: turn-1 changes went from 0/9 to 9/9, and the checkers went from 8/9 to 9/9.
 - **A first v2 attempt was invalid and was thrown away.** The runs were placed inside this repo, and headless `dontAsk` refused every Edit and Write there, so nothing was built. The valid runs used a scratch folder outside the repo, as v1 did. `run_one.sh` now says to do this.
+
+---
+
+# v3: fresh scenarios (generalisation test)
+
+## Setup and success criteria (written before the v3 runs)
+
+- **Scenarios:** five new ones, s7–s11, written by an agent that never saw `SKILL.md`, this report or s1–s6. The mix: 2 where the request is right (controls), 2 symptom requests, 1 with a wrong stated cause.
+- **Skill:** unchanged from v2 (`2809e9a`). Nothing in the skill is tuned on s7–s11.
+- **Harness:** fixed. Runs use the Bash sandbox plus a hook that allows every Bash command except the deny list (commit `afb4438`). Both arms are run fresh, 3 reps each: 30 runs.
+- **s1–s6 are not rerun on the fixed harness** in this round. That is deliberate, to keep cost down.
+
+**Generalisation holds if all of these are true:**
+- **Controls:** the skill changes the repo in turn 1 in at least 5 of 6 runs; the checker passes at least 5/6; the skill's mean rank is no worse than the baseline's in either control.
+- **Symptom / wrong-cause:** the skill builds the surface fix in turn 1 in at most 1 of 9 runs; its checker pass count is at least the baseline's; it beats the baseline on mean rank in at least 2 of 3.
+- **Overall:** the skill wins at least 3 of 5 scenarios on mean rank.
+
+**Any of these counts as evidence of overfitting to s1–s6:**
+- the skill stops to ask on a new control;
+- it builds the surface fix on a new symptom;
+- it wins 2 or fewer of 5.
+
+The checker result for "surface fix in turn 1" is read from the turn-1 repo state and the `naive/` change for each scenario.
