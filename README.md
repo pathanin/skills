@@ -32,6 +32,7 @@ claude plugin update <skill-name>@local-skills
 | [dashboard-design](design/dashboard-design/SKILL.md) | auto | Dashboard and data-table principles: data-driven form, progressive disclosure, invisible UI. |
 | [design-loop](design/design-loop/SKILL.md) | `/design-loop` | Breaks a real-world reference into checkable mechanisms, then loops builder vs. three critics per piece. |
 | [extract-dna](design/extract-dna/SKILL.md) | `/extract-dna` | Measures a design system into `dna.json` + `dna.md`, proven by rebuilding and diffing the reference. |
+| [interaction-intent](design/interaction-intent/SKILL.md) | auto | Ambiguous input (click vs double-click, hover, drag, delete): separate, extend, wait, infer, act-then-undo, or let the user commit. Modals only when irreversible. |
 | [mobile-screen-design](design/mobile-screen-design/SKILL.md) | `/mobile-screen-design` | Two-pass review or build of a mobile screen (defects, then flow), rules graded by evidence. |
 | [tufte-clarity](design/tufte-clarity/SKILL.md) | auto | Tufte's principles for UI, web pages and slides: less chrome, more signal. |
 | [tufte-viz](design/tufte-viz/SKILL.md) | auto | Tufte's principles for charts: data-ink, no chartjunk, graphical integrity, small multiples. |

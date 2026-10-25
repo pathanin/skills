@@ -95,6 +95,14 @@
       "source": "./internal-tools/fresh-start"
     },
     {
+      "name": "interaction-intent",
+      "description": "Apply interaction design principles for ambiguous input: separate, extend, wait, infer, act-then-undo, or let the user signal commitment — and keep confirmation modals for truly irreversible actions.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/interaction-intent"
+    },
+    {
       "name": "kickoff",
       "description": "Manual-only project kickoff, invoked with /kickoff. Turns a vague idea into a short BRIEF.md, asking only about the gaps that would change the build.",
       "author": {

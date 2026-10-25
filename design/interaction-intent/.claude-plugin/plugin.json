@@ -1,0 +1,7 @@
+{
+  "name": "interaction-intent",
+  "description": "Apply interaction design principles for ambiguous input: separate, extend, wait, infer, act-then-undo, or let the user signal commitment — and keep confirmation modals for truly irreversible actions.",
+  "author": {
+    "name": "oat"
+  }
+}
