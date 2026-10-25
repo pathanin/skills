@@ -34,6 +34,7 @@ claude plugin update <skill-name>@local-skills
 | [extract-dna](design/extract-dna/SKILL.md) | `/extract-dna` | Measures a design system into `dna.json` + `dna.md`, proven by rebuilding and diffing the reference. |
 | [interaction-intent](design/interaction-intent/SKILL.md) | `/interaction-intent` | What an ambiguous click, tap or drag meant, and how actions commit and undo. Confirmations only when irreversible. |
 | [mobile-screen-design](design/mobile-screen-design/SKILL.md) | `/mobile-screen-design` | Two-pass review or build of a mobile screen (defects, then flow), rules graded by evidence. |
+| [ui-style](design/ui-style/SKILL.md) | `/ui-style` | My preferred UI look: flat, neutral grays, hairline borders, tints instead of shadows. |
 | [tufte-clarity](design/tufte-clarity/SKILL.md) | auto | Tufte's principles for UI, web pages and slides: less chrome, more signal. |
 | [tufte-viz](design/tufte-viz/SKILL.md) | auto | Tufte's principles for charts: data-ink, no chartjunk, graphical integrity, small multiples. |
 | [wallpaper-upscale](design/wallpaper-upscale/SKILL.md) | `/wallpaper-upscale` | Image, thumbnail or video frame to high-res Mac wallpaper, upscaled locally on the Apple GPU. |

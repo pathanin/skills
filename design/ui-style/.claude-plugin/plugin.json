@@ -1,0 +1,7 @@
+{
+  "name": "ui-style",
+  "description": "Manual-only, invoked with /ui-style. Applies my preferred UI style: flat, neutral-gray, hairline borders, black-alpha tints instead of shadows, small type, fast transitions. Tokens, component specs and rules.",
+  "author": {
+    "name": "oat"
+  }
+}

@@ -207,6 +207,14 @@
       "source": "./design/tufte-viz"
     },
     {
+      "name": "ui-style",
+      "description": "Manual-only, invoked with /ui-style. Applies my preferred UI style: flat, neutral-gray, hairline borders, black-alpha tints instead of shadows, small type, fast transitions. Tokens, component specs and rules.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/ui-style"
+    },
+    {
       "name": "wallpaper-upscale",
       "description": "Manual-only local wallpaper upscale, invoked with /wallpaper-upscale. Turns an image, YouTube thumbnail or video frame into a high-res Mac wallpaper: best source, AI upscale (IllustrationJaNai for art, RealPLKSR for photos), optional logo removal, crop to screen.",
       "author": {
