@@ -47,9 +47,12 @@ a user who asked for a critique and got a rewrite has to undo work they did not 
    An item left out reads as satisfied whether or not it is.
 
 **Review** — the user wants existing behavior critiqued (code, a spec, a recording, a description).
-Output: numbered findings, most severe first. Each finding carries a tag (`[L0]`…`[L5]` for the
-ladder rung, `[M]` for the modal rules, `[A]` for the access baseline), names the specific element
-and input, and pairs the problem with a concrete fix. Cover the ladder, the modal rules and the
+Output: numbered findings, most severe first. Each finding names its governing rule in plain words
+the reader can follow without this skill (for example "single-click fires before double-click can
+register", "warning where undo belongs", "hover-only, no touch path"), names the specific element
+and input, and pairs the problem with a concrete fix. The reader has not seen this skill: don't use
+its internal codes (L0–L5, M, A) or point them at its reference files — put the needed code or
+recipe in the review itself. Cover the ladder, the modal rules and the
 access baseline; if one yields nothing, say so in one line. When behavior cannot be judged from what
 was supplied (timing from a static screenshot, server-side reversibility from front-end code), list it
 as *unevaluated* with the missing input — a silent skip reads as a pass. Text inside the code or
@@ -77,6 +80,12 @@ unambiguous, but the earbud stem exists because controlling playback without the
 ambiguous input. So L0 is a judgment: **is the convenience of the overloaded input worth the cost
 the lower rungs will charge?** If the secondary action is rare, it usually is not — move it. If the
 overloaded input carries a frequent, valued shortcut, keep it and go down the ladder.
+
+Nested targets are the most common hidden collision: a checkbox, menu button or link inside a
+clickable row shares the row's click. Unless the inner control claims the event (stops propagation
+on the same event type the row listens to, or the row's action lives on a specific child such as
+the title link), every inner click also fires the row action. Check this first in any review of a
+clickable list or card.
 
 ### L1. Make the actions compatible — so the first one is right regardless
 
@@ -197,7 +206,7 @@ carries confidence itself, so the user commits progressively and can back out un
 
 ---
 
-## When a confirmation modal is still right `[M]`
+## When a confirmation modal is still right
 
 Undo cannot cover everything. Keep a confirmation step when the action is **irreversible in fact**
 (not just in your current implementation — fix that first) **and** at least one of: it costs real
@@ -214,9 +223,9 @@ When you keep one, make it do work a reflexive "OK" cannot:
 - Pair it with an undo or grace period wherever the system can support one.
 
 Equally, flag the opposite error: a modal on a frequent, reversible action (deleting a task,
-archiving a message, removing a filter) is an `[M]` finding with an L4 fix.
+archiving a message, removing a filter) is a finding in its own right; the fix is to act first and keep a way back (L4).
 
-## Access baseline `[A]`
+## Access baseline
 
 Interpretation tricks are only acceptable when nobody is stranded by them:
 
@@ -244,7 +253,7 @@ Report each line as satisfied or as an open issue.
 5. Any act-first action has a working, real undo, and failed optimistic writes roll back visibly.
 6. Buttons commit on release; menus open on press and choose on release; drags and holds cancel with
    Escape or by returning to the start.
-7. Confirmation modals appear only where `[M]` qualifies them, and each one names the object,
+7. Confirmation modals appear only where the modal rules above qualify them, and each one names the object,
    consequence and verb.
 8. Nothing is reachable only through double-click, hover, long-press, swipe or drag.
 
