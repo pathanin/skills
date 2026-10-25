@@ -1,0 +1,1 @@
+Customers are sometimes getting their discount code applied twice at checkout. It's a race — two requests hitting apply_discount at the same time — so wrap apply_discount in a threading lock.

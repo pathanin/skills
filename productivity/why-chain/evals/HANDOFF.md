@@ -1,6 +1,6 @@
 # why-chain eval: handoff
 
-Updated 2026-10-25. The A/B eval of `/why-chain` has two finished rounds: v1 (the original skill) and v2 (revised skill, commit `2809e9a`). Full results are in `RESULTS.md`.
+Updated 2026-10-25 (second session). v1 and v2 are finished. **v3 is set up but not run.** Full results so far are in `RESULTS.md`.
 
 ## Where it stands
 
@@ -8,41 +8,64 @@ Updated 2026-10-25. The A/B eval of `/why-chain` has two finished rounds: v1 (th
 |---|---|---|---|---|
 | v1 | 2 of 6 (s1, s6) | 0/9 | 0/9 | 17/18 |
 | v2 | 4 of 6 (s1, s3, s5, s6) | 9/9 | 0/9 | 18/18 |
+| v3 | not run | – | – | – |
 
-- **v2 met every success criterion** written before its runs.
-- **Still losing:**
-  - **s4**, where the user named the wrong cause: the baseline just fixes it, while the skill shows the chain and asks first.
-  - **s2**, slightly: the baseline finds the root on its own.
-- **v2 was tuned by someone who had seen these scenarios,** so the v2 result shows the fix took, not that it generalises.
+v2 was tuned by someone who had seen s1–s6, so it shows the fix took, not that it generalises. v3 is the generalisation test.
+
+## Done this session
+
+1. **The harness allowlist is fixed** (commit `afb4438`).
+   - Runs now use the Bash sandbox plus `allow_bash_hook.py`, a PreToolUse hook that allows every Bash command except the deny list.
+   - Smoke-tested on s4 base and s2 skill: loops, `VAR=… cmd`, heredocs and pytest all run, and both runs passed. Curl, git push and writes to the home folder stay blocked.
+   - The one refusal left comes from the user's global `~/.claude` git-guard hook (on `git stash` / `git checkout --`). It hits both arms equally.
+2. **v3 success criteria were written and committed before any run** (commit `47e64c8`, end of `RESULTS.md`).
+3. **Five fresh scenarios, s7–s11**, were written by an isolated agent. Its tool calls never touched this repo, which was checked in its transcript.
+
+   | id | type | summary |
+   |---|---|---|
+   | s7 | control | add `--dry-run` to a backup pruner |
+   | s8 | control | ASCII-fold accented letters in `slugify`, stdlib only |
+   | s9 | symptom | asks to dedupe; the real cause is an inclusive pagination cursor |
+   | s10 | symptom | asks to raise a timeout; the real cause is an O(n²) list-membership dedupe |
+   | s11 | wrong cause | blames a race and asks for a lock; the real cause is a double-applied discount |
+
+   - **Checkers re-run by me:** 23 of 23 verdicts as expected (fixture fail, reference pass, naive fail, variants as named). Details are in `scenarios/INDEX_v3.md`.
+   - `scenarios-v3-src/build.py` regenerates them.
+   - `analyze.py` now counts s7 and s8 as controls.
+   - `jobs_v3.txt` lists the 30 jobs.
+
+## Next step: run v3 (about $30, about 25 min)
+
+1. **Move the stale run data out.** `runs/` and `graders/` in `evals/` may hold old data. The two smoke-test runs live in the session scratchpad, not here.
+2. **Copy `scenarios/` to a scratch folder outside the repo and run the jobs:**
+   ```bash
+   EVAL_DIR=<scratch>/eval xargs -P 12 -L 1 ./run_one.sh < jobs_v3.txt
+   ```
+   - Test one run first: check that `final.diff` isn't empty and that it has about 0 denials (`python3 runtrace.py --metrics …/turn1.jsonl`).
+3. **Score the runs.** Copy them into `evals/runs/`, then run `/Users/oat/venv/bin/python3 score_and_blind.py`. Move the outputs into `v3/`.
+4. **Grade with five fresh `general-purpose` agents, not forks.** Use `grader_prompt.md`, and give each agent only its scenario's `ground_truth.md` and the six packets, in an isolated folder.
+   - Validate each `grades.json`.
+   - grep the packets for phrases from `SKILL.md` to check the skill text didn't leak.
+5. **Write up the results.** Run `python3 analyze.py v3`, then score the run against the criteria in `RESULTS.md` **as written**.
+
+## Still open
+
+- **s4 decision (owner):** should the skill build a *different* fix without asking when the evidence is strong? v3's s11 (wrong cause) will add evidence on this.
+- **s1–s6 on the fixed harness:** not rerun, to save cost (about $36 for both arms). v1/v2 numbers are still from the old allowlist.
+- **Packaging:** `evals/` ships inside the plugin folder. Move it if that matters.
 
 ## What's here
 
 | Path | What it is |
 |---|---|
-| `RESULTS.md` | The report. v1 verdict and caveats, the v2 success criteria (written before the runs), v2 results. |
-| `analyze.py <v1\|v2>` | Unblinds the grades and prints the per-scenario tables. |
-| `v1/`, `v2/` (gitignored, local only) | `runs/`, `results.json`, `blind_key.json` and `graders/<s>/grades.json` for each round. v2's `runs/` holds the new skill runs plus copies of the v1 baseline runs. |
-| `run_one.sh`, `jobs.txt`, `score_and_blind.py`, `grader_prompt.md`, `runtrace.py` | The harness; unchanged from v1 apart from a comment in `run_one.sh`. |
-| `scenarios/`, `checker-src/`, `validation/` | The six scenarios and their checkers. |
+| `RESULTS.md` | The report: v1, v2, and the v3 criteria. |
+| `analyze.py <v1\|v2\|v3>` | Unblinds the grades and prints the tables. |
+| `v1/`, `v2/` (gitignored) | The data from each round. |
+| `run_one.sh`, `allow_bash_hook.py`, `jobs.txt`, `jobs_v3.txt`, `score_and_blind.py`, `grader_prompt.md`, `runtrace.py` | The harness. |
+| `scenarios/` (s1–s11), `checker-src/`, `validation/`, `scenarios-v3-src/` | The scenarios and their checkers. |
 
-## How to run a round (lessons learned)
+## Lessons learned
 
-1. **Run outside the repo.** Copy `scenarios/` into a scratch folder and set `EVAL_DIR` to it. Runs inside this repo had every Edit and Write refused under headless `dontAsk`, which wasted one full v2 batch (about $15).
-   ```bash
-   EVAL_DIR=<scratch>/eval xargs -P 12 -L 1 ./run_one.sh < jobs.txt
-   ```
-   Test one run first and check that its `final.diff` isn't empty.
-2. **Copy the runs back and score them.** Copy the run folders into `evals/runs/`, then run `score_and_blind.py` with `/Users/oat/venv/bin/python3` (the checkers need pytest).
-3. **Move the previous round's data into `vN/` first.** `score_and_blind.py` overwrites `results.json`, `blind_key.json` and `graders/`, and `run_one.sh` deletes existing run folders of the same name.
-4. **Grade with six fresh `general-purpose` agents.** Not forks, because a fork inherits the unblinded context.
-   - Give each one a copy of only its scenario's `ground_truth.md` and the six packets, in an isolated scratch folder.
-   - Validate each `grades.json`: six IDs, five scores from 1–5 per run, and a ranking that uses all six IDs once.
-5. **Check that the skill text didn't leak into the packets.** `grep` a few distinctive phrases from `SKILL.md` across `graders/*/*.md`.
-6. **Cost:** about $1 per run. An 18-run skill-only round is about $18 and 15 minutes at 12 in parallel.
-
-## Open next steps (none started)
-
-1. **Test generalisation.** Have an independent agent, one that never sees the skill, `RESULTS.md` or these scenarios, write 3–6 fresh scenarios. Then run both arms on them. This is the only way to show v2 isn't just fitted to s1–s6.
-2. **Decide on s4.** To win s4, the skill would need to build a *different* fix than the one requested, without asking, when the evidence is strong. That removes the user's chance to say no to a change of course. It's a judgement call for the skill's owner, not a bug.
-3. **Fix the harness allowlist,** then rerun both arms. Shell commands like `for` loops, `VAR=… cmd` and some `python3`/`git` forms were refused, which held back verification in both arms (see the v1 caveats). Changing the allowlist means rerunning the baseline too, so the arms stay comparable.
-4. **Packaging.** `evals/` sits inside the plugin folder, so it ships with the plugin. It is committed there now. Move it if that matters.
+- **Runs inside this repo** get every Edit and Write refused under headless `dontAsk`. Always use a scratch folder.
+- **`score_and_blind.py` overwrites** `results.json`, `blind_key.json` and `graders/`, and `run_one.sh` deletes run folders with the same name. Archive the previous round first.
+- **If `allow_bash_hook.py` can't be found,** every Bash call is denied silently and the agents blame "a broken hook". The script now resolves the hook's path before it changes directory.

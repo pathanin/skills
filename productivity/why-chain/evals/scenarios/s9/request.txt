@@ -1,0 +1,1 @@
+The monthly revenue report is overcounting — I can see the same invoice id twice in invoice_ids. Just dedupe by invoice id in revenue_report before summing.

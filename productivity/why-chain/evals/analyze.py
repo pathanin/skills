@@ -12,7 +12,7 @@ from statistics import mean
 E = Path(__file__).resolve().parent
 DIMS = ["diagnosis", "evidence", "verification", "proportion", "communication"]
 ARMS = ["skill", "base"]
-CONTROLS = {"s1", "s3", "s5"}
+CONTROLS = {"s1", "s3", "s5", "s7", "s8"}
 
 
 def fmt(xs):

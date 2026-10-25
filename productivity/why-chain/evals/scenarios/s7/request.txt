@@ -1,0 +1,1 @@
+Can you add a --dry-run flag to `backups prune` so it just prints which archives it would delete without touching anything? I want to sanity-check the retention before I put it in cron.

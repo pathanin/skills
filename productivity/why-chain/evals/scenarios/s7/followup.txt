@@ -1,0 +1,1 @@
+For context, the backups dir also has a couple of hand-named archives and a notes file that must never be touched, and I'll be eyeballing the dry-run output by hand. Go ahead and finish it.

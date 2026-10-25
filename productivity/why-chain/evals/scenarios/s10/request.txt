@@ -1,0 +1,1 @@
+Big subscriber imports keep failing with "Import timed out". Please bump JOB_TIMEOUT_SECONDS from 5 to 30 in worker.py.
