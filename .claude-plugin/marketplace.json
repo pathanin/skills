@@ -96,7 +96,7 @@
     },
     {
       "name": "interaction-intent",
-      "description": "Apply interaction design principles for ambiguous input: separate, extend, wait, infer, act-then-undo, or let the user signal commitment — and keep confirmation modals for truly irreversible actions.",
+      "description": "Manual-only interaction design pass, invoked with /interaction-intent. Resolves ambiguous input (click vs double-click, tap vs hold, hover, drag) and when actions commit and undo: separate, extend, wait, infer, act-then-undo, or commit on release, with confirmations kept for irreversible actions and real decisions.",
       "author": {
         "name": "oat"
       },

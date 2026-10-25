@@ -1,17 +1,7 @@
 ---
 name: interaction-intent
-description: >
-  Interaction design principles for resolving what the user meant from an ambiguous input —
-  click vs double-click, hover vs pass-through, drag-to-drop vs drag-to-scroll, delete on purpose
-  vs by accident — and for deciding when an action commits and how it is undone. Trigger when the
-  user is building, reviewing, or asking about click/tap/hover/drag/gesture behavior, submenus and
-  flyouts that close too early, tooltips, inline edit vs open-detail conflicts, drag-and-drop
-  reordering, swipe or long-press actions, delete/archive/send flows, "are you sure?" confirmation
-  modals, undo toasts, soft delete, autosave vs save buttons, optimistic updates, or buttons that
-  fire on press vs release — even if the words "intent" or "interaction design" never appear.
-  Skip when the request is only about what is visible and where (layout, hierarchy, progressive
-  disclosure, data-table formatting — that is dashboard or layout guidance), about visual styling,
-  or about backend logic with no user-facing input behavior.
+description: Manual-only interaction design pass, invoked with /interaction-intent. Resolves what the user meant from an ambiguous input (click vs double-click, tap vs hold, hover vs pass-through, click vs drag) and decides when an action commits and how it is undone, from separate inputs, compatible actions, waiting and inference to act-then-undo and commit-on-release, with confirmations kept for irreversible actions and real decisions. Builds, reviews or advises.
+disable-model-invocation: true
 ---
 
 # Interaction Intent
