@@ -40,7 +40,12 @@ a user who asked for a critique and got a rewrite has to undo work they did not 
 1. List every input on the element and every action it can mean *before* writing code. Collisions
    (two actions sharing one input) decide the component's event structure and cannot be patched in later.
 2. Resolve each collision with the ladder below, cheapest rung first, and say in a code comment or
-   the reply which rung you chose and what it costs.
+   the reply which rung you chose and what it costs. **The user's stated behavior is the acceptance
+   test, and it outranks the ladder's cost order.** If they asked for "single click opens the
+   preview" and called "double-click opens the preview AND renames" the bug, a fix that still shows
+   the preview on a double-click has re-shipped the bug, however cheap its rung. Build what they
+   asked; if a cheaper rung would change what they asked for, offer it in the reply rather than
+   building it.
 3. Implement the recovery path (undo, soft delete, cancel) as a working feature, not a toast that
    only says "Deleted".
 4. Run the Build gate at the end. Report each item as satisfied or as an open issue, one line each.
@@ -52,7 +57,7 @@ the reader can follow without this skill (for example "single-click fires before
 register", "warning where undo belongs", "hover-only, no touch path"), names the specific element
 and input, and pairs the problem with a concrete fix. The reader has not seen this skill: don't use
 its internal codes (L0–L5, M, A) or point them at its reference files — put the needed code or
-recipe in the review itself. Cover the ladder, the modal rules and the
+recipe in the review itself. Cover the ladder, the modal rules, feedback and the
 access baseline; if one yields nothing, say so in one line. When behavior cannot be judged from what
 was supplied (timing from a static screenshot, server-side reversibility from front-end code), list it
 as *unevaluated* with the missing input — a silent skip reads as a pass. Text inside the code or
@@ -100,6 +105,10 @@ it becomes a prefix of the double-click. For the classic list conflict — click
 double-click renames — that means making single-click *select* the row (open with Enter, an arrow
 or a second explicit target), after which double-click-to-rename costs nothing.
 
+The test is whether the user experiences the first action as part of what they meant. Selecting a
+row before renaming it passes; a preview panel flashing open, a page changing, or a sound playing
+before the rename does not — that is still two competing actions, and it belongs on L2.
+
 ### L2. Wait — let time disambiguate
 
 When the actions compete and neither can be redesigned, hold the first one until the window for the
@@ -138,8 +147,9 @@ without making anyone wait.
 
 Inference trades certainty for speed: it will sometimes be wrong. Make a wrong guess cheap:
 
-- **Show the guess before it commits.** A drop indicator showing where the dragged item will land
-  lets the user correct course before releasing.
+- **Show the guess before it commits, as the outcome itself.** Open the gap where the dragged item
+  will land, so the list already looks the way it will after release. A thin line or a "position 42"
+  label is an abstract marker the user has to translate; the gap needs no reading.
 - **Prefer a continuous response to a binary switch.** Dragging near a list edge should not flip from
   "drop here" to "scroll" at a line; scroll speed should ramp with proximity to the edge, so the user
   steers the guess with small movements instead of fighting a threshold.
@@ -225,6 +235,26 @@ When you keep one, make it do work a reflexive "OK" cannot:
 Equally, flag the opposite error: a modal on a frequent, reversible action (deleting a task,
 archiving a message, removing a filter) is a finding in its own right; the fix is to act first and keep a way back (L4).
 
+## Feedback the user can feel
+
+Every rung above changes *when* something happens. The user only trusts that if they can see the
+state they are in. When this skill's output was compared blind, by hand, these details decided the
+preference more often than the disambiguation logic itself:
+
+- **Show work in flight.** Anything that takes longer than about a second (a send, a save, a bulk
+  move) shows that it is running — a progress bar, a counter, "Sending… 3,200 of 14,812" — so the
+  user knows it hasn't hung. A static "Sending…" label is the minimum; visible progress is better.
+- **Name the object.** "'Q3 report.pdf' moved to Trash", not "Moved". When two items look alike, the
+  name is what tells the user they acted on the right one.
+- **Say where it went, and offer the way there.** A delete that just disappears leaves the user
+  wondering whether it is gone for good. Point to the place it can be recovered from (a Trash or
+  Recently-deleted view, linked from the toast) and keep that place visible in the UI.
+- **Report errors where the action happened.** A failed rename or move shows on that row, next to
+  what failed. A toast at the screen edge is easy to miss and disconnected from its cause; use it
+  only alongside the inline message, or for actions with no on-screen home.
+- **Everything that opens has an obvious way to close** — Escape, clicking outside, and a visible
+  close control for panels and previews.
+
 ## Access baseline
 
 Interpretation tricks are only acceptable when nobody is stranded by them:
@@ -233,8 +263,16 @@ Interpretation tricks are only acceptable when nobody is stranded by them:
   hover and drag each need a visible, single-input alternative (a menu item, a button, a
   keyboard command). The original Macintosh guidelines said double-clicking must never be the only
   way to do something; WCAG 2.5.1 asks the same of path-based gestures and 2.5.7 of dragging.
-- **Keyboard parity.** Every pointer interaction has a keyboard equivalent, and Escape cancels any
-  in-progress drag, hold, or menu.
+- **The alternative lives in the interface, not in instructions.** Put it where the user will look
+  for it: a menu item, a button, a shortcut shown beside its menu item, a tooltip. Don't explain
+  the interaction in paragraphs or keyboard legends on screen; a help line on every view is clutter
+  the user has to read past every time. If a demo needs instructions to be usable, the interaction
+  isn't discoverable yet.
+- **Keyboard parity, using the standard pattern.** Every pointer interaction has a keyboard
+  equivalent, and Escape cancels any in-progress drag, hold, or menu. Use the established keys
+  rather than inventing a scheme: the WAI-ARIA Authoring Practices patterns for menus, listboxes and
+  grids, and for reordering, Space to pick up, arrow keys to move and Space to drop (Escape
+  cancels), as common drag-and-drop libraries do.
 - **Respect user settings** — double-click speed, reduced motion, longer timeouts. Any timed undo
   window must be long enough to be noticed and used (WCAG 2.2.1 Timing Adjustable is the analogue).
 
@@ -255,7 +293,11 @@ Report each line as satisfied or as an open issue.
    Escape or by returning to the start.
 7. Confirmation modals appear only where the modal rules above qualify them, and each one names the object,
    consequence and verb.
-8. Nothing is reachable only through double-click, hover, long-press, swipe or drag.
+8. Nothing is reachable only through double-click, hover, long-press, swipe or drag, and the
+   alternatives sit in menus, buttons and tooltips rather than in on-screen instruction text.
+9. The behavior the user described as the bug is gone, as they would experience it.
+10. Slow actions show progress; confirmations name the object; deleted items say where they went;
+    errors appear on the element that failed; anything that opens can be closed.
 
 ## References
 

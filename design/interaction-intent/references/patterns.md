@@ -91,8 +91,9 @@ Show on keyboard focus as well as hover; dismiss on Escape without moving focus 
 
 ## 4. Drag reorder with edge autoscroll
 
-- Render a drop indicator (line or gap) at the computed insertion index on every move — the guess
-  is visible before release.
+- Open a gap at the computed insertion index on every move (animate neighbours with transform),
+  so the list already shows the result before release. Prefer the gap to a thin line or a position
+  label, which the user has to translate.
 - Autoscroll zone of ~48–80 px at each edge of the scroll container. Speed is a ramp, not a switch:
 
 ```ts
@@ -104,8 +105,9 @@ function scrollSpeed(distanceFromEdge: number, zone = 64, max = 20): number {
 ```
 
 - Escape, or dropping outside a valid target, returns the item to its origin.
-- Provide a non-drag path (Move up / Move down menu items, or keyboard reordering with live-region
-  announcements) — WCAG 2.5.7.
+- Provide a non-drag path (Move up / Move down menu items) — WCAG 2.5.7 — and keyboard reordering
+  with the standard keys: Space picks up, arrows move, Space drops, Escape cancels, each step
+  announced in a live region.
 
 ## 5. Act-first delete with undo and deferred commit
 
