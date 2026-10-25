@@ -1,6 +1,6 @@
 ---
 name: interaction-intent
-description: Manual-only interaction design pass, invoked with /interaction-intent. Resolves what the user meant from an ambiguous input (click vs double-click, tap vs hold, hover vs pass-through, click vs drag) and decides when an action commits and how it is undone, from separate inputs, compatible actions, waiting and inference to act-then-undo and commit-on-release, with confirmations kept for irreversible actions and real decisions. Builds, reviews or advises.
+description: Manual-only interaction design pass, invoked with /interaction-intent. Decides what an ambiguous input meant (click vs double-click, tap vs hold, click vs drag) and how actions commit and undo, keeping confirmations for irreversible actions.
 disable-model-invocation: true
 ---
 
