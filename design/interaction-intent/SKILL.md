@@ -93,7 +93,7 @@ Ambiguity only hurts when the actions *compete*. If the first stage of the input
 what follows, act on it immediately. Clicking a spreadsheet cell selects it; a double-click then edits
 it. Selection was correct either way, so there is no wait.
 
-The rule (from the original Macintosh guidelines): **a double-click should extend the single-click,
+The rule (from the archived Macintosh Human Interface Guidelines): **a double-click should extend the single-click,
 not replace it.** Single-click selects, double-click opens; single-click places the caret,
 double-click selects the word. When you have a collision, first try to redesign the single-click so
 it becomes a prefix of the double-click. For the classic list conflict — click opens detail,
@@ -128,8 +128,8 @@ without making anyone wait.
   the submenu open; if it heads elsewhere, switch instantly. Test each move against the triangle from
   the cursor to the submenu's near corners. A robust implementation pairs inference with a short
   fallback wait: jQuery-menu-aim re-checks after 300 ms and switches if the cursor has stopped, so a
-  user who pauses over a sibling item is treated as choosing it. This triangle predates the web: it is
-  widely credited to Apple's 1986 hierarchical menus.
+  user who pauses over a sibling item is treated as choosing it. The idea is older than the 2013
+  write-up that popularized it on the web; secondhand accounts trace it to Apple's 1980s menus.
 - **Mode by history (tooltips).** The first hover waits (the user may be passing through); once one
   tooltip has shown, neighbors show almost at once because the user is now evidently browsing labels.
   Windows ships exactly this: 500 ms initial delay, ~100 ms reshow delay.

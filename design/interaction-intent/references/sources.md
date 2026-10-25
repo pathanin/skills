@@ -14,7 +14,7 @@ outside sources. Use this file when a claim is questioned. Each entry says where
 | Claim | Status | Source |
 |---|---|---|
 | Resolving ambiguous input costs time (wait), certainty (infer) or trust (act first); letting the user signal confidence avoids the guess | Speaker's synthesis — a framing, not a finding. The skill adds L0 (separate inputs) and L1 (compatible actions), which cost nothing and the video only touches in passing | Video |
-| Double-click should extend the single-click, so the first click is right regardless | Documented | Apple, *Macintosh Human Interface Guidelines* (1992), archived; same rule says double-click must never be the only way to perform an action |
+| Double-click should extend the single-click, so the first click is right regardless | Documented | Apple, *Macintosh Human Interface Guidelines*, archived copy on 1998–99 developer reference discs (original publication date not confirmed); same rule says double-click must never be the only way to perform an action |
 | Waiting out the double-click time before acting on single-click; single-clickers pay a ~0.5 s delay | Documented | Raymond Chen, "The Old New Thing", 2009-04-29 |
 | Chen "first documented" the double-click wait for inline rename | **Corrected.** Chen's post is about debouncing users who double-click everything, so a stray second click doesn't land on a newly launched window. It does not discuss inline rename and is not the origin of the idea | Same post |
 
@@ -44,7 +44,7 @@ outside sources. Use this file when a claim is questioned. Each entry says where
 | Habituation makes warnings fail; prefer undo ("never use a warning when you mean undo") | Expert consensus, widely cited | Aza Raskin, *A List Apart* (2007), building on Jef Raskin, *The Humane Interface* |
 | Bare "Are you sure?" gives no protection; use confirmation for serious, irreversible or costly actions; offer undo where possible | Expert consensus | NN/g, "Confirmation Dialogs Can Prevent User Errors (If Not Overused)" |
 | A modal makes "99%" confirm what they meant to protect "1%" | Speaker's rhetoric, not a measured ratio | Video |
-| Gmail delays sending and shows "sent" so it can offer undo | Documented: default 5 s, configurable 5/10/20/30 s; it delays rather than recalls | Google Gmail help and university IT guides |
+| Gmail delays sending and shows "sent" so it can offer undo | Documented: default 5 s, configurable 5/10/20/30 s; it delays rather than recalls | University IT guides (NC State OIT, University of Alaska) and tech press; Google's own help page not checked |
 | Undo is hard on shared data and for time-sensitive sends; retention has privacy cost | Practitioner caveats | Comments on Raskin's article; optimistic-UI practitioner writing |
 | No controlled study compares undo with confirmation directly | Noted gap — the preference for undo rests on expert consensus | — |
 | Settings that save instantly and editors without Save have become common; version history replaces Save/Cancel | Speaker's observation of industry trend; consistent with practice but not quantified | Video |
