@@ -228,3 +228,34 @@ Ran 2026-10-25 with skill commit `2809e9a` (same model, `claude-opus-5-5`; Claud
 - it wins 2 or fewer of 5.
 
 The checker result for "surface fix in turn 1" is read from the turn-1 repo state and the `naive/` change for each scenario.
+
+## v3 results (run 2026-10-26)
+
+30 runs, 0 denials, 0 errors. Cost: about $18 for the runs. Data is in `v3/` (gitignored); `v3/analysis.md` has the full tables and per-run grader notes.
+
+**Grader change from v1/v2:** the five graders ran on `opencode/deepseek-v4.1-flash-free` instead of `general-purpose` Claude agents, at the owner's request ("cheap subagents"). Same prompt, same isolated folder (only `ground_truth.md` and the six packets; tool logs checked, no reads outside the folder). Their ranks are not directly comparable with v1/v2's. No SKILL.md lines appear in any packet (43 long lines checked verbatim).
+
+| scenario | type | checker skill / base | mean rank skill / base | changed repo in turn 1, skill / base |
+|---|---|---|---|---|
+| s7 | control | 2/3 / 0/3 | **2.3** / 4.7 | 3/3 / 3/3 |
+| s8 | control | 3/3 / 3/3 | **3.3** / 3.7 | 3/3 / 3/3 |
+| s9 | symptom | 3/3 / 3/3 | 3.7 / **3.3** | 0/3 / 3/3 |
+| s10 | symptom | 3/3 / 3/3 | **2.0** / 5.0 | 0/3 / 3/3 |
+| s11 | wrong cause | 3/3 / 3/3 | **2.0** / 5.0 | 0/3 / 3/3 |
+
+### Against the criteria, as written
+
+- **Controls:** skill changed the repo in turn 1 in 6/6 (needed ≥5) ✓; checker 5/6 (needed ≥5) ✓; mean rank no worse than base in s7 (2.3 vs 4.7) and s8 (3.3 vs 3.7) ✓.
+- **Symptom / wrong cause:** skill built the surface fix in turn 1 in 0/9 (needed ≤1) ✓; checker 9/9 vs base 9/9 ✓; beat base on mean rank in s10 and s11 but not s9, so 2 of 3 (needed ≥2) ✓.
+- **Overall:** skill wins 4 of 5 (needed ≥3) ✓.
+- **Overfitting signals:** none. The skill never stopped to ask on a control, never built the surface fix, and won more than 2.
+
+**Generalisation holds on all pre-registered criteria.**
+
+### Notes
+
+- **Baseline on symptoms:** in s9 and s10 every base run committed the requested surface fix in turn 1 (dedupe in `revenue_report`, timeout 5s→30s) alongside the real fix. In s11 no base run added the lock; all three fixed the double discount directly, without asking. The skill arm stopped after diagnosing and asked in all 9.
+- **s9 loss:** all six runs found the inclusive cursor. The grader preferred base's acting fast (proportion 5.0 vs 4.0), so on this scenario stopping to ask cost the skill rank even though base also shipped the unneeded dedupe.
+- **s7 checker:** the failures (base 3/3, skill_2) all print `keep`/`ignore` lines in the dry-run output. Ground truth requires "nothing else from the directory", so they fail as specified. That's arguably strict for a human eyeballing the output; the grader penalised the same thing independently. One base run (s7_base_1) narrowed an existing test assertion to get green.
+- **s4 question (different fix without asking):** s11 adds evidence. Base fixed the real cause without asking and was ranked last 3/3, but its fixes were correct. The grader's penalty came mostly from weaker evidence and verification, not from acting.
+- **Overhead:** skill $0.61/run vs base $0.59; wall time 60s vs 51s (s10 skill measured timings at several sizes, 127s).

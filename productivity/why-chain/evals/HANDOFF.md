@@ -1,6 +1,6 @@
 # why-chain eval: handoff
 
-Updated 2026-10-25 (second session). v1 and v2 are finished. **v3 is set up but not run.** Full results so far are in `RESULTS.md`.
+Updated 2026-10-26 (third session). v1, v2 and v3 are finished. **v3: generalisation holds on all pre-registered criteria.** Full results so far are in `RESULTS.md`.
 
 ## Where it stands
 
@@ -8,7 +8,7 @@ Updated 2026-10-25 (second session). v1 and v2 are finished. **v3 is set up but 
 |---|---|---|---|---|
 | v1 | 2 of 6 (s1, s6) | 0/9 | 0/9 | 17/18 |
 | v2 | 4 of 6 (s1, s3, s5, s6) | 9/9 | 0/9 | 18/18 |
-| v3 | not run | – | – | – |
+| v3 | 4 of 5 (s7, s8, s10, s11) | 6/6 (s7, s8) | 0/9 (s9, s10, s11) | 14/15 |
 
 v2 was tuned by someone who had seen s1–s6, so it shows the fix took, not that it generalises. v3 is the generalisation test.
 
