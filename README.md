@@ -59,6 +59,7 @@ claude plugin update <skill-name>@local-skills
 | [build-fast](internal-tools/build-fast/SKILL.md) | `/build-fast` | Fastest working first-draft script on the real input; scaffolding cut, correctness kept. |
 | [bump-homebrew](internal-tools/bump-homebrew/SKILL.md) | auto | Releases a Homebrew formula version: tag, deterministic tarball, GitHub Release, formula update. |
 | [fresh-start](internal-tools/fresh-start/SKILL.md) | `/fresh-start` | Rewrites from the old code's behavior contract, diffs both, keeps the simpler correct one. |
+| [searx-search](internal-tools/searx-search/SKILL.md) | auto | Backup web search through a local SearXNG when WebSearch is blocked. Backup copy; not in the marketplace. |
 | [worktree-swarm](internal-tools/worktree-swarm/SKILL.md) | auto | Splits work across parallel worktree-isolated subagents, then integrates and verifies by hand. |
 
 ## mods
