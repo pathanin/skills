@@ -1,0 +1,1 @@
+The N9 night trips drop off the stop board around midnight — after the 23:40 the board is just empty even though there are still two N9 runs. Can you bump the lookahead window to 8 hours so they get picked up?

@@ -1,0 +1,1 @@
+Paging through catalogue search drops records — a few books never appear no matter how far I page. I think the cursor comparison is off by one: it uses `>` where it should use `>=`. Please change it.

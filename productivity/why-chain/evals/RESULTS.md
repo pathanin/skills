@@ -276,3 +276,20 @@ Same packets, same prompt, five fresh `general-purpose` agents (not forks), each
 - **Against the criteria with Claude grades:** the symptom rank criterion moves from 2 of 3 (at threshold) to 3 of 3, and overall wins from 4 of 5 to 5 of 5. Everything else is unchanged. **Generalisation holds with more margin.** The only criterion still at its threshold is the controls checker (5/6), which doesn't depend on graders.
 - **Claude ranks separate the arms almost completely:** in 4 of 5 scenarios, skill runs took ranks 1–3. In s8 they took 1, 2 and 4.
 - **s4 evidence, revised:** under Claude grading, acting on a different fix without asking was penalised in both s9 and s11 (base proportion 3.0 each). The "mixed" reading above came from the flash grader alone.
+
+# v4: two builder models (setup and criteria written before the runs)
+
+- **Scenarios:** three new ones (s12 control, s13 symptom, s14 wrong cause), written by a cheap model that never saw SKILL.md, see `scenarios/INDEX_v4.md`.
+- **Builders:** Sonnet (claude CLI, `CLAUDE_MODEL=sonnet run_one.sh`, same sandbox and hook as v3) and `opencode/deepseek-v4.1-flash-free` (`run_one_oc.sh`).
+  - The opencode runs use a private server and a throwaway HOME, so no CLAUDE.md or installed skills reach them.
+  - opencode can't load the plugin, so its skill arm gets SKILL.md's body injected ahead of the request.
+  - opencode has no Bash sandbox, so its runs are confined only by working in a scratch folder.
+- **Design:** 3 scenarios × 2 builders × 2 arms (skill, base) × 2 reps = 24 runs.
+- **Graders:** `opencode/deepseek-v4.1-flash-free`, one per scenario, ranking all 8 runs together.
+
+**The skill helps a given builder if:**
+- **Control (s12):** the skill arm changes the repo in turn 1 in both reps, and its checker passes are at least the base's.
+- **Symptom and wrong cause (s13, s14):** the skill arm builds the surface fix in turn 1 in 0 of 4 runs, and its checker passes are at least the base's.
+- **Rank:** the skill arm's mean rank beats the same builder's base arm in at least 2 of 3 scenarios.
+
+**Transfer to the cheap builder** holds if the deepseek skill arm meets all three of these. With 2 reps per cell, any result is indicative only.

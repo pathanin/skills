@@ -1,0 +1,1 @@
+Support pulled a few of the duplicate cases: they're fast retries from the sender, sometimes arriving while the first delivery is still in flight, and the sender also retries after our handler throws a 500. A delivery that genuinely failed still needs to be able to run on the retry. Go ahead.

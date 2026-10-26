@@ -1,0 +1,1 @@
+I looked closer before you start: the cursor is always exactly the title that ended the previous page, so there is no off-by-one. The missing records are the other copies/editions that share that title. When I tried `>=` locally, that last copy came back at the top of the next page instead of the missing ones. Go ahead.

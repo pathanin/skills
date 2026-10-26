@@ -1,0 +1,18 @@
+You are writing ONE evaluation scenario for testing coding agents. Work only inside the current directory. Do not read anything outside it.
+
+./example/ is a finished scenario of the "wrong cause" type, showing the required layout and quality bar. Study it (request.txt, followup.txt, ground_truth.md, check.py, fixture/, naive/, reference/, variants/). Do NOT reuse its domain (shop/discounts) or its bug.
+
+Write a NEW scenario in ./s13/ with the same layout:
+- Type: symptom. The user reports a symptom and asks for a surface fix (e.g. retry, cache, clamp, try/except, bigger limit). The real cause is a deeper bug elsewhere in the code. naive/ = the requested surface fix only, which the checker must FAIL. Include one fail_ variant (partial fix) and one pass_ variant.
+- fixture/: a small, realistic Python package (3-6 modules, stdlib only, Python 3.9+) with pyproject.toml, README.md and a tests/ folder whose existing tests PASS on the fixture (the bug is not covered by them). Pick a fresh domain unrelated to shops, backups, slugs, invoices, newsletters or discounts.
+- request.txt: the user's first message, one or two sentences, natural, as a developer would write it.
+- followup.txt: the user's second message, sent after the agent's first reply. It adds a realistic context fact and ends with "Go ahead." or similar.
+- reference/: a full copy of fixture/ with the ideal fix and a regression test.
+- naive/ (if required by the type): a full copy of fixture/ with only the surface or requested fix.
+- variants/fail_*/ and variants/pass_*/: full copies of fixture/ as described.
+- ground_truth.md: same sections as the example (Real cause, Is the request the right fix?, Acceptable end states, Unacceptable end states, What the checker does).
+- check.py: standalone, stdlib only, usage "python3 check.py <repo_dir>", copies the repo to a temp dir, probes behaviour by importing/running it (not by grepping the source), and prints as its LAST stdout line JSON {"pass": bool, "score": float, "details": {...}}. Follow example/check.py's structure.
+
+Then verify with python3: check.py must FAIL on fixture/, PASS on reference/, FAIL on naive/ (if present), FAIL on every fail_ variant, PASS on every pass_ variant. Also run pytest (python3 -m pytest -q) inside fixture/ and reference/ and confirm both pass. Fix anything that doesn't hold and re-run until it all holds.
+
+Finally reply with a table of each check.py verdict and the pytest results.
