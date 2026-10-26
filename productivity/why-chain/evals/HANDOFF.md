@@ -12,45 +12,26 @@ Updated 2026-10-26 (third session). v1, v2 and v3 are finished. **v3: generalisa
 
 v2 was tuned by someone who had seen s1–s6, so it shows the fix took, not that it generalises. v3 is the generalisation test.
 
-## Done this session
+## Done this session (2026-10-26)
 
-1. **The harness allowlist is fixed** (commit `afb4438`).
-   - Runs now use the Bash sandbox plus `allow_bash_hook.py`, a PreToolUse hook that allows every Bash command except the deny list.
-   - Smoke-tested on s4 base and s2 skill: loops, `VAR=… cmd`, heredocs and pytest all run, and both runs passed. Curl, git push and writes to the home folder stay blocked.
-   - The one refusal left comes from the user's global `~/.claude` git-guard hook (on `git stash` / `git checkout --`). It hits both arms equally.
-2. **v3 success criteria were written and committed before any run** (commit `47e64c8`, end of `RESULTS.md`).
-3. **Five fresh scenarios, s7–s11**, were written by an isolated agent. Its tool calls never touched this repo, which was checked in its transcript.
+1. **v3 was run:** 30 runs, 0 denials, 0 errors, about $18. The data is archived in `v3/` (gitignored), with tables in `v3/analysis.md`. Results and the verdict are at the end of `RESULTS.md`.
+2. **The verdict:** generalisation holds on all pre-registered criteria, but two of them pass only at their threshold.
+3. **The graders were swapped.** v3 was graded by `opencode/deepseek-v4.1-flash-free`, at the owner's request ("cheap subagents"), instead of Claude `general-purpose` agents.
+   - **Don't compare v3 ranks one to one with v1/v2.**
+   - Grader isolation was checked: each opened only its 7 files, and all 7 of them.
+   - No SKILL.md text leaked into the packets.
+4. **The earlier setup work is in commits `afb4438` and `47e64c8`:** the harness fix, the criteria and s7–s11.
 
-   | id | type | summary |
-   |---|---|---|
-   | s7 | control | add `--dry-run` to a backup pruner |
-   | s8 | control | ASCII-fold accented letters in `slugify`, stdlib only |
-   | s9 | symptom | asks to dedupe; the real cause is an inclusive pagination cursor |
-   | s10 | symptom | asks to raise a timeout; the real cause is an O(n²) list-membership dedupe |
-   | s11 | wrong cause | blames a race and asks for a lock; the real cause is a double-applied discount |
+## Next step
 
-   - **Checkers re-run by me:** 23 of 23 verdicts as expected (fixture fail, reference pass, naive fail, variants as named). Details are in `scenarios/INDEX_v3.md`.
-   - `scenarios-v3-src/build.py` regenerates them.
-   - `analyze.py` now counts s7 and s8 as controls.
-   - `jobs_v3.txt` lists the 30 jobs.
-
-## Next step: run v3 (about $30, about 25 min)
-
-1. **Move the stale run data out.** `runs/` and `graders/` in `evals/` may hold old data. The two smoke-test runs live in the session scratchpad, not here.
-2. **Copy `scenarios/` to a scratch folder outside the repo and run the jobs:**
-   ```bash
-   EVAL_DIR=<scratch>/eval xargs -P 12 -L 1 ./run_one.sh < jobs_v3.txt
-   ```
-   - Test one run first: check that `final.diff` isn't empty and that it has about 0 denials (`python3 runtrace.py --metrics …/turn1.jsonl`).
-3. **Score the runs.** Copy them into `evals/runs/`, then run `/Users/oat/venv/bin/python3 score_and_blind.py`. Move the outputs into `v3/`.
-4. **Grade with five fresh `general-purpose` agents, not forks.** Use `grader_prompt.md`, and give each agent only its scenario's `ground_truth.md` and the six packets, in an isolated folder.
-   - Validate each `grades.json`.
-   - grep the packets for phrases from `SKILL.md` to check the skill text didn't leak.
-5. **Write up the results.** Run `python3 analyze.py v3`, then score the run against the criteria in `RESULTS.md` **as written**.
+Nothing is required. Options:
+- **Re-grade v3 with Claude `general-purpose` graders** (cheap, since there are no new runs), to make its ranks comparable with v1/v2 and firm up the thin margins. The packets are rebuilt by copying `v3/runs` back to `runs/` and running `score_and_blind.py`, which uses the same seed, so the ids come out the same.
+- **The s4 owner decision**, now with evidence from s9 and s11 (see "Notes" in `RESULTS.md`).
+- **Rerun s1–s6 on the fixed harness** (about $36).
 
 ## Still open
 
-- **s4 decision (owner):** should the skill build a *different* fix without asking when the evidence is strong? v3's s11 (wrong cause) will add evidence on this.
+- **s4 decision (owner):** should the skill build a *different* fix without asking when the evidence is strong? The v3 evidence is mixed: acting was penalised in s11 and rewarded in s9.
 - **s1–s6 on the fixed harness:** not rerun, to save cost (about $36 for both arms). v1/v2 numbers are still from the old allowlist.
 - **Packaging:** `evals/` ships inside the plugin folder. Move it if that matters.
 

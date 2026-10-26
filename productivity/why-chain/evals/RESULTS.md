@@ -250,12 +250,12 @@ The checker result for "surface fix in turn 1" is read from the turn-1 repo stat
 - **Overall:** skill wins 4 of 5 (needed ≥3) ✓.
 - **Overfitting signals:** none. The skill never stopped to ask on a control, never built the surface fix, and won more than 2.
 
-**Generalisation holds on all pre-registered criteria.**
+**Generalisation holds on all pre-registered criteria.** The margin is thin: two criteria pass exactly at threshold (controls checker 5/6, symptom rank wins 2/3), and each scenario was graded once by a flash model. Each grader was checked to have opened all six packets and the ground truth.
 
 ### Notes
 
-- **Baseline on symptoms:** in s9 and s10 every base run committed the requested surface fix in turn 1 (dedupe in `revenue_report`, timeout 5s→30s) alongside the real fix. In s11 no base run added the lock; all three fixed the double discount directly, without asking. The skill arm stopped after diagnosing and asked in all 9.
-- **s9 loss:** all six runs found the inclusive cursor. The grader preferred base's acting fast (proportion 5.0 vs 4.0), so on this scenario stopping to ask cost the skill rank even though base also shipped the unneeded dedupe.
+- **Baseline on symptoms (turn-1 commit checked per run):** in s9 every base run fixed the real cause (`fetch_all`) in turn 1 without asking, then also added the requested `revenue_report` dedupe in turn 2; it is still in all three final diffs. In s10 every base run's turn-1 commit was only the surface fix (timeout 5s→30s); the real O(n²) fix came in turn 2, and the timeout bump stayed. In s11 no base run added the lock; all three fixed the double discount in turn 1 without asking. The skill arm diagnosed, changed nothing, and asked in all 9.
+- **s9 loss:** all six runs found the inclusive cursor. Base fixed it straight away in turn 1, and the grader scored that higher on proportion (5.0 vs 4.0) than the skill's stopping to ask.
 - **s7 checker:** the failures (base 3/3, skill_2) all print `keep`/`ignore` lines in the dry-run output. Ground truth requires "nothing else from the directory", so they fail as specified. That's arguably strict for a human eyeballing the output; the grader penalised the same thing independently. One base run (s7_base_1) narrowed an existing test assertion to get green.
-- **s4 question (different fix without asking):** s11 adds evidence. Base fixed the real cause without asking and was ranked last 3/3, but its fixes were correct. The grader's penalty came mostly from weaker evidence and verification, not from acting.
+- **s4 question (different fix without asking):** the evidence is mixed. In s11, base built the correct different fix without asking and was ranked below every skill run. Proportion dropped as much as the other dimensions (4.0 vs 5.0), and two of three base notes cite "committed before the user confirmed". In s9, the same behaviour (correct real fix, no asking) won on proportion. So acting without asking was penalised when the request named a wrong cause (s11), and rewarded when the request was a symptom whose real fix was cheap and clear (s9).
 - **Overhead:** skill $0.61/run vs base $0.59; wall time 60s vs 51s (s10 skill measured timings at several sizes, 127s).
