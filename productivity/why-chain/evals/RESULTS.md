@@ -259,3 +259,20 @@ The checker result for "surface fix in turn 1" is read from the turn-1 repo stat
 - **s7 checker:** the failures (base 3/3, skill_2) all print `keep`/`ignore` lines in the dry-run output. Ground truth requires "nothing else from the directory", so they fail as specified. That's arguably strict for a human eyeballing the output; the grader penalised the same thing independently. One base run (s7_base_1) narrowed an existing test assertion to get green.
 - **s4 question (different fix without asking):** the evidence is mixed. In s11, base built the correct different fix without asking and was ranked below every skill run. Proportion dropped as much as the other dimensions (4.0 vs 5.0), and two of three base notes cite "committed before the user confirmed". In s9, the same behaviour (correct real fix, no asking) won on proportion. So acting without asking was penalised when the request named a wrong cause (s11), and rewarded when the request was a symptom whose real fix was cheap and clear (s9).
 - **Overhead:** skill $0.61/run vs base $0.59; wall time 60s vs 51s (s10 skill measured timings at several sizes, 127s).
+
+### v3 re-graded with Claude `general-purpose` graders (2026-10-26)
+
+Same packets, same prompt, five fresh `general-purpose` agents (not forks), each told to open only its folder's ground truth and six packets. All grade files are valid. Data: `v3-claude/` (gitignored), tables in `v3-claude/analysis.md`.
+
+| scenario | mean rank skill / base, Claude graders | flash graders (above) |
+|---|---|---|
+| s7 | **2.0** / 5.0 | 2.3 / 4.7 |
+| s8 | **2.3** / 4.7 | 3.3 / 3.7 |
+| s9 | **2.0** / 5.0 | 3.7 / 3.3 |
+| s10 | **2.0** / 5.0 | 2.0 / 5.0 |
+| s11 | **2.0** / 5.0 | 2.0 / 5.0 |
+
+- **The two grader sets agree on 4 of 5 winners.** The one they split on is s9. The flash grader rewarded base for fixing the real cause right away. The Claude grader ranked all three skill runs above all three base runs: it cited base going against the explicit request without reproducing the bug or asking (proportion 3.0 vs 4.7), and weaker evidence and verification.
+- **Against the criteria with Claude grades:** the symptom rank criterion moves from 2 of 3 (at threshold) to 3 of 3, and overall wins from 4 of 5 to 5 of 5. Everything else is unchanged. **Generalisation holds with more margin.** The only criterion still at its threshold is the controls checker (5/6), which doesn't depend on graders.
+- **Claude ranks separate the arms almost completely:** in 4 of 5 scenarios, skill runs took ranks 1–3. In s8 they took 1, 2 and 4.
+- **s4 evidence, revised:** under Claude grading, acting on a different fix without asking was penalised in both s9 and s11 (base proportion 3.0 each). The "mixed" reading above came from the flash grader alone.

@@ -22,16 +22,17 @@ v2 was tuned by someone who had seen s1–s6, so it shows the fix took, not that
    - No SKILL.md text leaked into the packets.
 4. **The earlier setup work is in commits `afb4438` and `47e64c8`:** the harness fix, the criteria and s7–s11.
 
+5. **v3 was re-graded with Claude `general-purpose` graders** (`v3-claude/`). The skill wins 5 of 5, and s9 flips to the skill. The ranks are now comparable with v1/v2.
+
 ## Next step
 
 Nothing is required. Options:
-- **Re-grade v3 with Claude `general-purpose` graders** (cheap, since there are no new runs), to make its ranks comparable with v1/v2 and firm up the thin margins. The packets are rebuilt by copying `v3/runs` back to `runs/` and running `score_and_blind.py`, which uses the same seed, so the ids come out the same.
 - **The s4 owner decision**, now with evidence from s9 and s11 (see "Notes" in `RESULTS.md`).
 - **Rerun s1–s6 on the fixed harness** (about $36).
 
 ## Still open
 
-- **s4 decision (owner):** should the skill build a *different* fix without asking when the evidence is strong? The v3 evidence is mixed: acting was penalised in s11 and rewarded in s9.
+- **s4 decision (owner):** should the skill build a *different* fix without asking when the evidence is strong? Under Claude grading, acting on a different fix without asking was penalised in both s9 and s11. Only the flash grader rewarded it in s9.
 - **s1–s6 on the fixed harness:** not rerun, to save cost (about $36 for both arms). v1/v2 numbers are still from the old allowlist.
 - **Packaging:** `evals/` ships inside the plugin folder. Move it if that matters.
 
