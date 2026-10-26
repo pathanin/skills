@@ -293,3 +293,37 @@ Same packets, same prompt, five fresh `general-purpose` agents (not forks), each
 - **Rank:** the skill arm's mean rank beats the same builder's base arm in at least 2 of 3 scenarios.
 
 **Transfer to the cheap builder** holds if the deepseek skill arm meets all three of these. With 2 reps per cell, any result is indicative only.
+
+## v4 results (run 2026-10-26)
+
+24 runs, 0 denials, 0 errors. Sonnet cost about $9 in total, and deepseek is free. Graders: 3 × `opencode/deepseek-v4.1-flash-free`. Each read all 9 of its files and nothing outside its folder. No SKILL.md lines appear in any packet. Data: `v4/` (gitignored), tables in `v4/analysis.md`.
+
+| scenario | type | checker skill / base, Sonnet | checker skill / base, deepseek | mean rank of 8, skill / base, Sonnet | mean rank of 8, skill / base, deepseek |
+|---|---|---|---|---|---|
+| s12 | control | 2/2 / 2/2 | 2/2 / 2/2 | **2.0** / 6.5 | **3.0** / 6.5 |
+| s13 | symptom | 2/2 / 2/2 | 1/2 / 2/2 | **4.5** / 7.5 | 4.5 / **1.5** |
+| s14 | wrong cause | 2/2 / 2/2 | 2/2 / 2/2 | **4.5** / 7.5 | **2.5** / 3.5 |
+
+The skill arm changed the repo in turn 1 on the control in 4/4 runs, and on s13 and s14 in 0/8.
+
+### Against the criteria, as written
+
+| criterion | Sonnet | deepseek |
+|---|---|---|
+| Control: skill changes repo in turn 1 in both reps; passes ≥ base | ✓ (2/2; 2/2 vs 2/2) | ✓ (2/2; 2/2 vs 2/2) |
+| s13/s14: no surface fix in turn 1 (0/4); passes ≥ base | ✓ (0/4; 4/4 vs 4/4) | ✗ (0/4 ✓; but 3/4 vs 4/4) |
+| Mean rank beats own base in ≥ 2 of 3 | ✓ (3 of 3) | ✓ (2 of 3; lost s13) |
+
+- **The skill helps Sonnet:** all three criteria hold.
+- **Transfer to the cheap builder does not hold as written.** It fails by one checker run:
+  - **The failing run:** s13_skill_ds_2 fixed the parser but its final code still misses after-midnight trips (score 0.56, the `fail_parse_only` pattern).
+  - **The ranks:** deepseek's skill arm still beat its base on rank in s12 and s14.
+
+### Notes
+
+- **These baselines never built the surface fix.** On s13 and s14, all 8 base runs (both builders) went straight to the real cause in turn 1, without asking. On s13 the surface fix (lookahead to 8h) visibly doesn't help, and s14's request is a one-character change that the code makes obviously wrong. So the skill's "stop and ask" mostly bought process quality here, not avoided mistakes.
+- **s13, deepseek:** the grader ranked the base runs 1st and 2nd. They fixed both parts in one turn with before/after checks. The skill runs stopped to ask first, and one then shipped a partial fix.
+- **Sonnet base ranked low** (6.5–7.5) mainly on verification (2.5–3.5) and evidence. On s12 and s14, the deepseek base runs checked their work more than the Sonnet base runs did.
+- **The grader sees both builders together.** Tool names differ (`Bash` vs `bash`), so it could tell them apart. Ranks across builders are a cross-check only; the criteria compare each builder's skill arm with its own base.
+- **Overhead:** the skill arm took longer in wall time with both builders: Sonnet 59s vs 45s, and deepseek 116s vs 80s.
+- **Caveat:** 2 reps per cell and one flash grader per scenario. Treat every v4 number as indicative.

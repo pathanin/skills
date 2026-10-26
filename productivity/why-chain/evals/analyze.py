@@ -12,7 +12,7 @@ from statistics import mean
 E = Path(__file__).resolve().parent
 DIMS = ["diagnosis", "evidence", "verification", "proportion", "communication"]
 ARMS = ["skill", "base"]
-CONTROLS = {"s1", "s3", "s5", "s7", "s8"}
+CONTROLS = {"s1", "s3", "s5", "s7", "s8", "s12"}
 
 
 def fmt(xs):
@@ -33,20 +33,21 @@ def main():
         results[run]["id"] = rid
 
     scenarios = sorted({r["scenario"] for r in results.values()})
+    global ARMS
+    ARMS = sorted({r["arm"] for r in results.values()}, key=lambda a: (a.partition("-")[2], not a.startswith("skill")))
     by = {(s, a): [r for r in results.values() if r["scenario"] == s and r["arm"] == a]
           for s in scenarios for a in ARMS}
 
     print("## Checker scripts (final repo)\n")
-    print("| scenario | type | skill pass | base pass | skill score | base score |")
-    print("|---|---|---|---|---|---|")
+    print("| scenario | type | " + " | ".join(f"{a} pass" for a in ARMS) + " | " + " | ".join(f"{a} score" for a in ARMS) + " |")
+    print("|---|---|" + "---|" * (2 * len(ARMS)))
     for s in scenarios:
-        k, b = by[s, "skill"], by[s, "base"]
         typ = "control" if s in CONTROLS else "symptom"
-        print(f"| {s} | {typ} | {sum(r['check']['pass'] for r in k)}/{len(k)} | "
-              f"{sum(r['check']['pass'] for r in b)}/{len(b)} | "
-              f"{fmt([r['check']['score'] for r in k])} | {fmt([r['check']['score'] for r in b])} |")
+        passes = " | ".join(f"{sum(r['check']['pass'] for r in by[s, a])}/{len(by[s, a])}" for a in ARMS)
+        scores = " | ".join(fmt([r['check']['score'] for r in by[s, a]]) for a in ARMS)
+        print(f"| {s} | {typ} | {passes} | {scores} |")
 
-    print("\n## LLM graders (process, mean of 3 runs, 1–5; rank 1 = best of 6)\n")
+    print("\n## LLM graders (process, mean of runs per arm, 1–5; rank 1 = best in the scenario)\n")
     print("| scenario | arm | " + " | ".join(DIMS) + " | mean rank | ranks |")
     print("|---|---|" + "---|" * (len(DIMS) + 2))
     for s in scenarios:

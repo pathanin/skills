@@ -1,5 +1,6 @@
 #!/bin/bash
 # Usage: run_one.sh <scenario> <arm: skill|base> <rep>
+# Set CLAUDE_MODEL (e.g. sonnet) to pick the builder model; the run folder is then <s>_<arm>_<model>_<rep>.
 # Runs one two-turn headless session in a fresh copy of the scenario fixture.
 # Set EVAL_DIR to a folder outside this repo (with scenarios/ copied in): runs placed
 # inside the repo had every Edit and Write refused under dontAsk.
@@ -8,7 +9,8 @@ E=${EVAL_DIR:-$(cd "$(dirname "$0")" && pwd)}
 P=$(cd "$(dirname "$0")/.." && pwd)
 s=$1; arm=$2; rep=$3
 HOOK="$(cd "$(dirname "$0")" && pwd)/allow_bash_hook.py"
-D=$E/runs/${s}_${arm}_${rep}
+M=${CLAUDE_MODEL:-}
+D=$E/runs/${s}_${arm}_${M:+${M}_}${rep}
 rm -rf "$D"; mkdir -p "$D"
 cp -R "$E/scenarios/$s/fixture" "$D/repo"
 cd "$D/repo" || exit 1
@@ -21,6 +23,7 @@ DENY='Bash(pip:*),Bash(pip3:*),Bash(python3 -m pip:*),Bash(crontab:*),Bash(launc
 SETTINGS=$(python3 -c 'import json,sys; print(json.dumps({"sandbox": {"enabled": True, "autoAllowBashIfSandboxed": True}, "hooks": {"PreToolUse": [{"matcher": "Bash", "hooks": [{"type": "command", "command": "python3 " + sys.argv[1]}]}]}}))' "$HOOK")
 FLAGS=(--output-format stream-json --verbose --permission-mode dontAsk --settings "$SETTINGS" --allowedTools "$ALLOW" --disallowedTools "$DENY")
 [ "$arm" = skill ] && FLAGS+=(--plugin-dir "$P")
+[ -n "$M" ] && FLAGS+=(--model "$M")
 
 req=$(cat "$E/scenarios/$s/request.txt")
 [ "$arm" = skill ] && req="/why-chain $req"

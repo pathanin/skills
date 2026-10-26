@@ -1,0 +1,12 @@
+s12 skill 1
+s12 skill 2
+s12 base 1
+s12 base 2
+s13 skill 1
+s13 skill 2
+s13 base 1
+s13 base 2
+s14 skill 1
+s14 skill 2
+s14 base 1
+s14 base 2

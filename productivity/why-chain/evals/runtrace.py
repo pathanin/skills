@@ -29,7 +29,14 @@ def trace(path):
     out = []
     for ev in events(path):
         t = ev.get("type")
-        if t == "assistant":
+        part = ev.get("part") or {}
+        if t == "text" and part.get("text", "").strip():  # opencode
+            out.append(f"[assistant]\n{part['text'].strip()}")
+        elif t == "tool_use" and part:  # opencode
+            st = part.get("state") or {}
+            out.append(f"[tool call: {part.get('tool')}] {clip(st.get('input'), 600)}")
+            out.append(f"[tool result] {clip(st.get('output') or st.get('error') or '')}")
+        elif t == "assistant":
             for block in ev["message"].get("content", []):
                 if block.get("type") == "text" and block["text"].strip():
                     out.append(f"[assistant]\n{block['text'].strip()}")
@@ -48,8 +55,21 @@ def trace(path):
 
 
 def metrics(path):
+    evs = list(events(path))
+    if evs and "sessionID" in evs[0]:  # opencode: no result event, so derive what we can
+        texts = [e["part"]["text"] for e in evs if e.get("type") == "text"]
+        ts = [e["timestamp"] for e in evs if "timestamp" in e]
+        return {
+            "cost_usd": sum((e["part"].get("cost") or 0) for e in evs if e.get("type") == "step_finish"),
+            "num_turns": sum(e.get("type") == "step_start" for e in evs),
+            "duration_ms": (max(ts) - min(ts)) if ts else 0,
+            "denials": sum(e.get("type") == "tool_use" and (e["part"].get("state") or {}).get("status") == "error"
+                           and "denied" in str(e["part"]["state"].get("error", "")).lower() for e in evs),
+            "is_error": any(e.get("type") == "error" for e in evs) or not texts,
+            "final_text": texts[-1] if texts else "",
+        }
     res = {}
-    for ev in events(path):
+    for ev in evs:
         if ev.get("type") == "result":
             res = ev
     return {

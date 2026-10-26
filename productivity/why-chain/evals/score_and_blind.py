@@ -15,7 +15,7 @@ E = Path(__file__).resolve().parent
 sys.path.insert(0, str(E))
 import runtrace as tr  # noqa: E402
 
-RUN_RE = re.compile(r"(s\d+)_(skill|base)_(\d+)")
+RUN_RE = re.compile(r"(s\d+)_(skill|base)_(?:([a-z]+)_)?(\d+)")
 
 
 def check(scenario, repo):
@@ -41,7 +41,9 @@ def main():
         m = RUN_RE.fullmatch(run_dir.name)
         if not m:
             continue
-        s, arm, rep = m.groups()
+        s, arm, model, rep = m.groups()
+        if model:  # v4+: several builder models; keep arm and model together for the tables
+            arm = f"{arm}-{model}"
         t1 = tr.metrics(run_dir / "turn1.jsonl") if (run_dir / "turn1.jsonl").exists() else {}
         t2 = tr.metrics(run_dir / "turn2.jsonl") if (run_dir / "turn2.jsonl").exists() else {}
         after1 = (run_dir / "after_turn1.txt").read_text()

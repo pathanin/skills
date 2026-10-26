@@ -24,6 +24,8 @@ v2 was tuned by someone who had seen s1–s6, so it shows the fix took, not that
 
 5. **v3 was re-graded with Claude `general-purpose` graders** (`v3-claude/`). The skill wins 5 of 5, and s9 flips to the skill. The ranks are now comparable with v1/v2.
 
+6. **v4 was run:** 3 fresh scenarios (s12–s14), Sonnet and opencode deepseek as builders, with and without the skill, 2 reps each, graded by cheap graders. The skill helps Sonnet on all criteria. Transfer to deepseek misses by one checker run (s13). The details are at the end of `RESULTS.md`. The harness is `run_one_oc.sh` (opencode) plus `CLAUDE_MODEL=sonnet run_one.sh`.
+
 ## Next step
 
 Nothing is required. Options:
@@ -47,6 +49,8 @@ Nothing is required. Options:
 | `scenarios/` (s1–s11), `checker-src/`, `validation/`, `scenarios-v3-src/` | The scenarios and their checkers. |
 
 ## Lessons learned
+
+- **opencode from a background shell hangs forever** unless stdin is `/dev/null`: `opencode run` waits for piped input. `run_one_oc.sh` handles this. Use `--standalone` plus a throwaway HOME, or the user's global CLAUDE.md and skills leak into the run.
 
 - **Runs inside this repo** get every Edit and Write refused under headless `dontAsk`. Always use a scratch folder.
 - **`score_and_blind.py` overwrites** `results.json`, `blind_key.json` and `graders/`, and `run_one.sh` deletes run folders with the same name. Archive the previous round first.
