@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { Register, Timer } from 'claude-code'
+import type { ApiContentBlock, Register, Timer } from 'claude-code'
 
 import type { Plan, Step, StepStatus } from '../types'
 import { applyPlanInput, countDone, fit, isFinished, mayMirror } from './plan'
@@ -52,9 +52,16 @@ const MARK: Record<StepStatus, string> = { completed: '✓', in_progress: '◼',
 const SPIN = ['◐', '◓', '◑', '◒']
 const SPIN_MS = 250
 
+// A list left in one place through this many tool calls has likely fallen behind the work (the
+// model forgot to advance it), so the next tool result carries a reminder. A Stop hook could
+// catch it at the end instead, but a managed organization passes classic.* over.
+const STALE_AFTER = 8
+
 export const register: Register = on => {
   // Started by the band when it draws a step in progress; stops itself once none is.
   let ticker: Timer | null = null
+  // Main-loop tool results since the model last sent update_plan.
+  let quiet = 0
   // The mod is for the CLI alone: the desktop app pins its own plan, and a session it runs (an
   // SDK host, like a -p run) starts with no terminal. Read again on each reload's session.start.
   let isCli = false
@@ -87,10 +94,24 @@ export const register: Register = on => {
   // with an empty band, as in the desktop app, even if the model sends no new list for it.
   on('turn.start', async ($, e, next) => {
     if (e.agentId === undefined && e.text !== '') {
+      quiet = 0
       await update($, plan, current => (current !== null && isFinished(current) ? null : current))
     }
     return next(e)
   })
+
+  on('session.append', { door: 'tool-result' }, async ($, e, next) => {
+    if (!isCli || e.agentId !== undefined || e.origin.kind !== 'tool' || e.origin.tool === TOOL) return next(e)
+    const current: Plan | null = await read($, plan)
+    if (current?.source !== 'plan' || isFinished(current)) {
+      quiet = 0
+      return next(e)
+    }
+    quiet += 1
+    if (quiet < STALE_AFTER) return next(e)
+    quiet = 0
+    return next({ ...e, message: { ...e.message, content: withReminder(e.message.content, behind(current)) } })
+  }).catch(($, e, next) => next(e))
 
   // The mod's own tool: the desktop app's update_plan, drawn in the terminal.
   on('tool.call', { tool: TOOL }, async ($, e) => {
@@ -100,6 +121,7 @@ export const register: Register = on => {
     }
     const answer = applyPlanInput(await read($, plan), input as PlanInput)
     if ('error' in answer) return { result: answer.error, isError: true }
+    quiet = 0
     await update($, plan, () => answer.plan)
     return { result: answer.text }
   })
@@ -230,5 +252,27 @@ export const register: Register = on => {
         {beneath}
       </Box>
     )
+  })
+}
+
+function behind(current: Plan): string {
+  const step = current.steps.find(s => s.status === 'in_progress')
+  const where = step ? `still shows "${step.content}" in progress` : `still shows ${countDone(current)} of ${current.steps.length} steps done`
+  return `<system-reminder>The live task list ${where} after ${STALE_AFTER} tool calls without an update. If steps are done, send ${TOOL} with {"advance": true} (or {"done": [...], "start": n}) alongside your next tool call; if the plan changed, send the whole list again. Do not mention this reminder.</system-reminder>`
+}
+
+/** Adds `text` to the last tool_result block of a tool-result row. */
+function withReminder(content: ApiContentBlock[], text: string): ApiContentBlock[] {
+  const at = content.findLastIndex(b => b.type === 'tool_result')
+  if (at === -1) return content
+  return content.map((block, i) => {
+    if (i !== at || block.type !== 'tool_result') return block
+    const inner = block.content
+    const added = Array.isArray(inner)
+      ? [...inner, { type: 'text' as const, text }]
+      : typeof inner === 'string'
+        ? `${inner}\n\n${text}`
+        : text
+    return { ...block, content: added }
   })
 }

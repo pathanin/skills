@@ -143,6 +143,66 @@ describe('a new request', () => {
   })
 })
 
+describe('a list left behind', () => {
+  // A tool result as the engine appends it to the main conversation.
+  const result = async ($: any, tool = 'Bash', content: unknown = 'ok') => {
+    const stored = await $.session.append({
+      door: 'tool-result',
+      uuid: crypto.randomUUID(),
+      origin: { kind: 'tool', tool },
+      message: { type: 'user', role: 'user', content: [{ type: 'tool_result', tool_use_id: 'tu', content }] },
+    })
+    return stored.message.content[0].content
+  }
+  const results = async ($: any, n: number) => {
+    const out: unknown[] = []
+    for (let i = 0; i < n; i++) out.push(await result($))
+    return out
+  }
+
+  test('reminds the model on the eighth tool result without an update, then counts again', async ($, on) => {
+    await startSession($, on, 'cli')
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    const first = await results($, 8)
+    expect(first.slice(0, 7)).toEqual(Array(7).fill('ok'))
+    expect(first[7]).toContain('ok\n\n<system-reminder>')
+    expect(first[7]).toContain('"Look at the code" in progress')
+    expect(first[7]).toContain('{"advance": true}')
+    expect((await results($, 8)).filter(c => c !== 'ok')).toHaveLength(1)
+  })
+
+  test('an update_plan call starts the count over', async ($, on) => {
+    await startSession($, on, 'cli')
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    await results($, 7)
+    await $.tool.call({ tool: TOOL, advance: true })
+    expect(await results($, 7)).toEqual(Array(7).fill('ok'))
+  })
+
+  test('adds a text block to a result made of blocks', async ($, on) => {
+    await startSession($, on, 'cli')
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    await results($, 7)
+    const blocks = (await result($, 'Read', [{ type: 'text', text: 'file' }])) as any[]
+    expect(blocks[0]).toEqual({ type: 'text', text: 'file' })
+    expect(blocks[1].text).toContain('<system-reminder>')
+  })
+
+  test('leaves results alone with no list, a finished one, or outside the CLI', async ($, on) => {
+    await startSession($, on, 'cli')
+    expect(await results($, 9)).toEqual(Array(9).fill('ok'))
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    await $.tool.call({ tool: TOOL, done: [1, 2, 3] })
+    expect(await results($, 9)).toEqual(Array(9).fill('ok'))
+  })
+
+  test('the desktop app gets no reminder', async ($, on) => {
+    await startSession($, on, 'app')
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    expect(await results($, 9)).toEqual(Array(9).fill('ok'))
+  })
+})
+
 describe('a stop', () => {
   // Where an organization manages Claude Code, cc-plugin-sec-default passes classic.* over the
   // plugins a person installs, so the mod leaves Stop alone everywhere: no skipped-hook warning.

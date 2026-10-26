@@ -1,6 +1,6 @@
 {
   "name": "live-tasks",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Live task list above the prompt in the Claude Code CLI, like the desktop app's pinned plan. Off in the desktop app.",
   "types": "./types/index.d.ts",
   "author": {
