@@ -296,7 +296,7 @@ Same packets, same prompt, five fresh `general-purpose` agents (not forks), each
 
 ## v4 results (run 2026-10-26)
 
-24 runs, 0 denials, 0 errors. Sonnet cost about $9 in total, and deepseek is free. Graders: 3 × `opencode/deepseek-v4.1-flash-free`. Each read all 9 of its files and nothing outside its folder. No SKILL.md lines appear in any packet. Data: `v4/` (gitignored), tables in `v4/analysis.md`.
+24 runs, 0 denials, 0 errors. Sonnet cost about $4.40 in total, and deepseek is free. Graders: 3 × `opencode/deepseek-v4.1-flash-free`. Each read all 9 of its files and nothing outside its folder. No SKILL.md lines appear in any packet. Data: `v4/` (gitignored), tables in `v4/analysis.md`.
 
 | scenario | type | checker skill / base, Sonnet | checker skill / base, deepseek | mean rank of 8, skill / base, Sonnet | mean rank of 8, skill / base, deepseek |
 |---|---|---|---|---|---|
