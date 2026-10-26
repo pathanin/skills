@@ -12,7 +12,7 @@ import time
 import urllib.parse
 import urllib.request
 
-ROOT = os.path.expanduser("~/.local/share/searxng")
+ROOT = os.path.expanduser(os.environ.get("SEARXNG_ROOT", "~/.local/share/searxng"))
 PORT = int(os.environ.get("SEARXNG_PORT", "18888"))
 BASE = f"http://127.0.0.1:{PORT}"
 
