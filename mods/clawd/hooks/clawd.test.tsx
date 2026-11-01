@@ -1,11 +1,34 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { RenderPropsOf } from 'claude-code'
 
-import { ANIMATIONS, LAPTOP_GRIDS, PUT_AWAY, TAKE_OUT, TYPING, draw, inverted, mixedCells, pick, pickTyping, plain, poseGrid } from './sprite'
-import type { Sprite } from '../types'
+import {
+  ALL_FRAMES,
+  ANIMATIONS,
+  AT_REST,
+  COLORS,
+  COLUMNS,
+  DEFAULT,
+  HEIGHT,
+  PUT_AWAY,
+  ROWS,
+  TAKE_OUT,
+  TYPING,
+  WIDTH,
+  cellOf,
+  decode,
+  encode,
+  fromBase64,
+  mixedCells,
+  pick,
+  pickTyping,
+  poseGrid,
+  toBase64,
+} from './sprite'
+import type { Grid } from '../types'
 
-// The Claude Code logo as the CLI draws it at rest (2.1.301), with room around it.
-const REST = ['      ▐▛███▛█  ', '     ▝▜██████▀ ', '      ▝▝   ▝▝  ']
+// Clawd was the Claude Code logo cell for cell (three rows of quadrant blocks). It is drawn
+// now after the desktop app's Clawd, at that Clawd's proportions, in two-colour cells: the
+// logo's shape (a block of a body, two eyes, arms held out, four legs) but no longer its cells.
 
 const BAND = {
   plugin: 'clawd',
@@ -19,26 +42,21 @@ const BAND = {
   } as unknown as RenderPropsOf['AbovePrompt'],
 } as const
 
-type Node = { type?: string; key?: string; props?: { key?: string; inverse?: boolean }; children?: unknown[] } | string
+type Node = { type?: string; key?: string; props?: any; children?: Node[] }
 
-/** A node's text as the drawing means it: a solid run read back to the blocks it stands for. */
-function text(node: Node): string {
-  if (typeof node === 'string') return node
-  const own = (node.children ?? []).map(c => text(c as Node)).join('')
-  return node.props?.inverse ? inverted(own) : own
-}
-
-/** Each cell of a sprite: '#' drawn solid, '+' drawn as a glyph, ' ' empty. */
-const solidity = (sprite: Sprite) =>
-  sprite.map(row => row.map(r => [...r.text].map(ch => (ch === ' ' ? ' ' : r.isSolid ? '#' : '+')).join('')).join(''))
-
-/** Clawd's rows as drawn, or null when the band is not Clawd's. */
+/** Clawd's leaf as drawn (its Raster's cells, or its Image), or nulls when the band is not Clawd's. */
 async function drawn($: any, surface: 'terminal' | 'desktop' = 'terminal', props = {}) {
   const ui = await $.ui.mount({ ...BAND, props: { ...BAND.props, ...props }, surface })
-  const found = await ui.find({ key: 'clawd' })
+  const found: Node | undefined = await ui.find({ key: 'clawd' })
   const beneath = await ui.findAll({ type: 'Text', text: 'beneath' })
   await ui.unmount()
-  return { rows: found === undefined ? null : ((found.children ?? []) as Node[]).map(text), beneath: beneath.length }
+  const leaf = found?.children?.[0]
+  return {
+    cells: leaf?.type === 'Raster' ? (leaf.props.cells as string) : null,
+    image: leaf?.type === 'Image' ? leaf.props : null,
+    raster: leaf?.type === 'Raster' ? { columns: leaf.props.columns, rows: leaf.props.rows } : null,
+    beneath: beneath.length,
+  }
 }
 
 // Stands for what sits beneath Clawd in the band: the engine, or another mod's list.
@@ -55,98 +73,111 @@ async function start($: any, on: any) {
   await $.session.start({ cwd: '/', surface: 'terminal', isInteractive: true })
 }
 
+const letters = (grid: Grid) => new Set(grid.join('').replace(/\./g, ''))
+const column = (grid: Grid, x: number) => grid.map(row => row[x]).join('')
+
+describe('cells', () => {
+  test('base64 as the runtime writes it, and back', async () => {
+    const bytes = Uint8Array.from({ length: 50 }, (_, i) => (i * 37) & 255)
+    for (const n of [0, 1, 2, 3, 49, 50]) {
+      const part = bytes.slice(0, n)
+      expect(toBase64(part)).toBe((part as any).toBase64())
+      expect([...fromBase64(toBase64(part))]).toEqual([...part])
+    }
+  })
+
+  test('a cell takes two colours, the terminal background among them, and is never a full block', async () => {
+    // Lit all over: a space on the colour, so a font's short blocks cannot stripe it.
+    expect(cellOf(['o', 'o', 'o', 'o'])).toEqual({ ch: ' ', fg: DEFAULT, bg: COLORS.o! })
+    // Lit in part: the glyph in the colour, on the terminal's own background.
+    expect(cellOf(['o', '.', 'o', '.'])).toEqual({ ch: '▌', fg: COLORS.o!, bg: DEFAULT })
+    expect(cellOf(['.', '.', 'o', 'o'])).toEqual({ ch: '▄', fg: COLORS.o!, bg: DEFAULT })
+    // Two colours: the one with fewer pixels as the glyph, on the other.
+    expect(cellOf(['o', 'o', 'o', 'e'])).toEqual({ ch: '▗', fg: COLORS.e!, bg: COLORS.o! })
+    expect(cellOf(['o', 's', 'o', 's'])).toEqual({ ch: '▐', fg: COLORS.s!, bg: COLORS.o! })
+    for (const [grid] of ALL_FRAMES) expect(decode(encode(grid)).flat().some(c => c.ch === '█')).toBe(false)
+  })
+
+  test('no cell of any frame holds three colours', async () => {
+    for (const [grid] of ALL_FRAMES) expect(mixedCells(grid)).toEqual([])
+  })
+
+  test('the cells read back as encoded, one per cell', async () => {
+    const cells = decode(encode(AT_REST))
+    expect(cells.length).toBe(ROWS)
+    for (const row of cells) expect(row.length).toBe(COLUMNS)
+    // The body eight cells across, solid; its eyes; the four legs in the bottom row.
+    expect(cells[3]!.filter(c => c.ch === ' ' && c.bg === COLORS.o).length).toBe(8)
+    expect(cells.flat().filter(c => c.fg === COLORS.e || c.bg === COLORS.e).length).toBe(2)
+    expect(cells[4]!.filter(c => c.ch === ' ' && c.bg === COLORS.o).length).toBe(4)
+  })
+})
+
 describe('sprite', () => {
-  test('at rest it is the Claude Code logo, with room around it', async () => {
-    expect(plain(draw())).toEqual(REST)
+  test('at rest: a body with two dark eyes, an arm out from each side, four legs on the floor', async () => {
+    expect(letters(AT_REST)).toEqual(new Set(['o', 'e']))
+    const eyes = AT_REST.join('').split('').filter(p => p === 'e')
+    expect(eyes.length).toBe(4) // two eyes, each a unit: two pixels across, one down
+    expect(AT_REST[HEIGHT - 1]!.match(/o+/g)).toEqual(['oo', 'oo', 'oo', 'oo'])
+    // The arms: the widest rows, reaching past the body on both sides.
+    const widths = AT_REST.map(row => row.lastIndexOf('o') - row.indexOf('o'))
+    expect(Math.max(...widths)).toBeGreaterThan(widths[HEIGHT - 2]! + 4)
   })
 
-  test('the outer legs go straight down from the sides of the body, front and side on', async () => {
-    const outerLegsUnderEdges = (grid: readonly string[]) => {
-      const body = [...grid[3]!].flatMap((p, x) => (p === '.' || x < 3 ? [] : [x]))
-      const legs = [...grid[4]!].flatMap((p, x) => (p === 'o' || p === 's' ? [x] : []))
-      // The body's row under the arms: its first and last pixels, less the arm reaching out.
-      return { left: legs[0], right: legs[legs.length - 1], bodyRight: body[body.length - 1] }
-    }
-    const front = outerLegsUnderEdges(poseGrid())
-    expect(front.right).toBe(front.bodyRight)
-    expect(poseGrid()[3]![front.left!]).toBe('o')
-    expect(poseGrid()[3]![front.left! - 1]).toBe('.')
-    const side = outerLegsUnderEdges(LAPTOP_GRIDS[0]!)
-    expect(side.right).toBe(side.bodyRight)
+  test('the outer legs come down from the sides of the body, front and side on', async () => {
+    const lit = (row: string) => [...row].flatMap((p, x) => (p === 'o' || p === 's' ? [x] : []))
+    // From the front, straight down to the floor from both edges.
+    const floor = lit(AT_REST[HEIGHT - 1]!)
+    const body = lit(AT_REST[HEIGHT - 3]!)
+    expect(floor[floor.length - 1]).toBe(body[body.length - 1])
+    expect(AT_REST[HEIGHT - 3]![floor[0]!]).toBe('o')
+    expect(AT_REST[HEIGHT - 3]![floor[0]! - 1]).toBe('.')
+    // Side on, bent under it: the far leg starts under the far edge, in shade.
+    const side = TYPING.steady![1]![0]
+    const knees = lit(side[HEIGHT - 2]!)
+    const back = lit(side[HEIGHT - 3]!)
+    expect(knees[knees.length - 1]).toBe(back[back.length - 1])
+    expect(side[HEIGHT - 2]![knees[knees.length - 1]!]).toBe('s')
   })
 
-  test('at the laptop, no cell mixes two colours', async () => {
-    for (const grid of LAPTOP_GRIDS) expect(mixedCells(grid)).toEqual([])
-  })
-
-  test('typing is drawn side on over a laptop open on the floor, the hand going up and down', async () => {
-    const shown = Object.values(TYPING).flatMap(frames => frames.map(([s]) => s))
-    for (const sprite of shown) {
-      const laptop = sprite.map(row => row.filter(r => r.tone === 'laptop').map(r => r.text.trim()).join(''))
-      expect(laptop).toEqual(['', '▚', expect.stringMatching(/^▙▄▄?$/)])
-      expect(sprite[0]!.some(r => r.tone === 'shade')).toBe(true)
-    }
-    // The hand: above the keys on one frame, on them (a key lit) on the next.
-    const lit = (s: (typeof shown)[number]) => s[2]!.some(r => r.tone === 'key')
+  test('typing is drawn side on over a laptop, a hand on the keys or not', async () => {
+    const shown = Object.values(TYPING).flatMap(frames => frames.map(([g]) => g))
+    for (const grid of shown) for (const p of ['g', 's']) expect(grid.join('')).toContain(p)
+    // A key lit on some frames and not on others, and always under a hand.
+    const lit = (g: Grid) => g[HEIGHT - 1]!.includes('w')
     expect(shown.some(lit)).toBe(true)
-    expect(shown.some(s => !lit(s))).toBe(true)
+    expect(shown.some(g => !lit(g))).toBe(true)
+    for (const g of shown.filter(lit)) expect('os').toContain(g[HEIGHT - 2]![g[HEIGHT - 1]!.indexOf('w')])
   })
 
-  test('types with both hands in turn, never one long arm', async () => {
-    const rows = Object.values(TYPING).flatMap(frames => frames.map(([s]) => plain(s)))
-    // Both up, a block on its front; the near hand down by the keys; the far hand down behind.
-    expect(rows.some(r => r[1]!.includes('████████') && r[2]!.includes('▙▄▄  '))).toBe(true)
-    expect(rows.some(r => r[1]!.includes('▀███████') && r[2]!.includes('▙▄▄▀ '))).toBe(true)
-    expect(rows.some(r => r[1]!.includes('▄███████') && r[2]!.includes('▙▄▄▀ '))).toBe(true)
-    // The old single arm reached out diagonally from the body, like a trunk.
-    for (const r of rows) expect(r[1]).not.toMatch(/[▚▗]▟/)
+  test('types with both hands in turn: the near one, and the far one in shade', async () => {
+    const shown = Object.values(TYPING).flatMap(frames => frames.map(([g]) => g))
+    const hand = new Set(shown.filter(g => g[HEIGHT - 1]!.includes('w')).map(g => g[HEIGHT - 2]![g[HEIGHT - 1]!.indexOf('w')]))
+    expect([...hand].sort()).toEqual(['o', 's'])
   })
 
   test('the legs hold still while it types', async () => {
-    // Everything right of the hands' cell on the bottom row: a clear cell, then the four legs.
-    const legs = new Set(Object.values(TYPING).flatMap(f => f.map(([s]) => plain(s)[2]!.slice(5))))
-    expect([...legs]).toEqual([' ▝▝   ▝▝  '])
+    const legs = new Set(Object.values(TYPING).flatMap(f => f.map(([g]) => g.slice(HEIGHT - 2).map(r => r.slice(28)).join('\n'))))
+    expect(legs.size).toBe(1)
   })
 
-  test('the body is drawn solid, so a font that leaves gaps between rows cannot stripe it', async () => {
-    // At rest: the body solid; the head's left edge, the arms held out and the legs as glyphs.
-    expect(solidity(draw())).toEqual(['      +######  ', '     +#######+ ', '      ++   ++  '])
-    expect(solidity(TYPING.steady![0]![0])).toEqual(['      +######  ', '+    +#######  ', ' ++++ ++   ++  '])
-    // In every frame, a cell lit across its top under a cell lit across its bottom is solid.
-    const frames = [...Object.values(ANIMATIONS), ...Object.values(TYPING), TAKE_OUT, PUT_AWAY].flat()
-    for (const [s] of frames) {
-      const rows = plain(s)
-      const marks = solidity(s)
-      for (let r = 1; r < rows.length; r++) {
-        for (let c = 0; c < rows[r]!.length; c++) {
-          const top = '▀▛▜█'.includes(rows[r]![c]!)
-          const above = '▄▙▟█'.includes(rows[r - 1]![c]!)
-          if (top && above) expect(marks[r]![c]).toBe('#')
-        }
-      }
-    }
-  })
-
-  test('a solid cell is drawn as its empty quadrants, and reads back to its blocks', async () => {
-    expect(inverted('█▛▜▀▐')).toBe(' ▗▖▄▌')
-    expect(inverted(inverted('▐▛███▛█'))).toBe('▐▛███▛█')
-  })
-
-  test('no idle animation has the laptop in it', async () => {
+  test('no idle animation has the laptop in it, and none is cut off at the edges', async () => {
     for (const frames of Object.values(ANIMATIONS)) {
-      for (const [s] of frames) expect(s.flat().some(r => r.tone !== 'clawd')).toBe(false)
+      for (const [g] of frames) {
+        for (const p of letters(g)) expect('oe').toContain(p)
+        expect(column(g, 0)).toBe('.'.repeat(HEIGHT))
+        expect(column(g, WIDTH - 1)).toBe('.'.repeat(HEIGHT))
+      }
     }
   })
 
-  test('every frame keeps the same size, so the band never jumps', async () => {
-    for (const frames of [...Object.values(ANIMATIONS), ...Object.values(TYPING), TAKE_OUT, PUT_AWAY]) {
-      for (const [s] of frames) {
-        const rows = plain(s)
-        expect(rows.length).toBe(3)
-        for (const row of rows) expect(row.length).toBe(15)
-      }
+  test('every frame keeps the same size, and each animation ends at rest', async () => {
+    for (const [g] of ALL_FRAMES) {
+      expect(g.length).toBe(HEIGHT)
+      for (const row of g) expect(row.length).toBe(WIDTH)
     }
-    for (const frames of [...Object.values(ANIMATIONS), PUT_AWAY]) expect(plain(frames[frames.length - 1]![0])).toEqual(REST)
+    for (const frames of [...Object.values(ANIMATIONS), PUT_AWAY]) expect(frames[frames.length - 1]![0]).toEqual(AT_REST)
+    expect(TAKE_OUT[0]![0]).toEqual(poseGrid({ look: -1 }))
   })
 
   test('picks every animation over the range, never the one just played', async () => {
@@ -160,33 +191,34 @@ describe('sprite', () => {
   })
 })
 
+const REST_CELLS = encode(AT_REST)
+
 describe('while Claude works', () => {
-  // The laptop on the floor, and Clawd crouched at it: the drawings of the typing alone.
-  const TYPING_ROWS = new Set(Object.values(TYPING).flatMap(f => f.map(([s]) => plain(s).join('\n'))))
-  const isTyping = (rows: string[] | null) => TYPING_ROWS.has((rows ?? []).join('\n'))
-  const working = async ($: any, isWorking: boolean) => (await drawn($, 'terminal', { isWorking })).rows
+  const TYPING_CELLS = new Set(Object.values(TYPING).flatMap(f => f.map(([g]) => encode(g))))
+  const isTyping = (cells: string | null) => cells !== null && TYPING_CELLS.has(cells)
+  const working = async ($: any, isWorking: boolean) => (await drawn($, 'terminal', { isWorking })).cells
 
   test('Clawd takes out the laptop, types the whole turn, then puts it away', async ($, on) => {
     const clock = mock.clock(on)
     beneath(on)
     await start($, on)
-    expect(isTyping((await drawn($)).rows)).toBe(false)
+    expect(isTyping((await drawn($)).cells)).toBe(false)
 
     await working($, true)
     await clock.advance(1_500) // the laptop comes out
     const poses = new Set<string>()
     for (let t = 0; t < 30_000; t += 40) {
       await clock.advance(40)
-      const rows = await working($, true)
+      const cells = await working($, true)
       // Nothing but typing: no idle animation slips in.
-      expect(isTyping(rows)).toBe(true)
-      poses.add((rows ?? []).join('\n'))
+      expect(isTyping(cells)).toBe(true)
+      poses.add(cells ?? '')
     }
     expect(poses.size).toBeGreaterThan(3)
 
     await working($, false)
     await clock.advance(3_000) // the patch in hand, then the put-away
-    expect((await drawn($)).rows).toEqual(REST)
+    expect((await drawn($)).cells).toBe(REST_CELLS)
   })
 
   test("a moment's pause in the turn does not put the laptop away", async ($, on) => {
@@ -208,33 +240,59 @@ describe('while Claude works', () => {
 })
 
 describe('band', () => {
-  test('stands at the right of what the band already holds, in the terminal', async ($, on) => {
+  const NONE = { cells: null, image: null, raster: null, beneath: 1 }
+
+  test('stands at the right of what the band already holds, in the terminal, in cells', async ($, on) => {
     beneath(on)
     await start($, on)
-    expect(await drawn($)).toEqual({ rows: REST, beneath: 1 })
+    expect(await drawn($)).toEqual({ cells: REST_CELLS, image: null, raster: { columns: COLUMNS, rows: ROWS }, beneath: 1 })
   })
 
   test('is not drawn on desktop: the band is left as it was', async ($, on) => {
     beneath(on)
     await start($, on)
-    expect(await drawn($, 'desktop')).toEqual({ rows: null, beneath: 1 })
+    expect(await drawn($, 'desktop')).toEqual(NONE)
   })
 
   test('gives way to a survey and to a band too small for it', async ($, on) => {
     beneath(on)
     await start($, on)
-    expect(await drawn($, 'terminal', { hasSurvey: true })).toEqual({ rows: null, beneath: 1 })
-    expect(await drawn($, 'terminal', { maxRows: 2 })).toEqual({ rows: null, beneath: 1 })
-    expect(await drawn($, 'terminal', { bodyColumns: 30 })).toEqual({ rows: null, beneath: 1 })
+    expect(await drawn($, 'terminal', { hasSurvey: true })).toEqual(NONE)
+    expect(await drawn($, 'terminal', { maxRows: ROWS - 1 })).toEqual(NONE)
+    expect((await drawn($, 'terminal', { maxRows: ROWS })).cells).toBe(REST_CELLS)
+    expect(await drawn($, 'terminal', { bodyColumns: 30 })).toEqual(NONE)
   })
 
   test('/clawd hides and shows it', async ($, on) => {
     beneath(on)
     await start($, on)
     expect((await $.command.run({ command: 'clawd', args: 'hide' } as never)).text).toBe('Clawd is hiding.')
-    expect(await drawn($)).toEqual({ rows: null, beneath: 1 })
+    expect(await drawn($)).toEqual(NONE)
     await $.command.run({ command: 'clawd', args: '' } as never)
-    expect((await drawn($)).rows).toEqual(REST)
+    expect((await drawn($)).cells).toBe(REST_CELLS)
+  })
+
+  test('/clawd image draws it as a picture, its pixels whole, and /clawd cells back', async ($, on) => {
+    beneath(on)
+    await start($, on)
+    await $.command.run({ command: 'clawd', args: 'image' } as never)
+    const { image, cells } = await drawn($)
+    expect(cells).toBe(null)
+    expect(image).toEqual(expect.objectContaining({ columns: COLUMNS, rows: ROWS, alt: 'Clawd' }))
+    const { width, height, rgba } = image.source
+    // Whole blocks of pixels per grid pixel, in a cell's one-by-two shape.
+    expect(width % WIDTH).toBe(0)
+    expect(height % HEIGHT).toBe(0)
+    expect(height / HEIGHT / (width / WIDTH)).toBe(2)
+    const px = fromBase64(rgba)
+    expect(px.length).toBe(width * height * 4)
+    // The top-left pixel is clear; the middle of the body is Clawd's orange, opaque.
+    expect(px[3]).toBe(0)
+    const o = COLORS.o!
+    const mid = 4 * (Math.floor(height * 0.65) * width + Math.floor(width * 0.6))
+    expect([...px.slice(mid, mid + 4)]).toEqual([(o >> 16) & 255, (o >> 8) & 255, o & 255, 255])
+    await $.command.run({ command: 'clawd', args: 'cells' } as never)
+    expect((await drawn($)).cells).toBe(REST_CELLS)
   })
 
   test('plays a different pose within ten seconds, then comes back to rest', async ($, on) => {
@@ -244,7 +302,7 @@ describe('band', () => {
     const poses = new Set<string>()
     for (let t = 0; t < 10_000; t += 50) {
       await clock.advance(50)
-      poses.add(((await drawn($)).rows ?? []).join('\n'))
+      poses.add((await drawn($)).cells ?? '')
     }
     expect(poses.size).toBeGreaterThan(1)
     await clock.advance(5_000)
@@ -252,7 +310,7 @@ describe('band', () => {
     let atRest = false
     for (let t = 0; t < 15_000 && !atRest; t += 50) {
       await clock.advance(50)
-      atRest = ((await drawn($)).rows ?? []).join('\n') === REST.join('\n')
+      atRest = (await drawn($)).cells === REST_CELLS
     }
     expect(atRest).toBe(true)
   })

@@ -1,27 +1,31 @@
 import { atom, read, update } from 'claude-code'
 import type { Register, Timer } from 'claude-code'
 
-import { ANIMATIONS, PUT_AWAY, TAKE_OUT, TYPING, draw, inverted, pick, pickTyping, restMs } from './sprite'
+import { ANIMATIONS, AT_REST, COLUMNS, PUT_AWAY, ROWS, TAKE_OUT, TYPING, encode, pick, pickTyping, restMs, rgba, toBase64 } from './sprite'
 import type { Frame } from './sprite'
-import type { Sprite, Tone } from '../types'
+import type { Grid } from '../types'
 
 const sprite = atom({ plugin: 'clawd', key: 'sprite' } as const, null)
 const isHidden = atom({ plugin: 'clawd', key: 'isHidden' } as const, false)
+// Drawn as a picture rather than cells: `/clawd image`, for terminals that show pictures
+// (kitty, Ghostty). Elsewhere the picture's alt shows in its place.
+const isImage = atom({ plugin: 'clawd', key: 'isImage' } as const, false)
 
-const REST = draw()
-const COLUMNS = REST[0]?.reduce((sum, run) => sum + run.text.length, 0) ?? 0
+// Each grid pixel as a block of the picture's own: kept whole so the terminal scales it
+// without blurring, three across and six down for a cell's one by two.
+const IMAGE_SCALE = [3, 6] as const
+
+// Each frame's picture, encoded once: a frame comes round many times, and its RGBA is ~37 KB.
+const pictures = new Map<Grid, string>()
+const picture = (grid: Grid) => {
+  let hit = pictures.get(grid)
+  if (hit === undefined) pictures.set(grid, (hit = toBase64(rgba(grid, ...IMAGE_SCALE))))
+  return hit
+}
 
 // Clawd keeps to the right of what the band already shows, and leaves the band alone when
 // that would squeeze it under this many columns.
 const MIN_COLUMNS = 40
-
-// The shaded side is a fixed darker orange: a dimmed 'claude' is drawn grey in some terminals.
-const COLOR: Record<Tone, { color: string }> = {
-  clawd: { color: 'claude' },
-  shade: { color: '#a8563c' },
-  laptop: { color: 'inactive' },
-  key: { color: 'text' },
-}
 
 export const register: Register = on => {
   // One timer at a time: a rest, or the next frame of an animation.
@@ -47,7 +51,7 @@ export const register: Register = on => {
       timer?.cancel()
       timer = $.clock.after(ms, fn)
     }
-    const show = (drawing: Sprite) => void update($, sprite, () => drawing)
+    const show = (drawing: Grid) => void update($, sprite, () => drawing)
 
     const play = (frames: readonly Frame[], at: number, then: () => void): void => {
       const frame = frames[at]
@@ -82,10 +86,10 @@ export const register: Register = on => {
 
     await $.command.register({
       name: 'clawd',
-      description: 'Show or hide Clawd above the prompt.',
-      argumentHint: '[show|hide]',
+      description: 'Show or hide Clawd above the prompt, or draw it as a picture (kitty, Ghostty).',
+      argumentHint: '[show|hide|image|cells]',
     })
-    await update($, sprite, () => REST)
+    await update($, sprite, () => AT_REST)
     rest()
     return next(e)
   })
@@ -98,6 +102,15 @@ export const register: Register = on => {
 
   on('command.run', { command: 'clawd' }, async ($, e) => {
     const arg = e.args.trim().toLowerCase()
+    if (arg === 'image' || arg === 'cells') {
+      await update($, isImage, () => arg === 'image')
+      return {
+        text:
+          arg === 'image'
+            ? 'Clawd is drawn as a picture. If you see the word "Clawd" instead, this terminal shows no pictures: /clawd cells.'
+            : 'Clawd is drawn in cells.',
+      }
+    }
     const hide = arg === 'hide' ? true : arg === 'show' ? false : !(await read($, isHidden))
     await update($, isHidden, () => hide)
     return { text: hide ? 'Clawd is hiding.' : 'Clawd is back.' }
@@ -107,14 +120,15 @@ export const register: Register = on => {
   // stands at the right end, feet on the prompt's top border.
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.surface !== 'terminal' || e.props.hasSurvey) return next(e)
-    if (e.props.maxRows < REST.length || e.props.bodyColumns < MIN_COLUMNS) return next(e)
+    if (e.props.maxRows < ROWS || e.props.bodyColumns < MIN_COLUMNS) return next(e)
     if (await read($, isHidden)) return next(e)
     // The band is drawn again whenever a turn starts or ends: the one place that says so.
     setTyping(e.props.isWorking)
-    const rows = (await read($, sprite)) ?? REST
+    const grid = (await read($, sprite)) ?? AT_REST
+    const asImage = await read($, isImage)
     const beneath = await next(e)
 
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Raster, Image } = $.ui.resolve(e)
     return (
       // No grow on the left: when another mod wraps this tree in a row of its own, Clawd's
       // part keeps to its own width rather than squeezing that mod's column.
@@ -122,16 +136,22 @@ export const register: Register = on => {
         <Box key="beneath" flexShrink={1}>
           {beneath}
         </Box>
-        <Box key="clawd" flexDirection="column" flexShrink={0} width={COLUMNS}>
-          {rows.map((row, i) => (
-            <Text key={`row-${i}`} wrap="truncate-end">
-              {row.map((run, j) => (
-                <Text key={`run-${j}`} {...COLOR[run.tone]} inverse={run.isSolid}>
-                  {run.isSolid ? inverted(run.text) : run.text}
-                </Text>
-              ))}
-            </Text>
-          ))}
+        <Box key="clawd" flexShrink={0} width={COLUMNS}>
+          {asImage ? (
+            <Image
+              key="clawd-image"
+              columns={COLUMNS}
+              rows={ROWS}
+              alt="Clawd"
+              source={{
+                rgba: picture(grid),
+                width: COLUMNS * 2 * IMAGE_SCALE[0],
+                height: ROWS * 2 * IMAGE_SCALE[1],
+              }}
+            />
+          ) : (
+            <Raster key="clawd-cells" columns={COLUMNS} rows={ROWS} cells={encode(grid)} />
+          )}
         </Box>
       </Box>
     )
