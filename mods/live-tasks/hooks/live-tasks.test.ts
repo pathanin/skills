@@ -60,6 +60,17 @@ describe('update_plan', () => {
     expect(await rows($)).toEqual(['Tasks  3 of 3 done', '✓ Look at the code', '✓ Write the fix', '✓ Run the tests'])
   })
 
+  test('names a step left unfinished behind a later finished one', async $ => {
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    await $.tool.call({ tool: TOOL, advance: true })
+    const jumped = await $.tool.call({ tool: TOOL, done: [3] })
+    expect(jumped.result).toBe(
+      'Plan updated: step 2 of 3 is in progress. Step 2 "Write the fix" is not done, though step 3 is. Do it now, or if it is no longer needed, send the whole list again without it and tell the person why.',
+    )
+    const caught = await $.tool.call({ tool: TOOL, done: [2] })
+    expect(caught.result).toBe('All 3 steps done.')
+  })
+
   test('refuses an update with no plan, and out-of-range steps', async $ => {
     const none = await $.tool.call({ tool: TOOL, advance: true })
     expect(none.isError).toBe(true)

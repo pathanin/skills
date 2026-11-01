@@ -23,7 +23,7 @@ export function applyPlanInput(current: Plan | null, input: PlanInput): PlanUpda
       status: STATUSES.includes(item.status) ? item.status : 'pending',
     }))
     const plan: Plan = { source: 'plan', steps }
-    return { plan, text: `Plan shown (${steps.length} steps).` }
+    return { plan, text: `Plan shown (${steps.length} steps).${skipped(plan)}` }
   }
 
   if (current === null || current.source !== 'plan') {
@@ -56,7 +56,21 @@ export function applyPlanInput(current: Plan | null, input: PlanInput): PlanUpda
   }
 
   const plan: Plan = { source: 'plan', steps }
-  return { plan, text: describe(plan) }
+  return { plan, text: describe(plan) + skipped(plan) }
+}
+
+/**
+ * Names the steps left unfinished behind a later finished one, so a step the model jumped
+ * past does not sit unchecked on the list without the model hearing about it.
+ */
+export function skipped(plan: Plan): string {
+  const last = plan.steps.findLastIndex(s => s.status === 'completed')
+  if (last === -1) return ''
+  const open = plan.steps.slice(0, last).filter(s => s.status !== 'completed')
+  if (open.length === 0) return ''
+  const named = open.map(s => `${s.id} "${s.content}"`).join(', ')
+  const which = open.length === 1 ? `Step ${named} is` : `Steps ${named} are`
+  return ` ${which} not done, though step ${last + 1} is. Do ${open.length === 1 ? 'it' : 'them'} now, or if ${open.length === 1 ? 'it is' : 'they are'} no longer needed, send the whole list again without ${open.length === 1 ? 'it' : 'them'} and tell the person why.`
 }
 
 export function describe(plan: Plan): string {
