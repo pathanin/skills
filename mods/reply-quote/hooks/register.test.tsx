@@ -29,13 +29,14 @@ function runReply($: Engine, args = '', isFullscreen = false) {
 
 // Stands in for the engine: records prompt fills, answers selection and
 // clipboard, and remembers which panes were opened and closed.
-function fakeEngine(on: On, opts: { selection?: { text: string; requestId?: string }; clipboard?: string } = {}) {
+function fakeEngine(on: On, opts: { selection?: { text: string; requestId?: string }; clipboard?: string; draft?: string } = {}) {
   const filled: string[] = []
   const panes: string[] = []
   on('prompt.fill', ($, e) => {
     filled.push(e.text)
     return { isFilled: true }
   })
+  on('prompt.read', () => ({ value: { text: opts.draft ?? '', cursor: 0 } }))
   on('ui.selection', () => ({ value: opts.selection }))
   on('process.run', () => ({
     value: {
@@ -160,6 +161,18 @@ describe('/reply without fullscreen', () => {
 
   test('/reply <text> quotes the text given', async ($, on) => {
     const { filled } = fakeEngine(on)
+    await runReply($, 'pasted words')
+    expect(filled).toEqual(['> pasted words\n\n'])
+  })
+
+  test('a quote goes after typed text, on a new line', async ($, on) => {
+    const { filled } = fakeEngine(on, { draft: 'my thoughts' })
+    await runReply($, 'pasted words')
+    expect(filled).toEqual(['\n> pasted words\n\n'])
+  })
+
+  test('no extra line when the draft already ends in one', async ($, on) => {
+    const { filled } = fakeEngine(on, { draft: 'my thoughts\n' })
     await runReply($, 'pasted words')
     expect(filled).toEqual(['> pasted words\n\n'])
   })

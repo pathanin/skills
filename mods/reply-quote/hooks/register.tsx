@@ -11,7 +11,10 @@ const picker = atom({ plugin: 'reply-quote', key: 'picker' } as const, null as P
 const selected = atom({ plugin: 'reply-quote', key: 'selected' } as const, null as Selected | null)
 
 async function fillQuote($: EngineInterface, text: string) {
-  const filled = await $.prompt.fill({ text: quote(text), mode: 'insert' })
+  // Typed text stays first: the quote goes after it, on a line of its own.
+  const draft = (await $.prompt.read()).text
+  const lead = draft.trim() === '' || draft.endsWith('\n') ? '' : '\n'
+  const filled = await $.prompt.fill({ text: lead + quote(text), mode: 'append' })
   if (!filled.isFilled) {
     $.ui.toast('Could not put the quote in the prompt')
   }
