@@ -43,6 +43,7 @@ claude plugin update <skill-name>@local-skills
 
 | Skill | Run | What it does |
 |---|---|---|
+| [html&#8209;presentation](productivity/html-presentation/SKILL.md) | `/html-presentation` | Deck as HTML from a .pptx or from scratch; in-browser edits and comment pins; exports editable PPTX with animations, or PDF. |
 | [kickoff](productivity/kickoff/SKILL.md) | `/kickoff` | Vague idea to a short `BRIEF.md`, asking only the Why/Who/What/Which/Whether/When gaps that change the build. |
 | [pdf&#8209;to&#8209;md](productivity/pdf-to-md/SKILL.md) | auto | PDF (or a range or section) to markdown with merged-cell tables intact, checked against the source. |
 | [plain&#8209;writing](productivity/plain-writing/SKILL.md) | `/plain-writing` | Plain prose style; `deslopify` rewrites the last reply. Vendored from [docwriter-org/plain-writing-skill](https://github.com/docwriter-org/plain-writing-skill) (MIT). |

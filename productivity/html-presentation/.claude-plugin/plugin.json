@@ -1,0 +1,7 @@
+{
+  "name": "html-presentation",
+  "description": "Manual-only HTML presentation, invoked with /html-presentation. Builds a deck as HTML from an existing .pptx or from scratch, takes in-browser text edits and comment pins, presents in the browser, and exports an editable PowerPoint (native shapes, clips, entrance animations) and/or PDF.",
+  "author": {
+    "name": "oat"
+  }
+}
