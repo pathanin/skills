@@ -103,10 +103,16 @@ class Deck:
         """copy one media part to media/ once; returns the relative URL"""
         if zpath not in self.media:
             name = os.path.basename(zpath)
+            # names are compared case-folded: macOS and Windows disks treat Logo.png and logo.png as one file
+            taken = {v.casefold() for v in self.media.values()}
             if prefer:
-                cand = re.sub(r"[^\w.\-]+", "_", prefer)
+                cand = re.sub(r"[^\w\u0e00-\u0e7f.\-]+", "_", prefer)      # keep Thai marks (\w drops them)
                 if not os.path.splitext(cand)[1]: cand += os.path.splitext(name)[1]
-                if cand not in self.media.values(): name = cand
+                if cand.casefold() not in taken: name = cand
+            stem, ext = os.path.splitext(name)
+            k = 2
+            while name.casefold() in taken:
+                name = f"{stem}-{k}{ext}"; k += 1
             self.media[zpath] = name
             with open(os.path.join(self.out, "media", name), "wb") as f:
                 f.write(self.z.read(zpath))

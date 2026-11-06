@@ -16,10 +16,15 @@ In this workflow `DECK/index.html` is the source of truth from the first day to 
 4. **Finalize:** export PPTX and/or PDF when the user asks. Exports are outputs: never edit them by hand.
    Re-export after changes.
 
-`<skill>` below is this file's folder; scripts are in `<skill>/scripts`. Needs Python 3 with
-`python-pptx lxml fontTools pillow` and Node 22+. Screenshots, QA and PDF use Edge or Chrome, and the
-animated PPTX needs PowerPoint on Windows. Without PowerPoint the export still works, without animation.
-Run browser and export jobs one at a time.
+`<skill>` below is this file's folder; scripts are in `<skill>/scripts`. Works on Windows and macOS.
+Needs Python 3 with `python-pptx lxml fontTools pillow numpy` and Node 22+. Screenshots, QA and PDF use Edge
+or Chrome. Run browser and export jobs one at a time.
+
+- `python` below means `python3` on macOS.
+- Windows-only, because they drive PowerPoint through COM: the animated PPTX (entrance animations, clip
+  autoplay, embedded fonts) and PowerPoint's own slide renders (`render_pptx.ps1`, `export.py --render`).
+  On macOS the export still writes an editable PPTX, without animation, and you skip the PowerPoint
+  render comparisons.
 
 ## 0. Where are we?
 
@@ -38,9 +43,12 @@ Run browser and export jobs one at a time.
 python <skill>/scripts/init_deck.py DECK --from SOURCE.pptx [--lang th] [--font "Family"]
 node <skill>/scripts/shoot.mjs DECK --qa
 node <skill>/scripts/shoot.mjs DECK SHOTS
-powershell -File <skill>/scripts/render_pptx.ps1 -deck SOURCE.pptx -out SRC_RENDER     # Windows + PowerPoint
-python <skill>/scripts/compare.py SRC_RENDER SHOTS SIDE                                # then look at SIDE/*.png
+powershell -File <skill>/scripts/render_pptx.ps1 -deck SOURCE.pptx -out SRC_RENDER     # Windows + PowerPoint only
+python <skill>/scripts/compare.py SRC_RENDER SHOTS SIDE                                # Windows only; then look at SIDE/*.png
 ```
+
+On macOS there is no PowerPoint render to compare against. Look at the SHOTS next to the source deck
+opened in PowerPoint or Keynote, or ask the user to.
 
 - The converter resolves master/layout text styles, table styles, theme fills, layout background
   pictures and bullets. Master artwork becomes a locked background layer.
@@ -63,11 +71,12 @@ the element vocabulary. Then replace it with the user's content:
 - One message per slide. Keep the kicker, title and margins in the same place on every slide. Reuse the
   starter's components and palette unless the user has a brand.
 - Pictures and clips go in `DECK/media/`.
-- Run `deck_tool.py renumber DECK` after adding, removing or reordering sections.
+- Run `python <skill>/scripts/deck_tool.py renumber DECK` after adding, removing or reordering sections.
 
 Both paths also create:
 
-- `review.cmd` in the current directory, the user's review launcher.
+- The user's review launcher in the current directory: `review.cmd` on Windows, `review.command` on
+  macOS (double-click in Finder; it is made executable).
 - An `html-presentation` section in the project's CLAUDE.md, so later sessions know the loop without
   this skill.
 
@@ -75,7 +84,7 @@ Tell the user about both. Then screenshot every slide, look at them, and run `--
 
 ## 2. The review loop (start of every turn while the deck is in progress)
 
-The user double-clicks `review.cmd`, which opens a localhost server on port 8765 in the browser.
+The user double-clicks `review.cmd` (Windows) or `review.command` (macOS), which opens a localhost server on port 8765 in the browser.
 In the toolbar, **E** edits text in place, **C** drops a comment pin, and **H** hides pins.
 Everything autosaves to `DECK/review.json`.
 
@@ -84,7 +93,7 @@ Everything autosaves to `DECK/review.json`.
      handle them by hand.
 2. Do each open comment in `index.html`, then set `"done": true` and a short `"reply"` on it, in the
    user's language. The user reads replies in the pin's pop-up. Never delete comments; that is the user's call.
-3. Screenshot the slides you touched (`shoot.mjs DECK SHOTS 3,7`), look at them, and run `--qa`.
+3. Screenshot the slides you touched (`node <skill>/scripts/shoot.mjs DECK SHOTS 3,7`), look at them, and run `--qa`.
    Fix overflow above about 2 px.
 
 The user can present from `DECK/index.html` at any time (over `file://`, so no toolbar shows):
@@ -99,7 +108,8 @@ screenshots and print.
 ## 3. Export (only when the user asks)
 
 ```
-python <skill>/scripts/export.py DECK --pptx "OUT.pptx" --pdf "OUT.pdf" --render RENDER_DIR
+python <skill>/scripts/export.py DECK --pptx "OUT.pptx" --pdf "OUT.pdf" --render RENDER_DIR   # Windows
+python <skill>/scripts/export.py DECK --pptx "OUT.pptx" --pdf "OUT.pdf"                         # macOS
 ```
 
 - Name outputs after the deck title, next to the deck folder, unless the user says otherwise. If
@@ -107,9 +117,10 @@ python <skill>/scripts/export.py DECK --pptx "OUT.pptx" --pdf "OUT.pdf" --render
 - Then check, and report what you actually saw:
   - Read the warnings the export prints (anything it could not express).
   - `python <skill>/scripts/check_anim.py OUT.pptx`: all effects should be `withEffect` and auto-start, with the
-    longest reveal about 1.2 s or less.
-  - `node <skill>/scripts/shoot.mjs DECK SHOTS`, then `python <skill>/scripts/compare.py SHOTS RENDER_DIR SIDE`
+    longest reveal about 1.2 s or less. On macOS it reports no animation; that is expected.
+  - Windows: `node <skill>/scripts/shoot.mjs DECK SHOTS`, then `python <skill>/scripts/compare.py SHOTS RENDER_DIR SIDE`
     and look at the SIDE images. Up to about 5/255 is text smoothing.
+  - macOS: tell the user the PPTX has no animation, and that its fonts are not embedded.
   - If the pptx skill is installed: its `scripts/office/validate.py OUT.pptx` (add `--original DECK/.source/source.pptx` for converted decks).
 - How the export works, what is HTML-only and the PowerPoint COM gotchas are in `references/export.md`.
 

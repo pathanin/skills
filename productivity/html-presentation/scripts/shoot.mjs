@@ -18,6 +18,7 @@ const CANDIDATES = [process.env.BROWSER,
   ...PF.map((p) => join(p, "Microsoft", "Edge", "Application", "msedge.exe")),
   ...PF.map((p) => join(p, "Google", "Chrome", "Application", "chrome.exe")),
   "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/Applications/Chromium.app/Contents/MacOS/Chromium", join(process.env.HOME || "", "Applications/Google Chrome.app/Contents/MacOS/Google Chrome"),
   "/usr/bin/microsoft-edge", "/usr/bin/google-chrome", "/usr/bin/chromium"].filter(Boolean);
 const EDGE = CANDIDATES.find((p) => existsSync(p));
 if (!EDGE) { console.error("no Edge/Chrome found; set BROWSER to the browser's path"); process.exit(2); }
@@ -25,7 +26,18 @@ const PORT = 9333 + Math.floor(Math.random() * 500);
 const profile = mkdtempSync(join(tmpdir(), "deckshot-"));
 const edge = spawn(EDGE, ["--headless=new", "--disable-gpu", "--hide-scrollbars", "--mute-audio", "--no-first-run",
   "--disable-extensions", `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`,
-  "--allow-file-access-from-files", "about:blank"], { stdio: "ignore" });
+  "--allow-file-access-from-files",
+  // macOS: keep headless Chrome away from the login Keychain (otherwise it can ask for access)
+  ...(process.platform === "darwin" ? ["--use-mock-keychain", "--password-store=basic"] : []), "about:blank"], { stdio: "ignore" });
+// Ctrl+C or a crash must not leave a headless browser and its temp profile behind
+const bail = () => {
+  const rm = () => { try { rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch { } process.exit(130); };
+  if (edge.exitCode !== null || edge.signalCode) return rm();
+  edge.once("exit", rm); setTimeout(rm, 2000);
+  try { edge.kill("SIGKILL"); } catch { }
+};
+process.once("SIGINT", bail); process.once("SIGTERM", bail);
+process.once("exit", () => { try { edge.kill("SIGKILL"); } catch { } });
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let ws, seq = 0;
@@ -116,7 +128,8 @@ try {
   }
 } finally {
   try { ws && ws.close(); } catch { }
+  const gone = new Promise((r) => edge.exitCode !== null ? r() : edge.once("exit", r));
   edge.kill();
-  await sleep(300);
-  try { rmSync(profile, { recursive: true, force: true }); } catch { }
+  await Promise.race([gone, sleep(2000)]);
+  try { rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); } catch { }
 }

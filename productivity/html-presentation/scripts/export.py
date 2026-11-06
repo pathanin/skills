@@ -14,8 +14,9 @@ PPTX, stage 1 (python-pptx + lxml):
     no longer in the HTML are dropped.
   * new deck: every slide is built from the HTML on a blank 16:9 presentation.
 PPTX, stage 2 (PowerPoint through COM, export_anim.ps1): entrance animations in reading order,
-  clips play on entry and loop, fonts embedded. Skipped with a notice when PowerPoint is missing.
-PDF: headless Edge prints index.html (one slide per page).
+  clips play on entry and loop, fonts embedded. Windows only; skipped with a notice elsewhere
+  or when PowerPoint is missing.
+PDF: headless Edge/Chrome prints index.html (one slide per page).
 """
 import argparse
 import copy
@@ -250,6 +251,18 @@ def drop_unused_media_rels(slide):
             slide.part.drop_rel(rid)
 
 
+def drop_stale_timing(slide, n):
+    """The source slide's animations survive stage 1, but an effect whose shape was deleted or rebuilt
+    (new id) points at nothing, and PowerPoint then offers to repair the file. Drop the slide's timing
+    in that case; stage 2 (Windows) re-adds animation anyway."""
+    t = X(slide._element, "./p:timing")
+    if not t: return
+    ids = set(X(slide._element, "./p:cSld/p:spTree//p:cNvPr/@id"))
+    if any(sp not in ids for sp in X(t[0], ".//p:spTgt/@spid")):
+        t[0].getparent().remove(t[0])
+        warn(f"s{n}: source animations dropped (an animated shape was deleted or rebuilt)")
+
+
 def stage1(deck, out_pptx):
     meta = json.loads((deck / "deck.json").read_text(encoding="utf-8"))
     font = meta.get("font", {})
@@ -273,6 +286,7 @@ def stage1(deck, out_pptx):
                 else: set_bg(slide, bg_now)
             build_into(slide, rb + r["ch"]["added"], r["cur"], writer)
             drop_unused_media_rels(slide)
+            drop_stale_timing(slide, r["n"])
             n = len(r["ch"]["deleted"]) + len(r["ch"]["added"]) + len(r["ch"]["changed"])
             print(f"s{r['n']:<3} source slide {r['src']:<3} {n} shape changes ({len(rb)} rebuilt)" if n else f"s{r['n']:<3} source slide {r['src']}")
         else:
@@ -325,7 +339,11 @@ def main():
     if a.pptx:
         out = Path(a.pptx).resolve()
         lock = out.parent / ("~$" + out.name)
-        if lock.exists(): sys.exit(f"{out.name} is open in PowerPoint (lock file {lock.name}); close it first")
+        if lock.exists():
+            msg = f"{out.name} looks open in PowerPoint (lock file {lock.name})"
+            # PowerPoint for Mac doesn't block the write, and a ~$ file there is often a stale one synced from Windows
+            if sys.platform == "win32": sys.exit(msg + "; close it first")
+            print(f"!! {msg}; writing anyway. Close it in PowerPoint without saving, or the export gets overwritten")
         tmp = Path(tempfile.mkdtemp(prefix="deckexport-"))
         s1 = tmp / "stage1.pptx"
         n = stage1(deck, s1)
@@ -338,13 +356,17 @@ def main():
             if r.returncode != 0:
                 print(r.stdout[-2000:], r.stderr[-2000:])
                 print("!! PowerPoint stage failed; writing the deck without animation")
+                if a.render: print(f"!! --render needs the PowerPoint stage; nothing was rendered to {a.render}")
                 shutil.copy(s1, out); anim = False
             else:
                 bad = [l for l in r.stdout.splitlines() if re.search(r", [1-9]\d* on click", l)]
                 print(f"animation: {len(r.stdout.splitlines())} slides processed" + (f"; on-click effects on: {bad}" if bad else ""))
         else:
             shutil.copy(s1, out)
-            print("animation: skipped (" + ("--no-anim" if a.no_anim else "PowerPoint not installed") + "); clips will need a click to play")
+            why = "--no-anim" if a.no_anim else "PowerPoint not installed" if sys.platform == "win32" else \
+                  "the animation stage drives PowerPoint through COM, which only exists on Windows"
+            print(f"animation: skipped ({why}); clips will need a click to play")
+            if a.render: print(f"!! --render needs the PowerPoint stage; nothing was rendered to {a.render}")
         if a.keep: shutil.copy(s1, out.with_name(out.stem + ".stage1.pptx"))
         shutil.rmtree(tmp, ignore_errors=True)
         print(f"wrote {out} ({n} slides{', animated, fonts embedded' if anim else ''})")

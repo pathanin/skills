@@ -5,7 +5,8 @@
     python init_deck.py DECK --new [--font FAMILY] [--lang th] [--title "..."]
 
 Writes DECK/ (index.html, deck.css, deck.js, review.js, fonts/, media/, review.json, deck.json,
-.source/), and in the current directory a review launcher (review.cmd) and a marked section in
+.source/), and in the current directory a review launcher (review.cmd on Windows, review.command on
+macOS, review.sh elsewhere) and a marked section in
 CLAUDE.md so later sessions know the review loop and export commands without loading the skill.
 Refuses to touch an existing DECK/index.html (it is the source of truth once created).
 """
@@ -14,6 +15,7 @@ import datetime
 import html
 import json
 import os
+import shlex
 import shutil
 import sys
 from pathlib import Path
@@ -24,13 +26,21 @@ sys.path.insert(0, str(HERE))
 import fonts  # noqa: E402
 
 MARK_A, MARK_B = "<!-- html-presentation:start -->", "<!-- html-presentation:end -->"
+WIN = sys.platform == "win32"
+PY = "python" if WIN else "python3"          # stock macOS has only python3
+# double-clickable launcher: .cmd in Explorer, .command in Finder
+LAUNCHER_EXT = ".cmd" if WIN else ".command" if sys.platform == "darwin" else ".sh"
+# fallbacks for a new deck when the default family is not installed (macOS has no Aptos without Office)
+FALLBACK = {"en": ["Aptos", "Arial"], "th": ["IBM Plex Sans Thai", "Noto Sans Thai", "Leelawadee UI", "Tahoma"]}
+# (not Thonburi / Sukhumvit Set: see fonts.aat_only)
 
 
 def font_css(family, files):
     out = []
     for w, key in ((400, "regular"), (700, "bold")):
         if key in files:
-            out.append(f'@font-face{{font-family:"DeckFont";src:url(fonts/{files[key]}) format("truetype");font-weight:{w};font-display:block}}')
+            fmt = "opentype" if files[key].endswith(".otf") else "truetype"
+            out.append(f'@font-face{{font-family:"DeckFont";src:url("fonts/{files[key]}") format("{fmt}");font-weight:{w};font-display:block}}')
         else:
             out.append(f'@font-face{{font-family:"DeckFont";src:local("{family}");font-weight:{w}}}')
     return "\n".join(out) + "\n"
@@ -44,7 +54,22 @@ def page(title, lang, sections):
             f'<script src="deck.js"></script>\n<script src="review.js"></script>\n</body>\n</html>\n')
 
 
-def claude_md(deck_rel, deck_abs, source):
+def write_launcher(path, rel):
+    server = (HERE / "review_server.mjs").as_posix()
+    if WIN:
+        q = lambda v: '"' + v.replace("%", "%%") + '"'
+        text = f'@echo off\r\ncd /d "%~dp0"\r\nnode {q(server)} {q(rel)} --open\r\n'
+    else:
+        # Finder starts .command files with a minimal PATH, so fall back to the node found now
+        node = shutil.which("node") or "node"
+        text = (f'#!/bin/bash\ncd "$(dirname "$0")"\nNODE="$(command -v node || echo {shlex.quote(node)})"\n'
+                f'exec "$NODE" {shlex.quote(server)} {shlex.quote(rel)} --open\n')
+    with open(path, "w", encoding="utf-8", newline="") as f:     # keep the line endings exactly as written
+        f.write(text)
+    if not WIN: path.chmod(0o755)
+
+
+def claude_md(deck_rel, deck_abs, source, launcher):
     s = SKILL.as_posix()
     src_note = ("Slides carry `data-src` (source slide number) and shapes `data-id`, so the export can replay edits onto "
                 f"`{deck_rel}/.source/source.pptx`. Keep those attributes when editing; a copied slide or shape drops `data-id`/`data-src` "
@@ -57,19 +82,19 @@ def claude_md(deck_rel, deck_abs, source):
 (→/Space next, ←/PgUp back, f or Enter fullscreen). Skill scripts live in `{s}/scripts`.
 {src_note}
 
-**Review loop.** The user runs `review.cmd` (localhost server); in the browser **E** edits text,
+**Review loop.** The user runs `{launcher}` (localhost server); in the browser **E** edits text,
 **C** drops a comment pin, **H** hides pins. Everything autosaves to `{deck_rel}/review.json`.
 At the start of every task here, check that file. If it has edits or open comments:
-1. `python "{s}/scripts/apply_review.py" "{deck_rel}"` (dry run), then add `--write`. An edit applies only if the box still has its `before` text.
+1. `{PY} "{s}/scripts/apply_review.py" "{deck_rel}"` (dry run), then add `--write`. An edit applies only if the box still has its `before` text.
 2. Handle each open comment in index.html, then set `"done": true` and a short `"reply"` on it (the user's language). Never delete comments.
 3. Check: `node "{s}/scripts/shoot.mjs" "{deck_rel}" OUTDIR N,M` (screenshots) and `--qa` (overflow + fonts); look at every slide you touched.
 
 **Editing rules.** Keep the element vocabulary in `{s}/references/format.md` (absolutely positioned
 `.sh/.tx/.pic/.tbl` with inline styles; no per-element animation markup). After deleting or reordering
-slides run `python "{s}/scripts/deck_tool.py" renumber "{deck_rel}"`.
+slides run `{PY} "{s}/scripts/deck_tool.py" renumber "{deck_rel}"`.
 
-**Export (only when asked):** `python "{s}/scripts/export.py" "{deck_rel}" --pptx OUT.pptx --pdf OUT.pdf`
-(PowerPoint adds the animations if installed; `--no-anim` skips that). Exports are outputs; never edit them by hand.
+**Export (only when asked):** `{PY} "{s}/scripts/export.py" "{deck_rel}" --pptx OUT.pptx --pdf OUT.pdf`
+(on Windows with PowerPoint installed it adds the entrance animations and embeds fonts; elsewhere the PPTX has no animation; `--no-anim` skips that). Exports are outputs; never edit them by hand.
 {MARK_B}
 """
 
@@ -83,7 +108,7 @@ def main():
     ap.add_argument("--font")
     ap.add_argument("--lang", default="en")
     ap.add_argument("--title")
-    ap.add_argument("--no-project-files", action="store_true", help="skip review.cmd and the CLAUDE.md section")
+    ap.add_argument("--no-project-files", action="store_true", help="skip the review launcher and the CLAUDE.md section")
     a = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
 
@@ -105,10 +130,16 @@ def main():
     else:
         family = a.font or ("IBM Plex Sans Thai" if a.lang.startswith("th") else "Aptos")
     found = fonts.find(family)
-    files = {}
-    for k, p in found.items():
-        files[k] = p.name
-        shutil.copy(p, deck / "fonts" / p.name)
+    if not found and not a.font and not a.src:
+        for alt in FALLBACK["th" if a.lang.startswith("th") else "en"]:
+            if alt != family and (found := fonts.find(alt)):
+                print(f"font '{family}' is not installed; using '{alt}' (pass --font to choose)")
+                family = alt
+                break
+    files = {k: fonts.bundle(face, deck / "fonts") for k, face in found.items()}
+    if a.lang.startswith("th") and any(fonts.aat_only(face) for face in found.values()):
+        print(f"!! '{family}' shapes text only with Apple AAT tables, which browsers drop from bundled fonts: "
+              "Thai and other complex scripts will break (dotted circles). Pick another family with --font.")
     ln = fonts.line_normal(found["regular"]) if "regular" in found else 1.2
     if not found: print(f"!! font '{family}' not found on this machine: the deck uses local() and the QA font check will say false")
 
@@ -139,13 +170,15 @@ def main():
         root = Path.cwd()
         try: rel = deck.relative_to(root).as_posix()
         except ValueError: rel = deck.as_posix()
-        launcher = root / "review.cmd"
-        if launcher.exists() and rel not in launcher.read_text(encoding="utf-8", errors="ignore"):
-            launcher = root / f"review-{deck.name}.cmd"
-        launcher.write_text(f'@echo off\r\ncd /d "%~dp0"\r\nnode "{(HERE / "review_server.mjs").as_posix()}" "{rel}" --open\r\n', encoding="utf-8")
+        names = [f"review{LAUNCHER_EXT}", f"review-{deck.name}{LAUNCHER_EXT}"] + \
+                [f"review-{deck.name}-{k}{LAUNCHER_EXT}" for k in range(2, 100)]
+        # reuse the launcher that already points at this deck, else the first free name
+        launcher = next(root / n for n in names if not (root / n).exists()
+                        or rel in (root / n).read_text(encoding="utf-8", errors="ignore"))
+        write_launcher(launcher, rel)
         md = root / "CLAUDE.md"
         cur = md.read_text(encoding="utf-8") if md.exists() else "# CLAUDE.md\n"
-        block = claude_md(rel, deck, bool(a.src))
+        block = claude_md(rel, deck, bool(a.src), launcher.name)
         if MARK_A in cur:
             pre, rest = cur.split(MARK_A, 1)
             cur = pre + block.strip() + rest.split(MARK_B, 1)[1] if MARK_B in rest else pre + block

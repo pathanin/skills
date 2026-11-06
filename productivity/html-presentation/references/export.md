@@ -6,7 +6,7 @@
 
 - `html_diff.py` compares `index.html` with `.source/baseline.html`, the untouched conversion. Never edit
   the baseline. Slides are matched by `data-src`, shapes by `data-id`.
-- Unchanged shapes keep the source XML exactly: layouts, notes, charts, clips, animations-free.
+- Unchanged shapes keep the source XML exactly: layouts, notes, charts and clips. Source animations survive stage 1 too; on Windows, stage 2 replaces them with its own.
 - What happens to each kind of change:
 
 | Change in the HTML | What the export does |
@@ -46,8 +46,9 @@ the end of the run, for example a gradient with more than 2 stops (it keeps the 
     rewrites existing effects as plain Appear.
   - PlayOnEntry adds its media effect After Previous. The script re-times it to With Previous at the
     clip's own delay.
-- If PowerPoint is missing or the stage fails, the stage-1 deck is written without animation, and the
-  run says so. Clips then need a click to play.
+- If PowerPoint is missing, the stage fails, or the platform is not Windows (macOS PowerPoint has no COM),
+  the stage-1 deck is written without animation or embedded fonts, and the run says so. Clips then need a
+  click to play, and `--render` writes nothing.
 
 **HTML-only touches:** tables reveal row by row in HTML but fade as one shape in PowerPoint.
 Slide transitions are not exported.
@@ -59,10 +60,10 @@ clips shown as their posters and animation off.
 
 ## Checks after an export
 
-1. `python check_anim.py OUT.pptx`: every effect should be `withEffect`, with one auto-start group per
+1. `python <skill>/scripts/check_anim.py OUT.pptx`: every effect should be `withEffect`, with one auto-start group per
    slide and a longest reveal of about 1.2 s or less.
-2. Pass `--render DIR` to the export, which saves PowerPoint's own PNG of each slide. Then run
-   `node shoot.mjs DECK SHOTS` and `python compare.py SHOTS DIR SIDE`, and look at the `SIDE` images.
+2. Windows only: pass `--render DIR` to the export, which saves PowerPoint's own PNG of each slide. Then run
+   `node <skill>/scripts/shoot.mjs DECK SHOTS` and `python <skill>/scripts/compare.py SHOTS DIR SIDE`, and look at the `SIDE` images.
    - Scores up to about 5/255 are text smoothing.
    - Anything higher needs a look, though wrapping differences in long Thai lines are normal.
 3. If the pptx skill is installed, run its `scripts/office/validate.py OUT.pptx --original DECK/.source/source.pptx`.
@@ -71,7 +72,7 @@ clips shown as their posters and animation off.
 ## Converter limits (`convert_pptx.py`, run once by `init_deck.py --from`)
 
 - **Fonts:** one font family per deck, the one most of the slide text uses. It is bundled as
-  `fonts/*.ttf`. Runs in other fonts render in it. Pass `--font` to choose another.
+  `fonts/*.ttf` (a face inside a macOS `.ttc` collection is extracted to its own file). Runs in other fonts render in it. Pass `--font` to choose another.
 - **Inherited styles are resolved:** master text styles → master/layout placeholder → shape list style →
   paragraph. Table styles from `ppt/tableStyles.xml` are resolved as well. Theme effects (glow, 3-D) are dropped.
 - **Shapes:** presets other than rect, roundRect, ellipse, line, triangle, arrows, chevron, star, diamond and

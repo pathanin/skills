@@ -1,15 +1,15 @@
 // Review server for an HTML deck: serves DECK/ on http://127.0.0.1:8765 and saves the
 // reviewer's text edits and comments to DECK/review.json (read by Claude to apply them).
-//   node review_server.mjs DECK [--open]       (review.cmd in the project runs this)
+//   node review_server.mjs DECK [--open]       (review.cmd / review.command in the project runs this)
 // Plain Node, no packages. Only listens on localhost. Ctrl+C to stop.
 import { createServer } from "node:http";
-import { readFileSync, writeFileSync, statSync, createReadStream, existsSync, renameSync } from "node:fs";
+import { readFileSync, writeFileSync, statSync, createReadStream, existsSync, renameSync, realpathSync } from "node:fs";
 import { join, resolve, dirname, extname, sep } from "node:path";
 import { spawn } from "node:child_process";
 
 const deckArg = process.argv.slice(2).find((a) => !a.startsWith("--"));
 if (!deckArg) { console.error("usage: node review_server.mjs DECK [--open]"); process.exit(2); }
-const ROOT = resolve(deckArg);
+const ROOT = realpathSync(resolve(deckArg));
 const REVIEW = join(ROOT, "review.json");
 const PORT = Number(process.env.PORT || 8765);
 const TYPES = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8",
@@ -44,22 +44,31 @@ createServer((req, res) => {
     }
   }
   // static files under html/ (with Range support so clips can seek)
-  let p = decodeURIComponent(url.pathname); if (p === "/") p = "/index.html";
-  const file = resolve(join(ROOT, p));
+  let p; try { p = decodeURIComponent(url.pathname); } catch { res.writeHead(400); return res.end("bad path"); }
+  if (p === "/") p = "/index.html";
+  const lex = resolve(join(ROOT, p));
+  const file = existsSync(lex) ? realpathSync(lex) : lex;      // a symlink must not lead outside the deck
   if (!file.startsWith(ROOT + sep) || !existsSync(file) || !statSync(file).isFile()) { res.writeHead(404); return res.end("not found"); }
   const size = statSync(file).size, type = TYPES[extname(file).toLowerCase()] || "application/octet-stream";
   const range = /bytes=(\d*)-(\d*)/.exec(req.headers.range || "");
   if (range) {
     const start = range[1] ? Number(range[1]) : size - Number(range[2]);
     const end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+    if (!(start >= 0 && start <= end && start < size)) {
+      res.writeHead(416, { "content-range": `bytes */${size}` }); return res.end();
+    }
     res.writeHead(206, { "content-type": type, "content-range": `bytes ${start}-${end}/${size}`, "accept-ranges": "bytes", "content-length": end - start + 1 });
-    return createReadStream(file, { start, end }).pipe(res);
+    return createReadStream(file, { start, end }).on("error", () => res.destroy()).pipe(res);
   }
   res.writeHead(200, { "content-type": type, "content-length": size, "accept-ranges": "bytes", "cache-control": "no-cache" });
-  createReadStream(file).pipe(res);
+  createReadStream(file).on("error", () => res.destroy()).pipe(res);
 }).on("error", (e) => { console.error(e.code === "EADDRINUSE" ? `port ${PORT} is busy (another review window open?). Set PORT=8766 to use another.` : e.message); process.exit(1); })
   .listen(PORT, "127.0.0.1", () => {
   const u = `http://127.0.0.1:${PORT}/`;
   console.log(`Review mode: ${u}   (edits/comments -> ${REVIEW}; close this window to stop)`);
-  if (process.argv.includes("--open")) spawn("cmd", ["/c", "start", "", u], { stdio: "ignore", detached: true }).unref();
+  if (process.argv.includes("--open")) {
+    const [cmd, args] = process.platform === "win32" ? ["cmd", ["/c", "start", "", u]]
+      : process.platform === "darwin" ? ["open", [u]] : ["xdg-open", [u]];
+    spawn(cmd, args, { stdio: "ignore", detached: true }).on("error", () => console.log(`open ${u} in a browser`)).unref();
+  }
 });
