@@ -57,7 +57,36 @@ from an element you duplicate.
 
 ## Don'ts
 
-- No per-element animation classes or attributes. `deck.js` animates in reading order by itself.
+- No per-element animation classes or attributes on `.sh` / `.pic` / `.tbl`. `deck.js` animates them in reading order by itself.
+  Explanatory motion goes in a `.fx` layer, described below.
+
+## Motion layer (`.fx`, HTML only)
+
+Use it for motion that explains something, such as a packet travelling a path, a line drawing itself,
+a ripple, a highlight moving down a list, or a stamp landing.
+
+```html
+<div class="fx" aria-hidden="true" style="left:0;top:0;width:1280px;height:720px">
+  <svg width="1280" height="720">…paths, circles…</svg>
+  <div class="dot" style="--p:path('M100 200 L400 200');--t:3s;--dl:1s"></div>
+</div>
+```
+
+- Put it last in the section, with **no `data-name`**. Without a name, the PPTX export, the review
+  toolbar and `deck.js` entrance animation all ignore it. A full-slide box is also skipped as a background.
+- Put the keyframes in one `<style id="fx-css">` in `index.html`'s head, and scope every rule as
+  `.slide.anim .fx …`. `deck.js` re-adds `.anim` each time a slide is shown, so the motion restarts on
+  every visit. It never sets `.anim` in `?shot`, `?qa`, `?flat`, print or reduced motion, so screenshots
+  show the static frame.
+- The static frame must read on its own. Keep motion-only parts (`.dot`, flow dashes) at `opacity:0`
+  outside `.anim`, and start custom motion after about 0.9 s so the entrance rise finishes first.
+- Animate children inside the layer, never the `.sh` wrappers, which `deck.js` transforms.
+- Prefer CSS (`offset-path`, `stroke-dashoffset`, `transform`) over SMIL `<animate…>`. SMIL starts at page
+  load and keeps running in screenshots.
+- Keep every word in `.sh`/`.tx` boxes. Text inside `.fx` can't be edited and isn't checked for overflow.
+- Vary the effect with the idea, and don't use the same one on every slide.
+- To check motion, the screenshots won't help, because they are static. Load the page without `?shot` in
+  a headless browser and capture after 2–3 s.
 - No external URLs, CDNs or web fonts. The deck must work offline over `file://`.
 - No flexbox/grid layouts *between* elements. Position each one. Flex is only used inside `.tx`.
 - Keep text inside its box. `shoot.mjs DECK --qa` lists boxes whose text overflows; fix anything over about 2 px.
