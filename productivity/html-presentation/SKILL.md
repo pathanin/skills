@@ -62,14 +62,27 @@ opened in PowerPoint or Keynote, or ask the user to.
 python <skill>/scripts/init_deck.py DECK --new --title "…" [--lang th] [--font "Family"]
 ```
 
-This writes a 6-slide starter: title, section, three cards, text + picture, table + tip, summary. It shows
-the element vocabulary. Then replace it with the user's content:
+This writes a 6-slide starter: title, section, three cards, text + picture, table + tip, summary. The
+starter is a **vocabulary sample, not a template**. It shows how each element is written, and its
+layouts and palette are placeholders. Replace all of it with a design made for this deck:
 
 - Write slides only in the vocabulary of `references/format.md`: absolutely positioned `.sh` / `.tx` /
   `.pic` / `.tbl` with inline px styles. That is what the review toolbar, the QA check and the PPTX
-  writer understand.
-- One message per slide. Keep the kicker, title and margins in the same place on every slide. Reuse the
-  starter's components and palette unless the user has a brand.
+  writer understand. Inside that vocabulary the design is yours to invent.
+- **Brand first.** If the user, the project or another installed skill has a brand (colours, logos,
+  background motifs, a .pptx template), build the look from it. Pull colours and logos from the
+  source and put logos in `DECK/media/`. Never draw or invent a logo you don't have; use a text wordmark.
+  Without a brand, choose a palette that suits the topic instead of reusing the starter's blue.
+- **Design each slide around its message.** Pick the form that shows the idea: a diagram, a timeline,
+  a split comparison, a big statement, a ripple, a menu, a chart, a table, a single number. Don't fall back
+  to a row of equal cards. As a rule of thumb, no two slides in a row share a layout, and a deck uses
+  card grids at most two or three times.
+- One message per slide. Keep a small set of anchors consistent so the deck feels like one piece:
+  for example the kicker and title position, margins, the logo spot and a footer motif. Everything
+  else can change from slide to slide.
+- Motion should explain something: a request travelling, a list being checked, a line being drawn,
+  a ripple spreading. Vary it with the idea, and don't repeat the same effect on every slide. The
+  `.fx` motion layer in `references/format.md` is for this; entrance motion stays with `deck.js`.
 - Pictures and clips go in `DECK/media/`.
 - Run `python <skill>/scripts/deck_tool.py renumber DECK` after adding, removing or reordering sections.
 
@@ -130,6 +143,7 @@ python <skill>/scripts/export.py DECK --pptx "OUT.pptx" --pdf "OUT.pdf"         
   `DECK/.source/`: the baseline is what the export diffs against.
 - Keep `data-id` / `data-src` / `data-layout` as they are. Don't invent ids. When you copy an element,
   drop its `data-id`.
-- No per-element animation markup. `deck.js` animates by reading order. Tune it there.
+- No per-element animation markup on `.sh` / `.pic` / `.tbl`. `deck.js` animates them by reading order;
+  tune it there. Explanatory motion goes in a `.fx` layer (see `references/format.md`), which is HTML-only.
 - Content rules (wording, terminology, house style) belong in the project's CLAUDE.md, not in this skill.
 - Stop any server or browser you started yourself. The user's review window is theirs to close.
