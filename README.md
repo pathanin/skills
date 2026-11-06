@@ -32,6 +32,7 @@ claude plugin update <skill-name>@local-skills
 | [dashboard&#8209;design](design/dashboard-design/SKILL.md) | auto | Dashboard and data-table principles: data-driven form, progressive disclosure, invisible UI. |
 | [design&#8209;loop](design/design-loop/SKILL.md) | `/design-loop` | Breaks a real-world reference into checkable mechanisms, then loops builder vs. three critics per piece. |
 | [extract&#8209;dna](design/extract-dna/SKILL.md) | `/extract-dna` | Measures a design system into `dna.json` + `dna.md`, proven by rebuilding and diffing the reference. |
+| [html&#8209;presentation](design/html-presentation/SKILL.md) | `/html-presentation` | Deck as HTML from a .pptx or from scratch; in-browser edits and comment pins; exports editable PPTX with animations, or PDF. |
 | [interaction&#8209;intent](design/interaction-intent/SKILL.md) | `/interaction-intent` | What an ambiguous click, tap or drag meant, and how actions commit and undo. Confirmations only when irreversible. |
 | [mobile&#8209;screen&#8209;design](design/mobile-screen-design/SKILL.md) | `/mobile-screen-design` | Two-pass review or build of a mobile screen (defects, then flow), rules graded by evidence. |
 | [ui&#8209;style](design/ui-style/SKILL.md) | `/ui-style` | My preferred UI look: flat, neutral grays, hairline borders, tints instead of shadows. |

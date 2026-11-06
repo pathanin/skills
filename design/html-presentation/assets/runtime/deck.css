@@ -1,0 +1,44 @@
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0f24}
+body{font-family:"DeckFont",sans-serif;-webkit-font-smoothing:antialiased;overflow:hidden}
+.stage{position:absolute;left:50%;top:50%;width:1280px;height:720px;transform-origin:0 0}
+.slide{position:absolute;inset:0;overflow:hidden;display:none;font-family:"DeckFont",sans-serif}
+.slide.on{display:block}
+.slide>*{position:absolute}
+.sh,.pic,.tbl{position:absolute}
+.tx{position:absolute;inset:0;display:flex;flex-direction:column;white-space:pre-wrap;word-wrap:break-word;line-break:auto}
+.tx p,.cell p{margin:0;font-weight:400;color:#000}
+.svg{position:absolute;left:0;top:0;overflow:visible}
+.pic img{display:block;width:100%;height:100%}
+.pic.vid{cursor:pointer;background:#000}
+.pic.vid video{position:absolute;inset:0;width:100%;height:100%;object-fit:fill}
+.pic.vid .poster{position:absolute;inset:0}
+.pic.vid.playing .poster{display:none}
+.tbl{border-collapse:collapse;table-layout:fixed}
+.tbl td{overflow:hidden}
+.cell{white-space:pre-wrap}
+#hud{position:fixed;right:12px;bottom:10px;font:12px/1 sans-serif;color:#9aa3c7;opacity:.6;user-select:none}
+#qa{display:none}
+body.flat{overflow:auto;background:#444}
+body.flat .stage{position:static;transform:none!important;width:auto;height:auto}
+body.flat .slide{display:block;position:relative;width:1280px;height:720px;margin:0 0 12px}
+body.shot{background:transparent}
+body.shot .stage{left:0;top:0;transform:none!important}
+body.shot #hud{display:none}
+@page{size:1280px 720px;margin:0}
+@media print{
+  html,body{background:none;overflow:visible;height:auto}
+  .stage{position:static;transform:none!important;width:1280px;height:auto}
+  .slide{display:block!important;position:relative;width:1280px;height:720px;page-break-after:always;break-after:page}
+  #hud{display:none}
+  .pic.vid video{display:none}.pic.vid .poster{display:block!important}
+}
+/* entrance animation (deck.js animate); off in ?shot / ?flat / ?qa, print and reduced motion */
+.slide.anim .a{animation-duration:.5s;animation-timing-function:cubic-bezier(.2,.7,.2,1);animation-fill-mode:both;animation-delay:var(--d,0ms)}
+.slide.anim .a-rise{animation-name:a-rise}
+.slide.anim .a-panel{animation-name:a-panel;animation-duration:.6s}
+.slide.anim .a-row{animation-name:a-fade;animation-duration:.4s}
+@keyframes a-rise{from{opacity:0;transform:translateY(12px)}}
+@keyframes a-panel{from{opacity:0;transform:scale(.97)}}
+@keyframes a-fade{from{opacity:0}}
+@media print{.slide .a{animation:none!important}}
