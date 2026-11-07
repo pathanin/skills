@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>hairline-ui demo</title>
+<link rel="stylesheet" href="../references/tokens.css">
+<link rel="stylesheet" href="../references/components.css">
+<style>
+  .stack { display: grid; gap: 12px; }
+  .inline { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  section + section { margin-top: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="inline" style="margin-bottom:20px"><h1>hairline-ui</h1><span class="muted small">every component and motion in one page</span></div>
+
+  <section class="card tinted">
+    <h2 class="card-title">Composer</h2>
+    <div class="composer" id="composer">
+      <input type="url" id="url" placeholder="Paste a long link" aria-label="Link">
+      <button type="button" class="ghost" id="paste">Paste</button>
+      <button type="button" class="primary" id="go"><span class="spinner"></span><span>Shorten</span></button>
+    </div>
+    <p class="msg neutral">Press Paste to see the flash; Shorten shows the busy state, then a toast.</p>
+    <div class="inline" style="margin-top:8px">
+      <div class="segmented n3" role="radiogroup" aria-label="Expires in">
+        <input type="radio" name="exp" id="e1"><label for="e1">1 hour</label>
+        <input type="radio" name="exp" id="e2" checked><label for="e2">1 day</label>
+        <input type="radio" name="exp" id="e3"><label for="e3">1 week</label>
+      </div>
+      <button type="button" class="disclose" id="more-btn" aria-expanded="false" aria-controls="more">More options</button>
+    </div>
+    <div id="more" class="reveal" inert><div class="reveal-inner stack">
+      <label class="check"><input type="checkbox"> <span>One-time link</span></label>
+      <input type="text" placeholder="Note (optional)" aria-label="Note">
+    </div></div>
+  </section>
+
+  <section class="card">
+    <div class="inline" style="margin-bottom:8px"><h2 class="card-title" style="margin:0 4px">Rows</h2><span class="count">3</span>
+      <button type="button" class="ghost" id="add" style="margin-left:auto">Add row</button>
+      <button type="button" class="ghost" id="shuffle">Move last to top</button></div>
+    <ul class="list" id="list">
+      <li class="row" tabindex="-1"><span class="tile">G</span><div class="row-body"><span class="row-title">docs</span><span class="row-sub">github.com/acme/docs</span></div>
+        <div class="row-side"><span class="badge">1 day</span><button type="button" class="icon icon-btn icon-swap" aria-label="Copy"><svg class="glyph a" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="8" height="8" rx="1.5"/><path d="M3 10.5V4a1 1 0 0 1 1-1h6.5"/></svg><svg class="glyph b" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5l3 3 6-7"/></svg></button><button type="button" class="icon icon-btn danger remove" aria-label="Remove">×</button></div></li>
+      <li class="row" tabindex="-1"><span class="tile">Y</span><div class="row-body"><span class="row-title"><span class="roll"><button type="button" class="textlink roll-a">x7Kq2p</button><span class="roll-b" aria-hidden="true">Copied ✓</span></span></span><span class="row-sub">youtube.com/watch?v=…  <span class="note">for Sam</span></span></div>
+        <div class="row-side"><span class="badge warn">ends soon</span><button type="button" class="icon icon-btn danger remove" aria-label="Remove">×</button></div></li>
+      <li class="row" tabindex="-1"><span class="tile">N</span><div class="row-body"><span class="row-title">news</span><span class="row-sub">news.example.com</span></div>
+        <div class="row-side"><span class="badge accent">pinned</span><button type="button" class="icon icon-btn danger remove" aria-label="Remove">×</button></div></li>
+    </ul>
+  </section>
+
+  <section class="card">
+    <h2 class="card-title">Buttons, dialog, loading</h2>
+    <div class="inline">
+      <button type="button" class="primary">Primary</button>
+      <button type="button" class="ghost swap" id="copy"><span class="l a">Copy</span><span class="l b" aria-hidden="true">Copied ✓</span></button>
+      <button type="button" class="icon">Tertiary</button>
+      <button type="button" class="ghost" id="open-dialog">Open dialog</button>
+      <kbd>⌘K</kbd>
+    </div>
+    <ul class="list" style="margin-top:12px"><li class="row skel"><span class="tile"></span><div class="row-body"><span class="bar"></span><span class="bar wide"></span></div></li></ul>
+  </section>
+</main>
+
+<dialog id="dlg"><div class="stack" style="padding:20px"><h2>Dialog</h2><p class="muted small">Fades and rises 4px, backdrop fades with it.</p>
+  <button type="button" class="ghost" id="close-dialog">Close</button></div></dialog>
+<div id="toast" class="toast"><span class="toast-text"></span><button type="button" class="toast-action" hidden></button></div>
+<div id="status" class="sr-only" role="status" aria-live="polite"></div>
+
+<script src="../references/motion.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  wireToast();
+  const moreBtn = $("more-btn"), more = $("more");
+  setReveal(moreBtn, more, false);
+  moreBtn.addEventListener("click", () => setReveal(moreBtn, more, moreBtn.getAttribute("aria-expanded") !== "true"));
+  markReady();
+  $("paste").addEventListener("click", () => { $("url").value = "https://example.com/a/very/long/path"; flash($("composer"), "pasted"); });
+  $("go").addEventListener("click", () => {
+    const b = $("go"); b.classList.add("busy"); b.disabled = true;
+    setTimeout(() => { b.classList.remove("busy"); b.disabled = false; toast("Link created.", { label: "Undo", run: () => toast("Undone.") }); }, 900);
+  });
+  $("copy").addEventListener("click", (e) => confirmDone(e.currentTarget));
+  document.querySelectorAll(".icon-swap").forEach((b) => b.addEventListener("click", () => confirmDone(b)));
+  document.querySelectorAll(".roll-a").forEach((b) => b.addEventListener("click", () => confirmDone(b.parentElement)));
+  $("list").addEventListener("click", (e) => { const b = e.target.closest(".remove"); if (b) exitRow(b.closest(".row")); });
+  let n = 0;
+  $("add").addEventListener("click", () => {
+    const li = $("list").firstElementChild.cloneNode(true);
+    li.querySelector(".row-title").textContent = "new-" + (++n);
+    $("list").prepend(li); enterRow(li); flash(li, "fresh");
+  });
+  $("shuffle").addEventListener("click", () => {
+    const rows = [...$("list").children].filter((r) => !r.classList.contains("leaving"));
+    const play = flip(rows); $("list").prepend(rows[rows.length - 1]); play();
+  });
+  $("open-dialog").addEventListener("click", () => $("dlg").showModal());
+  $("close-dialog").addEventListener("click", () => $("dlg").close());
+</script>
+</body>
+</html>

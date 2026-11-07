@@ -95,6 +95,14 @@
       "source": "./internal-tools/fresh-start"
     },
     {
+      "name": "hairline-ui",
+      "description": "Manual-only, invoked with /hairline-ui. Applies the shortener admin's UI style and motion to another app: flat neutral grays, hairline borders, tints instead of shadows, light and dark mode, plus its animation system (sliding segmented thumb, grid-rows disclosure, in-place copy confirmations, row enter/exit and FLIP, toast queue, dialog and view transitions, reduced-motion fallbacks). Copy-ready tokens, component CSS and JS helpers.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/hairline-ui"
+    },
+    {
       "name": "html-presentation",
       "description": "Manual-only HTML presentation, invoked with /html-presentation. Builds a deck as HTML from an existing .pptx or from scratch, takes in-browser text edits and comment pins, presents in the browser, and exports an editable PowerPoint (native shapes, clips, entrance animations) and/or PDF.",
       "author": {
