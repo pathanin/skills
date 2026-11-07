@@ -183,6 +183,22 @@
       "source": "./mods/reply-quote"
     },
     {
+      "name": "ship",
+      "description": "Manual-only, invoked with /ship. Commits current changes, does a fast review, pushes, then deploys if the repo has a deploy step.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./internal-tools/ship"
+    },
+    {
+      "name": "state-audit",
+      "description": "Manual-only state machine audit, invoked with /state-audit. Documents explicit and implicit state machines with invariants and transition tables, finds reachable invalid states (including via retries and concurrency), and fixes confirmed bugs with regression tests.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./internal-tools/state-audit"
+    },
+    {
       "name": "to-prd",
       "description": "Turn the current conversation context into a PRD grounded in existing decision logs, without re-interviewing the user.",
       "author": {

@@ -61,6 +61,8 @@ claude plugin update <skill-name>@local-skills
 | [bump&#8209;homebrew](internal-tools/bump-homebrew/SKILL.md) | auto | Releases a Homebrew formula version: tag, deterministic tarball, GitHub Release, formula update. |
 | [fresh&#8209;start](internal-tools/fresh-start/SKILL.md) | `/fresh-start` | Rewrites from the old code's behavior contract, diffs both, keeps the simpler correct one. |
 | [searx&#8209;search](internal-tools/searx-search/SKILL.md) | auto | Backup web search through a local SearXNG when WebSearch is blocked. Backup copy; not in the marketplace. |
+| [ship](internal-tools/ship/SKILL.md) | `/ship` | Commits, fast-reviews the diff, pushes, then deploys if the repo has a deploy step. |
+| [state&#8209;audit](internal-tools/state-audit/SKILL.md) | `/state-audit` | Documents explicit and implicit state machines, proves which invalid states are reachable (retries, races), fixes them with regression tests. |
 | [worktree&#8209;swarm](internal-tools/worktree-swarm/SKILL.md) | auto | Splits work across parallel worktree-isolated subagents, then integrates and verifies by hand. |
 
 ## mods

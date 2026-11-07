@@ -1,0 +1,7 @@
+{
+  "name": "state-audit",
+  "description": "Manual-only state machine audit, invoked with /state-audit. Documents explicit and implicit state machines with invariants and transition tables, finds reachable invalid states (including via retries and concurrency), and fixes confirmed bugs with regression tests.",
+  "author": {
+    "name": "oat"
+  }
+}
