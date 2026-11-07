@@ -1,6 +1,6 @@
 ---
 name: state-audit
-description: Manual-only state machine audit, invoked with /state-audit. Maps the app's explicit and implicit state machines into one document (states, invariants, transition tables), finds invalid states and transitions the code can actually reach, including through retries and concurrency, then fixes the confirmed bugs with regression tests and keeps the document current.
+description: Manual-only (/state-audit). Documents the app's explicit and implicit state machines, finds reachable invalid states and transitions, then fixes confirmed bugs with regression tests.
 argument-hint: "[path or area to audit; default: whole app]"
 disable-model-invocation: true
 ---
