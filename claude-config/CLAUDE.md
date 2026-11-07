@@ -12,6 +12,7 @@ If a path I give doesn't exist, ask rather than guess.
 ## Delegation
 - Delegate implementation to subagents with `model: opus` and `effort: low`, without waiting to be asked. Write each one a full brief.
 - Keep planning, review and verification yourself: read the diff and screenshots, and rerun the tests before committing. Ask before pushing.
+- Do small edits by yourself.
 
 ## Verification
 - Add tests where they'd catch a real regression. Never weaken, skip or delete tests to get green.
