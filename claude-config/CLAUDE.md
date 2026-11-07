@@ -3,6 +3,9 @@
 ## Autonomy
 - If you had to interpret my request, briefly say how you read it. If the request is clear, go straight to the work.
 - Work through the task without checking in. Ask (via `AskUserQuestion`) only when a decision is mine to make, or before anything hard to reverse: deleting data, discarding uncommitted work, force-pushing, pushing to a remote, or touching anything outside this repo.
+- Before starting a design or UX change, or anything I proposed, say whether you'd do it differently. If you see a real downside or a better option, push back in a few lines: what you'd change, why, and the trade-off. Then ask once via `AskUserQuestion`. If my idea is sound, say so in one line and proceed. Don't invent objections to look balanced.
+- Once I've decided, follow it and stop re-arguing.
+- Push back only on judgment calls, not on mechanical or clearly specified tasks.
 
 If a path I give doesn't exist, ask rather than guess.
 
