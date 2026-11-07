@@ -1,0 +1,73 @@
+/* hairline-ui tokens. Copy as-is to the top of the stylesheet.
+   Flat / hairline style: neutral grays as black-at-alpha, 1px hairlines, shadows only on floating things.
+   Hover is +5% tint, selected is +10%, no lift or scale. Dark mode mirrors it with white-at-alpha. */
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces */
+  --bg-page: #FFFFFF; --bg-sidebar: #FAFAFA; --bg-raised: #FFFFFF;
+
+  /* Interaction tints: layered on any surface */
+  --tint-hover: rgba(0,0,0,0.05); --tint-selected: rgba(0,0,0,0.10); --tint-track: rgba(11,11,11,0.05);
+
+  /* Text: every text colour passes 4.5:1 on every surface. --text-faint is for decorative marks only. */
+  --text-primary: rgba(0,0,0,0.90); --text-secondary: rgba(0,0,0,0.64);
+  --text-muted: rgba(0,0,0,0.56);   --text-faint: rgba(0,0,0,0.47);
+
+  /* Borders: hairline */
+  --border: rgba(0,0,0,0.08); --border-strong: rgba(0,0,0,0.10); --ring-composer: rgba(0,0,0,0.12);
+  /* Inputs, checkboxes and the checked segment only: you have to see where to type (3:1 non-text contrast). */
+  --border-input: rgba(0,0,0,0.45);
+
+  /* Radius ladder */
+  --radius-sm: 4px; --radius-md: 6px; --radius: 8px; --radius-xl: 12px; --radius-composer: 14px;
+
+  /* Shadows: hairline rings, plus drops only on floating surfaces */
+  --shadow-ring: 0 0 0 1px var(--border);
+  --shadow-input: 0 0 0 1px var(--border-input);
+  --shadow-thumb: inset 0 0 0 1px var(--border), 0 1px 2px rgba(0,0,0,0.05);
+  --drop-composer: 0 4px 20px rgba(0,0,0,0.075);
+  --shadow-composer: 0 0 0 1px var(--ring-composer), var(--drop-composer);
+  --shadow-sm: 0 1px 2px rgba(11,11,11,.06), 0 2px 8px rgba(11,11,11,.08);
+  --shadow-panel: 0 0 0 1px var(--border), 0 8px 24px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.08);
+  --backdrop: rgba(0,0,0,0.20);
+
+  /* Type */
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;   /* page title only */
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  --text-sm: 14px; --leading-sm: 20px; --text-base: 16px; --leading-base: 24px;
+  /* Fractional weights render as designed on variable fonts (SF, Segoe UI Variable); elsewhere they round to 400/500/600. */
+  --weight-body: 400; --weight-control: 435; --weight-header: 520; --weight-semibold: 580;
+
+  /* Motion */
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);      /* default for colour, opacity, small moves */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* reveals: disclosure panel, plus/minus glyph, press */
+  --dur-fast: 60ms;   /* press feedback, hover-in on rows, label colour */
+  --dur-out: 140ms;   /* things leaving: close, hide, dismiss */
+  --dur-slide: 140ms; /* segmented thumb */
+  --dur: 200ms;       /* things arriving: open, show, colour/shadow changes */
+
+  /* Status colours: text only, never fills */
+  --danger: #c4312b; --warn: #a35a00; --ok: #2f6b3a;
+  --on-solid: #FFFFFF; /* text on a .primary (solid --text-primary) button */
+
+  /* Touch */
+  --seg-gap: 0px; --tap: 28px; --icon-btn: 32px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-page: #161616; --bg-sidebar: #1B1B1B; --bg-raised: #222222;
+    --tint-hover: rgba(255,255,255,0.06); --tint-selected: rgba(255,255,255,0.11); --tint-track: rgba(255,255,255,0.06);
+    --text-primary: rgba(255,255,255,0.92); --text-secondary: rgba(255,255,255,0.62);
+    --text-muted: rgba(255,255,255,0.54);   --text-faint: rgba(255,255,255,0.48);
+    --border: rgba(255,255,255,0.09); --border-strong: rgba(255,255,255,0.11); --ring-composer: rgba(255,255,255,0.13);
+    --border-input: rgba(255,255,255,0.38);
+    --shadow-thumb: inset 0 0 0 1px var(--border), 0 1px 2px rgba(0,0,0,0.3);
+    --drop-composer: 0 4px 20px rgba(0,0,0,0.35);
+    --shadow-panel: 0 0 0 1px var(--border), 0 8px 24px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.3);
+    --backdrop: rgba(0,0,0,0.55);
+    --danger: #ff8a80; --warn: #f0b052; --ok: #8fd19e; --on-solid: #161616;
+  }
+}
+@media (pointer: coarse) { :root { --seg-gap: 8px; --tap: 44px; --icon-btn: 44px; } }

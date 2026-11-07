@@ -1,0 +1,323 @@
+/* hairline-ui components. Requires tokens.css. Take the blocks you need; keep the base + reduced-motion blocks always.
+   Classes are generic; rename to match the app if it has its own naming. */
+
+/* ---------- base ---------- */
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg-page); color: var(--text-primary);
+       font: var(--weight-body) var(--text-base)/var(--leading-base) var(--font-ui); -webkit-font-smoothing: antialiased; }
+main { max-width: 46rem; margin: 0 auto;
+       padding: max(32px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) calc(96px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left)); }
+h1 { font: 400 22px/28px var(--font-serif); margin: 0; letter-spacing: -.01em; }
+h2 { font: var(--weight-header) var(--text-sm)/var(--leading-sm) var(--font-ui); margin: 0; }
+p { margin: 0; }
+code, kbd { font-family: var(--font-mono); font-size: 12px; }
+kbd { box-shadow: var(--shadow-ring); border-radius: var(--radius-sm); padding: 0 4px; color: var(--text-secondary); white-space: nowrap; }
+a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--text-faint); }
+.muted { color: var(--text-secondary); }
+.small { font-size: var(--text-sm); line-height: var(--leading-sm); }
+.tnum, .count, .badge { font-variant-numeric: tabular-nums; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; margin: -1px; padding: 0; border: 0; }
+
+/* Focus: one 2px ring in --text-primary everywhere. */
+:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+/* Windows High Contrast drops box-shadows: give shadow-drawn rings a real outline there. */
+@media (forced-colors: active) {
+  input:focus-visible, .composer:focus-within, .row:focus-visible { outline: 2px solid CanvasText; outline-offset: 2px; }
+  .segmented input:checked + label { outline: 1px solid CanvasText; }
+}
+
+/* ---------- surfaces ---------- */
+/* Cards are flat: a hairline, no shadow. A tinted card (--bg-sidebar) marks the main working area. */
+.card { background: var(--bg-page); border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 16px; margin-bottom: 16px; }
+.card.tinted { background: var(--bg-sidebar); }
+.card-title { margin: 0 0 10px 4px; color: var(--text-secondary); }
+.banner { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: space-between;
+          border: 1px solid var(--border); border-radius: var(--radius-xl); padding: 10px 10px 10px 16px; margin-bottom: 16px;
+          font-size: var(--text-sm); line-height: var(--leading-sm); background: var(--bg-sidebar); }
+
+/* ---------- inputs ---------- */
+input[type=url], input[type=text], input[type=search], input[type=email], textarea {
+  font: var(--weight-body) var(--text-sm)/var(--leading-sm) var(--font-ui); color: var(--text-primary);
+  background: var(--bg-raised); border: 0; box-shadow: var(--shadow-input); border-radius: var(--radius);
+  padding: 8px 10px; width: 100%; min-height: 36px; outline: 1px solid transparent; outline-offset: 0;
+  transition: box-shadow var(--dur) var(--ease); }
+input::placeholder, textarea::placeholder { color: var(--text-muted); opacity: 1; }
+input:focus-visible, textarea:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--text-primary); }
+.invalid > input, input.invalid { box-shadow: 0 0 0 2px var(--danger); }
+/* 16px inputs on phones, so iOS doesn't zoom the page on focus. */
+@media (max-width: 560px) { input[type=url], input[type=text], input[type=search], input[type=email], textarea { font-size: 16px; } }
+.msg { min-height: 20px; font-size: 13px; line-height: 20px; color: var(--danger); margin: 6px 4px 0; }
+.msg.neutral { color: var(--text-secondary); }
+
+/* Composer: the one floating surface on a page (the main input). Ring + soft drop; focus swaps the ring for 2px. */
+.composer { display: flex; gap: 8px; align-items: center; background: var(--bg-raised); border-radius: var(--radius-composer);
+            padding: 8px; box-shadow: var(--shadow-composer);
+            transition: box-shadow var(--dur) var(--ease), background-color var(--dur) var(--ease); }
+.composer:focus-within { box-shadow: 0 0 0 2px var(--text-primary), var(--drop-composer); }
+.composer.invalid { box-shadow: 0 0 0 2px var(--danger), var(--drop-composer); }
+.composer input, .composer input:focus-visible { min-width: 0; flex: 1; box-shadow: none; outline: none; background: transparent;
+  font-size: var(--text-base); line-height: var(--leading-base); min-height: 40px; }
+.composer button { min-height: 36px; }
+.composer .primary { min-width: 88px; }
+/* Content arrived from outside (paste, drop, autofill): flash a tint that fades out. Restart with flash(el, "pasted"). */
+.composer.pasted { animation: pasted 600ms var(--ease); }
+@keyframes pasted { from { background-color: var(--tint-selected); } }
+
+/* ---------- buttons ---------- */
+button, .button { font: var(--weight-control) var(--text-sm)/var(--leading-sm) var(--font-ui); min-height: 32px; padding: 6px 12px;
+  border-radius: var(--radius); border: 0; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; text-decoration: none; color: var(--text-primary); background: transparent; user-select: none; -webkit-user-select: none;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), opacity var(--dur) var(--ease);
+  -webkit-tap-highlight-color: transparent; }
+/* Press feedback is instant; release eases back over --dur. */
+button:active, .button:active { transition-duration: var(--dur-fast); }
+button:disabled { cursor: default; opacity: .6; }
+.primary { background: var(--text-primary); color: var(--on-solid); }      /* solid: one per view */
+.primary.busy:disabled { opacity: 1; }
+.primary:active:not(:disabled) { opacity: .78; }
+.ghost { box-shadow: var(--shadow-ring); }                                  /* secondary: hairline ring */
+.ghost:active:not(:disabled) { background: var(--tint-selected); }
+.icon { min-height: var(--tap); padding: 4px 8px; color: var(--text-secondary); } /* tertiary: no ring */
+.icon:active { background: var(--tint-selected); }
+.icon.icon-btn { width: var(--icon-btn); height: var(--icon-btn); min-height: 0; padding: 0; display: grid; place-items: center; }
+.glyph { display: block; width: 16px; height: 16px; }
+@media (hover: hover) {
+  .primary:hover:not(:disabled) { opacity: .88; }
+  .ghost:hover:not(:disabled) { background: var(--tint-hover); }
+  .icon:hover { background: var(--tint-hover); color: var(--text-primary); }
+  .icon.danger:hover { color: var(--danger); }
+  .row .icon:hover { background: var(--tint-selected); } /* already on a +5% row: step to +10% */
+}
+@media (pointer: coarse) { button, .button { min-height: 44px; } }
+.textlink { font: inherit; color: var(--text-secondary); text-decoration: underline; text-underline-offset: 2px;
+            padding: 0; min-height: 0; min-width: 0; background: none; box-shadow: none; display: inline; }
+@media (hover: hover) { .textlink:hover:not(:disabled) { color: var(--text-primary); } }
+
+/* Busy button: label stays, a spinner fades in beside it. Toggle .busy + disabled. */
+.spinner { display: none; width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent;
+           border-radius: 50%; animation: spin .7s linear infinite, fadein 100ms linear; }
+.busy .spinner { display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes fadein { from { opacity: 0; } }
+@keyframes pulse { 50% { opacity: .35; } }
+
+/* Text swap in place ("Copy" -> "Copied ✓"). Both labels share one grid cell, so the width never changes.
+   <button class="ghost swap"><span class="l a">Copy</span><span class="l b" aria-hidden="true">Copied ✓</span></button> */
+.swap { display: inline-grid; }
+.swap .l { grid-area: 1 / 1; transition: opacity 120ms var(--ease); }
+.swap .b { opacity: 0; }
+.swap.done .a { opacity: 0; }
+.swap.done .b { opacity: 1; }
+
+/* Icon swap in place (copy -> check): both glyphs in one cell, scale + fade. */
+.icon-swap .glyph { grid-area: 1 / 1; transition: opacity 150ms var(--ease), transform 150ms var(--ease); }
+.icon-swap .glyph.b, .icon-swap.done .glyph.a { opacity: 0; transform: scale(0.6); }
+.icon-swap.done .glyph.b { opacity: 1; transform: none; }
+
+/* Roll-up swap: the text rolls up and out, the confirmation rolls in from below, same spot.
+   <span class="roll"><button class="roll-a">abc123</button><span class="roll-b" aria-hidden="true">Copied ✓</span></span> */
+.roll { position: relative; display: inline-flex; min-width: 0; max-width: 100%; overflow-x: visible; overflow-y: clip; }
+.roll-a, .roll-b { transition: transform 180ms var(--ease), opacity 180ms var(--ease); }
+.roll-b { position: absolute; left: 0; top: 0; pointer-events: none; white-space: nowrap; transform: translateY(100%); opacity: 0;
+          user-select: none; -webkit-user-select: none; }
+.roll.done .roll-a { transform: translateY(-100%); opacity: 0; }
+.roll.done .roll-b { transform: none; opacity: 1; }
+
+/* ---------- segmented control: equal cells, one sliding thumb ---------- */
+/* Option count goes in a class (.n2 to .n5), so no inline style is needed:
+   <div class="segmented n3" role="radiogroup" aria-label="Expires in">
+     <input type="radio" name="x" id="x1" checked><label for="x1">1h</label> ... </div> */
+.segmented { position: relative; display: inline-grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--seg-gap);
+  min-height: 28px; padding: 1px; border-radius: 7px; background: var(--tint-track); --i: 0; --n: 3; }
+.segmented.n2 { --n: 2; } .segmented.n3 { --n: 3; } .segmented.n4 { --n: 4; } .segmented.n5 { --n: 5; }
+.segmented:has(input:nth-of-type(1):checked) { --i: 0; }
+.segmented:has(input:nth-of-type(2):checked) { --i: 1; }
+.segmented:has(input:nth-of-type(3):checked) { --i: 2; }
+.segmented:has(input:nth-of-type(4):checked) { --i: 3; }
+.segmented:has(input:nth-of-type(5):checked) { --i: 4; }
+.segmented::before { content: ""; position: absolute; top: 1px; bottom: 1px; left: 1px;
+  width: calc((100% - 2px - (var(--n) - 1) * var(--seg-gap)) / var(--n)); border-radius: 6px; background: var(--bg-raised);
+  box-shadow: inset 0 0 0 1px var(--border-input), 0 1px 2px rgba(0,0,0,0.05);
+  transform: translateX(calc(var(--i) * (100% + var(--seg-gap)))); transition: transform var(--dur-slide) var(--ease); }
+.segmented input { position: absolute; opacity: 0; pointer-events: none; }
+.segmented label { position: relative; display: grid; place-items: center; padding: 4px 10px; border-radius: 6px; cursor: pointer;
+  font: var(--weight-control) 13px/1.2 var(--font-ui); color: var(--text-secondary); user-select: none; -webkit-user-select: none;
+  transition: color var(--dur-fast) var(--ease); }
+.segmented input:checked + label { color: var(--text-primary); font-weight: var(--weight-semibold); }
+.segmented input:focus-visible + label { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+@media (hover: hover) { .segmented label:hover { color: var(--text-primary); } }
+@media (pointer: coarse) { .segmented { min-height: 44px; } .segmented label { padding: 8px 12px; } }
+
+/* ---------- checkbox ---------- */
+.check { display: flex; gap: 8px; align-items: baseline; cursor: pointer; font-size: var(--text-sm); line-height: var(--leading-sm); }
+.check.disabled { cursor: default; opacity: 0.6; }
+.check input[type=checkbox] { appearance: none; -webkit-appearance: none; width: 16px; height: 16px; margin: 0; flex: none; translate: 0 3px;
+  border-radius: var(--radius-sm); background-color: var(--bg-raised); box-shadow: var(--shadow-input); cursor: inherit;
+  background-repeat: no-repeat; background-position: center; background-size: 11px 11px;
+  transition: background-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease); }
+.check input[type=checkbox]:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; box-shadow: var(--shadow-input); }
+@media (hover: hover) { .check:not(.disabled):hover input[type=checkbox]:not(:checked) { background-image: linear-gradient(var(--tint-hover), var(--tint-hover)); background-size: auto; } }
+.check input[type=checkbox]:checked { background-color: var(--text-primary); box-shadow: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5' fill='none' stroke='%23FFFFFF' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+@media (prefers-color-scheme: dark) { .check input[type=checkbox]:checked {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.4 2.4 4.6-5' fill='none' stroke='%23161616' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); } }
+@media (pointer: coarse) { .check input[type=checkbox] { width: 20px; height: 20px; } }
+@media (forced-colors: active) { .check input[type=checkbox] { appearance: auto; -webkit-appearance: auto; } }
+
+/* ---------- disclosure: plus that morphs into minus + grid-rows height reveal ---------- */
+/* <button class="disclose" aria-expanded="false" aria-controls="p">More options</button>
+   <div id="p" class="reveal" inert><div class="reveal-inner"> ...children... </div></div>
+   Toggle with setReveal(button, panel, open) from motion.js. */
+.disclose, summary { position: relative; color: var(--text-secondary); font: var(--weight-control) 13px/20px var(--font-ui);
+  padding: 4px 8px; min-height: var(--tap); width: max-content; max-width: 100%; border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: flex-start; gap: 0; cursor: pointer; list-style: none;
+  user-select: none; -webkit-user-select: none; }
+summary::-webkit-details-marker { display: none; }
+@media (hover: hover) { .disclose:hover, summary:hover { background: var(--tint-hover); color: var(--text-primary); } }
+.disclose:active { transform: scale(0.97); }
+.ready .disclose { transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease), transform 100ms var(--ease-out); }
+.ready .disclose:active { transition-duration: var(--dur-fast), var(--dur-fast), 100ms; }
+/* ::before is the horizontal bar, ::after the vertical bar, which rotates flat when open. */
+.disclose::before, summary::before { content: "" / ""; flex: none; width: 9px; height: 9px; margin-right: 6px;
+  background: linear-gradient(currentColor, currentColor) center / 9px 1.5px no-repeat; }
+.disclose::after, summary::after { content: "" / ""; position: absolute; left: 8px; top: 50%; width: 9px; height: 9px; translate: 0 -50%;
+  background: linear-gradient(currentColor, currentColor) center / 1.5px 9px no-repeat; pointer-events: none; }
+.disclose[aria-expanded="true"]::after, details[open] > summary::after { rotate: 90deg; }
+.ready .disclose::after, .ready summary::after { transition: rotate var(--dur) var(--ease-out); }
+/* Only grid rows animate the height. Spacing lives as margins on children inside the clipped inner, so closed is exactly 0px.
+   Close timings sit on the base rule and open timings on .open (a transition uses the destination state's values):
+   open is slower (220ms) with a 30ms content delay, close is quick (140ms) with no delay. */
+.reveal { display: grid; grid-template-rows: 0fr; grid-template-columns: minmax(0, 1fr); }
+/* Safari ignores overflow-clip-margin, so real side padding (cancelled by a negative margin) keeps input rings inside the clip. */
+.reveal > .reveal-inner { min-height: 0; min-width: 0; overflow: clip; overflow-clip-margin: 4px; padding: 0 4px 3px; margin: 0 -4px -3px;
+                          opacity: 0; transform: translateY(-4px); }
+.reveal > .reveal-inner > :first-child { margin-top: 10px; }
+.reveal.open { grid-template-rows: 1fr; }
+.reveal.open > .reveal-inner { opacity: 1; transform: none; }
+.ready .reveal { transition: grid-template-rows var(--dur-out) var(--ease-out); }
+.ready .reveal > .reveal-inner { transition: opacity var(--dur-out) var(--ease-out), transform var(--dur-out) var(--ease-out); }
+.ready .reveal.open { transition: grid-template-rows 220ms var(--ease-out); }
+.ready .reveal.open > .reveal-inner { transition: opacity 200ms var(--ease-out) 30ms, transform 200ms var(--ease-out) 30ms; }
+/* Native <details>: same feel where ::details-content is supported, instant elsewhere. */
+.ready details { interpolate-size: allow-keywords; }
+.ready details::details-content { block-size: 0; overflow: clip; opacity: 0;
+  transition: block-size var(--dur) var(--ease), opacity var(--dur) var(--ease), content-visibility var(--dur) allow-discrete; }
+.ready details[open]::details-content { block-size: auto; opacity: 1; }
+
+/* ---------- list rows ---------- */
+/* <ul class="list"><li class="row" tabindex="-1"><span class="tile">A</span><div class="row-body">..</div><div class="row-side">..</div></li></ul> */
+.list { list-style: none; margin: 0 -8px; padding: 0; }
+.row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "tile body side"; gap: 4px 10px;
+       align-items: center; padding: 8px; border-radius: var(--radius); outline-offset: -2px;
+       transition: background-color var(--dur) var(--ease); }
+/* Hover arrives fast (60ms) and leaves slowly (200ms), so sweeping the list leaves a soft trail. */
+@media (hover: hover) { .row:hover { background: var(--tint-hover); transition-duration: var(--dur-fast); } }
+.row:focus-visible, .row.active:focus-within { background: var(--tint-selected); }
+.row.leaving { pointer-events: none; }
+/* New or just-updated row: starts at +10% tint and fades to nothing. Restart with flash(el, "fresh"). */
+.row.fresh, .fresh { animation: fresh 1200ms var(--ease); }
+@keyframes fresh { from { background-color: var(--tint-selected); } }
+.row-divider { position: relative; margin-top: 15px; }
+.row-divider::before { content: ""; position: absolute; left: 8px; right: 8px; top: -8px; height: 1px; background: var(--border); pointer-events: none; }
+.tile { grid-area: tile; width: 28px; height: 28px; border-radius: var(--radius-md); display: grid; place-items: center;
+        font: var(--weight-header) 12px var(--font-ui); background: var(--tint-track); color: var(--text-secondary); text-transform: uppercase; }
+.tile img { width: 16px; height: 16px; display: block; }
+.row-body { grid-area: body; min-width: 0; display: grid; font-size: var(--text-sm); line-height: var(--leading-sm); }
+.row-title { font: var(--weight-control) var(--text-sm)/var(--leading-sm) var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-sub { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row-side { grid-area: side; display: flex; gap: 2px; align-items: center; }
+@media (max-width: 560px) {
+  .row { grid-template-columns: 28px minmax(0, 1fr); grid-template-areas: "tile body" ". side"; }
+  .row > .tile { align-self: start; margin-top: 2px; }
+  .row-side { justify-content: flex-start; margin: 0 -8px -4px; }
+}
+
+/* ---------- tiles with hover-revealed actions (start-page grid) ---------- */
+.tiles { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(208px, 1fr)); }
+.tile-card { position: relative; display: flex; align-items: center; min-width: 0; border-radius: var(--radius-xl);
+             background: var(--bg-page); box-shadow: var(--shadow-ring); transition: background-color var(--dur) var(--ease); }
+.tile-card > a { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 10px 12px; min-height: 56px;
+                 border-radius: inherit; text-decoration: none; color: var(--text-primary); }
+.tile-card > a:focus-visible { outline-offset: -2px; }
+.tile-actions { display: flex; gap: 2px; padding-right: 6px; flex: none; }
+@media (hover: hover) {
+  .tile-card:hover, .tile-card:focus-within { background: var(--bg-sidebar); }
+  /* Actions fade in over a gradient that hides overflowing text beneath them. Always visible on touch. */
+  .tile-actions { position: absolute; right: 0; top: 0; bottom: 0; align-items: center; padding: 0 6px 0 24px;
+                  border-radius: 0 var(--radius-xl) var(--radius-xl) 0; opacity: 0; pointer-events: none;
+                  background: linear-gradient(to right, transparent, var(--bg-sidebar) 20px);
+                  transition: opacity var(--dur) var(--ease); }
+  .tile-card:hover .tile-actions, .tile-card:focus-within .tile-actions { opacity: 1; pointer-events: auto; }
+}
+
+/* ---------- badges, notes, counts ---------- */
+.badge { font: var(--weight-control) 12px/18px var(--font-ui); border-radius: var(--radius-sm); padding: 0 6px;
+         box-shadow: var(--shadow-ring); color: var(--text-secondary); white-space: nowrap; user-select: none; -webkit-user-select: none; }
+.badge.warn { color: var(--warn); }
+.badge.danger { color: var(--danger); }
+.badge.accent { color: var(--text-primary); background: var(--tint-track); box-shadow: none; }
+.note { justify-self: start; max-width: 100%; padding: 0 6px; border-radius: var(--radius-sm); background: var(--tint-track);
+  color: var(--text-secondary); font: var(--weight-body) 13px/20px var(--font-ui); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.count { display: inline-block; min-width: 2ch; font-size: 12px; font-weight: var(--weight-control); color: var(--text-muted); }
+
+/* ---------- loading and empty ---------- */
+.skel { animation: pulse 1.2s ease-in-out infinite; }
+.skel .bar { display: block; height: 10px; width: 45%; margin: 5px 0; border-radius: var(--radius-sm); background: var(--tint-track); }
+.skel .bar.wide { width: 70%; }
+.empty { text-align: center; padding: 28px 8px; font-size: var(--text-sm); color: var(--text-secondary); display: grid; gap: 10px; justify-items: center; }
+
+/* ---------- dialog: floating, so panel shadow + hairline ring. Enter/exit with pure CSS. ---------- */
+dialog { border: 0; padding: 0; border-radius: var(--radius-xl); background: var(--bg-raised); color: var(--text-primary);
+         box-shadow: var(--shadow-panel); max-width: calc(100% - 32px);
+         opacity: 0; translate: 0 4px;
+         transition: opacity var(--dur-out) var(--ease), translate var(--dur-out) var(--ease),
+                     overlay var(--dur-out) allow-discrete, display var(--dur-out) allow-discrete; }
+dialog[open] { opacity: 1; translate: 0 0; transition-duration: var(--dur); }
+@starting-style { dialog[open] { opacity: 0; translate: 0 4px; } }
+dialog::backdrop { background: transparent;
+  transition: background-color var(--dur-out) var(--ease), overlay var(--dur-out) allow-discrete, display var(--dur-out) allow-discrete; }
+dialog[open]::backdrop { background: var(--backdrop); transition-duration: var(--dur); }
+@starting-style { dialog[open]::backdrop { background: transparent; } }
+
+/* ---------- toast: bottom-centre on desktop, top on touch (clear of Safari's toolbar and the keyboard) ---------- */
+/* <div id="toast" class="toast"><span class="toast-text"></span><button type="button" class="toast-action" hidden></button></div> */
+.toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+  background: var(--bg-raised); color: var(--text-primary); border-radius: var(--radius-xl); padding: 6px 6px 6px 14px;
+  display: flex; gap: 12px; align-items: center; box-shadow: var(--shadow-panel); font-size: var(--text-sm);
+  line-height: var(--leading-sm); width: max-content; max-width: calc(100% - 32px); min-height: 40px; z-index: 10;
+  opacity: 0; translate: 0 4px; visibility: hidden; pointer-events: none;
+  transition: opacity var(--dur-out) var(--ease), translate var(--dur-out) var(--ease), visibility 0s linear var(--dur-out); }
+.toast.show { opacity: 1; translate: 0 0; visibility: visible; pointer-events: auto;
+  transition: opacity var(--dur) var(--ease), translate var(--dur) var(--ease), visibility 0s; }
+.toast:not(.has-action) { padding-right: 14px; }
+.toast button { min-height: 28px; padding: 4px 10px; font-weight: var(--weight-header); gap: 8px; }
+.toast button kbd { font-weight: var(--weight-body); }
+@media (hover: hover) { .toast button:hover { background: var(--tint-hover); } }
+@media (pointer: coarse) {
+  .toast { bottom: auto; top: calc(12px + env(safe-area-inset-top)); translate: 0 -4px; }
+  .toast.show { translate: 0 0; }
+  .toast button { min-height: 44px; }
+  .toast button kbd { display: none; }
+}
+
+/* ---------- view transitions (swap(fn) in motion.js) ---------- */
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: var(--dur); }
+/* For a named region: give it view-transition-name and copy these with its name. */
+::view-transition-group(*) { animation-duration: var(--dur); animation-timing-function: var(--ease); }
+
+/* ---------- reduced motion: keep always ---------- */
+/* Near-instant instead of none, so transitionend / animation.finished still fire. Movement becomes a crossfade. */
+@media (prefers-reduced-motion: reduce) {
+  .roll-a, .roll-b, .roll.done .roll-a, .icon-swap .glyph { transform: none !important; }
+  *, *::before, *::after, ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) {
+    transition-duration: 1ms !important; transition-delay: 0s !important;
+    animation-duration: 1ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+  .busy .spinner { border-right-color: currentColor; animation: pulse 1.2s ease-in-out infinite !important; }
+  .skel { animation: none !important; }
+  /* Disclosure: instant height, no slide, a short fade only. */
+  .ready .reveal, .ready .reveal.open { transition: none !important; }
+  .reveal > .reveal-inner, .reveal.open > .reveal-inner { transform: none !important; }
+  .ready .reveal > .reveal-inner, .ready .reveal.open > .reveal-inner { transition: opacity 120ms var(--ease) !important; }
+}
