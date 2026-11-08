@@ -1,10 +1,10 @@
 ---
 name: hairline-ui
-description: Manual-only, invoked with /hairline-ui. Applies the shortener admin's UI style and motion to another app: flat neutral grays, hairline borders, tints instead of shadows, light and dark mode, plus its animation system (sliding segmented thumb, grid-rows disclosure, in-place copy confirmations, row enter/exit and FLIP, toast queue, dialog and view transitions, reduced-motion fallbacks). Copy-ready tokens, component CSS and JS helpers.
+description: "Manual-only, invoked with /hairline-ui. Applies the shortener admin's UI style and motion to another app: flat neutral grays, hairline borders, tints instead of shadows, light and dark mode, plus its animation system (sliding segmented thumb, grid-rows disclosure, in-place copy confirmations, row enter/exit and FLIP, toast queue, dialog and view transitions, reduced-motion fallbacks). Copy-ready tokens, component CSS and JS helpers."
 disable-model-invocation: true
 ---
 
-Use this style for any UI built or restyled in this task. It extends `/ui-style` with dark mode, contrast-checked text colours, touch sizing and a full motion system, all taken from the pothonon.party shortener admin.
+Use this style for any UI built or restyled in this task. It covers flat neutral styling, dark mode, contrast-checked text colours, touch sizing and a full motion system, all taken from the pothonon.party shortener admin.
 
 If the project already has a design system, ask before overriding it. If it uses a framework (React, Svelte, Tailwind), keep the CSS variables as the source of truth and map them into the framework's theme rather than rewriting values.
 
