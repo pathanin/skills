@@ -17,7 +17,9 @@ Commit, fast-review, push, and deploy the current repo. Invoking this command is
    - Minor nits: one line, don't block.
 3. Commit with a concise message matching the repo's existing commit style. Message hint (may be empty): $ARGUMENTS
    - If a pre-commit hook fails, report it and stop. Never use `--no-verify`.
-4. Push with `git push` (use `git push -u <remote> <branch>` if the branch has no upstream yet). Never force-push. If the push fails, stop: don't deploy.
+4. Push with `git push` (use `git push -u <remote> <branch>` if the branch has no upstream yet). Never force-push.
+   - If it's rejected because the remote has new commits: `git fetch`, list them (`git log --oneline HEAD..@{u}`), then `git pull --rebase`. On a conflict, run `git rebase --abort` and stop, naming the conflicting files. If the rebase is clean, rerun the repo's typecheck/tests (if any) and stop if they fail; otherwise push again and mention which remote commits you rebased onto.
+   - Any other push failure: stop, don't deploy.
 5. Deploy, if the repo has a deploy step:
    - Detect it in this order: a deploy command named in the repo's CLAUDE.md; a `deploy` script in `package.json` (`npm run deploy`, or the repo's package manager); a `wrangler.jsonc`/`wrangler.json`/`wrangler.toml` with no deploy script (`npx wrangler deploy`). Anything else (no deploy step, or deploys that happen on push via CI): skip and say so.
    - If CLAUDE.md lists tests/checks to run before deploying, run them first; any failure stops the deploy.
