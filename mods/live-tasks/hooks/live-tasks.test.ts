@@ -182,6 +182,13 @@ describe('a list left behind', () => {
     expect((await results($, 8)).filter(c => c !== 'ok')).toHaveLength(1)
   })
 
+  test("reminds at once on a subagent's result", async ($, on) => {
+    await startSession($, on, 'cli')
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    expect(await result($, 'Agent')).toContain('<system-reminder>')
+    expect(await results($, 7)).toEqual(Array(7).fill('ok'))
+  })
+
   test('an update_plan call starts the count over', async ($, on) => {
     await startSession($, on, 'cli')
     await $.tool.call({ tool: TOOL, items: ITEMS })

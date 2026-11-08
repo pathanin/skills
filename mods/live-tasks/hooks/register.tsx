@@ -108,7 +108,8 @@ export const register: Register = on => {
       return next(e)
     }
     quiet += 1
-    if (quiet < STALE_AFTER) return next(e)
+    // A subagent's result ends a delegated step, so the list should move now, not 8 results on.
+    if (quiet < STALE_AFTER && e.origin.tool !== 'Agent') return next(e)
     quiet = 0
     return next({ ...e, message: { ...e.message, content: withReminder(e.message.content, behind(current)) } })
   }).catch(($, e, next) => next(e))
