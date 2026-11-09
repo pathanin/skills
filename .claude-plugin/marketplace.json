@@ -39,6 +39,14 @@
       "source": "./mods/clawd"
     },
     {
+      "name": "clean-copy",
+      "description": "Cuts interface copy that shouldn't exist: captions that restate a label, hints that plant a worry, warnings left over from a fixed bug. For writing or reviewing any user-facing string.",
+      "author": {
+        "name": "oat"
+      },
+      "source": "./design/clean-copy"
+    },
+    {
       "name": "code-animation",
       "description": "Manual-only code animation, invoked with /code-animation. Turns your source materials (brand, character sheet, storyboard, music) into a scene written in code, renders it frame-exact in headless Chromium, and exports MP4, GIF, WebM or ProRes with alpha.",
       "author": {

@@ -29,6 +29,7 @@ claude plugin update <skill-name>@local-skills
 | [code&#8209;animation](design/code-animation/SKILL.md) | `/code-animation` | Code-built animation rendered frame-exact in headless Chromium; exports MP4, GIF, WebM, ProRes with alpha. |
 | [code&#8209;wallpaper](design/code-wallpaper/SKILL.md) | `/code-wallpaper` | Code-painted landscape wallpaper, oil on linen or layered paper cut, PNG at any resolution. |
 | [critic&#8209;loop](design/critic-loop/SKILL.md) | `/critic-loop` | Builder revises against fresh-context critics until none blocks and all clear a score floor. No reference needed. |
+| [clean&#8209;copy](design/clean-copy/SKILL.md) | auto | Cuts UI copy that shouldn't exist: restated labels, planted worries, scar tissue from fixed bugs. |
 | [dashboard&#8209;design](design/dashboard-design/SKILL.md) | auto | Dashboard and data-table principles: data-driven form, progressive disclosure, invisible UI. |
 | [design&#8209;loop](design/design-loop/SKILL.md) | `/design-loop` | Breaks a real-world reference into checkable mechanisms, then loops builder vs. three critics per piece. |
 | [extract&#8209;dna](design/extract-dna/SKILL.md) | `/extract-dna` | Measures a design system into `dna.json` + `dna.md`, proven by rebuilding and diffing the reference. |
