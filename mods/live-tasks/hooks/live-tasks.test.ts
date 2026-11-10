@@ -171,44 +171,55 @@ describe('a list left behind', () => {
     return out
   }
 
-  test('reminds the model on the eighth tool result without an update, then counts again', async ($, on) => {
+  test('reminds the model on the sixth tool result without an update, then counts again', async ($, on) => {
     await startSession($, on, 'cli')
     await $.tool.call({ tool: TOOL, items: ITEMS })
-    const first = await results($, 8)
-    expect(first.slice(0, 7)).toEqual(Array(7).fill('ok'))
-    expect(first[7]).toContain('ok\n\n<system-reminder>')
-    expect(first[7]).toContain('"Look at the code" in progress')
-    expect(first[7]).toContain('{"advance": true}')
-    expect((await results($, 8)).filter(c => c !== 'ok')).toHaveLength(1)
+    const first = await results($, 6)
+    expect(first.slice(0, 5)).toEqual(Array(5).fill('ok'))
+    expect(first[5]).toContain('ok\n\n<system-reminder>')
+    expect(first[5]).toContain('"Look at the code" in progress')
+    expect(first[5]).toContain('{"advance": true}')
+    expect((await results($, 6)).filter(c => c !== 'ok')).toHaveLength(1)
   })
 
   test("reminds at once on a subagent's result", async ($, on) => {
     await startSession($, on, 'cli')
     await $.tool.call({ tool: TOOL, items: ITEMS })
     expect(await result($, 'Agent')).toContain('<system-reminder>')
-    expect(await results($, 7)).toEqual(Array(7).fill('ok'))
+    expect(await results($, 5)).toEqual(Array(5).fill('ok'))
   })
 
   test('an update_plan call starts the count over', async ($, on) => {
     await startSession($, on, 'cli')
     await $.tool.call({ tool: TOOL, items: ITEMS })
-    await results($, 7)
+    await results($, 5)
     await $.tool.call({ tool: TOOL, advance: true })
-    expect(await results($, 7)).toEqual(Array(7).fill('ok'))
+    expect(await results($, 5)).toEqual(Array(5).fill('ok'))
   })
 
   test('adds a text block to a result made of blocks', async ($, on) => {
     await startSession($, on, 'cli')
     await $.tool.call({ tool: TOOL, items: ITEMS })
-    await results($, 7)
+    await results($, 5)
     const blocks = (await result($, 'Read', [{ type: 'text', text: 'file' }])) as any[]
     expect(blocks[0]).toEqual({ type: 'text', text: 'file' })
     expect(blocks[1].text).toContain('<system-reminder>')
   })
 
-  test('leaves results alone with no list, a finished one, or outside the CLI', async ($, on) => {
+  test('asks once per request for a list when none was made', async ($, on) => {
+    on('turn.start', ($: any, e: any) => e)
     await startSession($, on, 'cli')
-    expect(await results($, 9)).toEqual(Array(9).fill('ok'))
+    const first = await results($, 9)
+    expect(first.slice(0, 2)).toEqual(['ok', 'ok'])
+    expect(first[2]).toContain('no live task list')
+    expect(first[2]).toContain('{"items": [...]}')
+    expect(first.filter(c => c !== 'ok')).toHaveLength(1)
+    await $.turn.start({ text: 'next request', turnId: 't2' })
+    expect((await results($, 3))[2]).toContain('no live task list')
+  })
+
+  test('leaves results alone with a finished list or outside the CLI', async ($, on) => {
+    await startSession($, on, 'cli')
     await $.tool.call({ tool: TOOL, items: ITEMS })
     await $.tool.call({ tool: TOOL, done: [1, 2, 3] })
     expect(await results($, 9)).toEqual(Array(9).fill('ok'))
@@ -216,8 +227,45 @@ describe('a list left behind', () => {
 
   test('the desktop app gets no reminder', async ($, on) => {
     await startSession($, on, 'app')
+    expect(await results($, 9)).toEqual(Array(9).fill('ok'))
     await $.tool.call({ tool: TOOL, items: ITEMS })
     expect(await results($, 9)).toEqual(Array(9).fill('ok'))
+  })
+})
+
+describe('a list left unfinished', () => {
+  const prompt = async ($: any, isMeta = false) => {
+    const stored = await $.session.append({
+      door: 'prompt',
+      uuid: crypto.randomUUID(),
+      origin: { kind: 'user' },
+      message: { type: 'user', role: 'user', ...(isMeta ? { isMeta: true } : {}), content: [{ type: 'text', text: 'next' }] },
+    })
+    return stored.message.content
+  }
+
+  test("tells the model on the person's next prompt", async ($, on) => {
+    await startSession($, on, 'cli')
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    await $.tool.call({ tool: TOOL, advance: true })
+    const content = await prompt($)
+    expect(content[0]).toEqual({ type: 'text', text: 'next' })
+    expect(content[1].text).toContain('left unfinished at 1 of 3 steps done')
+  })
+
+  test('says nothing with no list, a finished one, a meta row, or outside the CLI', async ($, on) => {
+    await startSession($, on, 'cli')
+    expect(await prompt($)).toHaveLength(1)
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    expect(await prompt($, true)).toHaveLength(1)
+    await $.tool.call({ tool: TOOL, done: [1, 2, 3] })
+    expect(await prompt($)).toHaveLength(1)
+  })
+
+  test('the desktop app gets no reminder', async ($, on) => {
+    await startSession($, on, 'app')
+    await $.tool.call({ tool: TOOL, items: ITEMS })
+    expect(await prompt($)).toHaveLength(1)
   })
 })
 

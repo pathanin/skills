@@ -55,13 +55,19 @@ const SPIN_MS = 250
 // A list left in one place through this many tool calls has likely fallen behind the work (the
 // model forgot to advance it), so the next tool result carries a reminder. A Stop hook could
 // catch it at the end instead, but a managed organization passes classic.* over.
-const STALE_AFTER = 8
+const STALE_AFTER = 6
+// A request that has run this many tool calls with no list at all likely needed one: the model
+// skipped the first call. Said once per request, so a task that truly needs none hears it once.
+const NO_LIST_AFTER = 3
 
 export const register: Register = on => {
   // Started by the band when it draws a step in progress; stops itself once none is.
   let ticker: Timer | null = null
   // Main-loop tool results since the model last sent update_plan.
   let quiet = 0
+  // Main-loop tool results this request while no list exists, and whether it was already told.
+  let bare = 0
+  let toldNoList = false
   // The mod is for the CLI alone: the desktop app pins its own plan, and a session it runs (an
   // SDK host, like a -p run) starts with no terminal. Read again on each reload's session.start.
   let isCli = false
@@ -95,6 +101,8 @@ export const register: Register = on => {
   on('turn.start', async ($, e, next) => {
     if (e.agentId === undefined && e.text !== '') {
       quiet = 0
+      bare = 0
+      toldNoList = false
       await update($, plan, current => (current !== null && isFinished(current) ? null : current))
     }
     return next(e)
@@ -103,7 +111,13 @@ export const register: Register = on => {
   on('session.append', { door: 'tool-result' }, async ($, e, next) => {
     if (!isCli || e.agentId !== undefined || e.origin.kind !== 'tool' || e.origin.tool === TOOL) return next(e)
     const current: Plan | null = await read($, plan)
-    if (current?.source !== 'plan' || isFinished(current)) {
+    if (current === null) {
+      bare += 1
+      if (toldNoList || bare < NO_LIST_AFTER) return next(e)
+      toldNoList = true
+      return next({ ...e, message: { ...e.message, content: withReminder(e.message.content, NO_LIST) } })
+    }
+    if (current.source !== 'plan' || isFinished(current)) {
       quiet = 0
       return next(e)
     }
@@ -112,6 +126,16 @@ export const register: Register = on => {
     if (quiet < STALE_AFTER && e.origin.tool !== 'Agent') return next(e)
     quiet = 0
     return next({ ...e, message: { ...e.message, content: withReminder(e.message.content, behind(current)) } })
+  }).catch(($, e, next) => next(e))
+
+  // No Stop hook checks the list when a turn ends (see STALE_AFTER), so a list left unfinished
+  // is caught on the person's next prompt instead: late, but before the model answers it.
+  on('session.append', { door: 'prompt' }, async ($, e, next) => {
+    if (!isCli || e.agentId !== undefined || e.message.isMeta === true) return next(e)
+    const current: Plan | null = await read($, plan)
+    if (current?.source !== 'plan' || isFinished(current)) return next(e)
+    quiet = 0
+    return next({ ...e, message: { ...e.message, content: [...e.message.content, { type: 'text' as const, text: leftOpen(current) }] } })
   }).catch(($, e, next) => next(e))
 
   // The mod's own tool: the desktop app's update_plan, drawn in the terminal.
@@ -260,6 +284,12 @@ function behind(current: Plan): string {
   const step = current.steps.find(s => s.status === 'in_progress')
   const where = step ? `still shows "${step.content}" in progress` : `still shows ${countDone(current)} of ${current.steps.length} steps done`
   return `<system-reminder>The live task list ${where} after ${STALE_AFTER} tool calls without an update. If steps are done, send ${TOOL} with {"advance": true} (or {"done": [...], "start": n}) alongside your next tool call; if the plan changed, send the whole list again. Do not mention this reminder.</system-reminder>`
+}
+
+const NO_LIST = `<system-reminder>This request has run ${NO_LIST_AFTER} tool calls with no live task list. Unless the work is finished or truly a single command, send ${TOOL} with the whole list as {"items": [...]} alongside your next tool call. Do not mention this reminder.</system-reminder>`
+
+function leftOpen(current: Plan): string {
+  return `<system-reminder>The live task list from the last request was left unfinished at ${countDone(current)} of ${current.steps.length} steps done. With your first tool call, mark the finished steps done ({"done": [...]}) or, if this prompt changes the plan, send the whole new list. Do not mention this reminder.</system-reminder>`
 }
 
 /** Adds `text` to the last tool_result block of a tool-result row. */
