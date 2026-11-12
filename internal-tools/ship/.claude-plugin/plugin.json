@@ -1,6 +1,6 @@
 {
   "name": "ship",
-  "description": "Manual-only, invoked with /ship. Commits current changes, does a fast review, pushes, then deploys if the repo has a deploy step.",
+  "description": "Manual-only, invoked with /ship. Commits current changes, does a fast review, pushes, then deploys if the repo has a deploy step. With --merge on a feature branch, also opens and merges a PR into the default branch so it deploys.",
   "author": {
     "name": "oat"
   }
