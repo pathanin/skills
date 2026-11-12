@@ -14,21 +14,18 @@ const TOOL = 'mcp__live-tasks__update_plan'
 // The whole guidance lives here, not in a prompt.compose section: where an organization manages
 // Claude Code, cc-plugin-sec-default passes prompt.compose over the plugins a person installs,
 // while a tool's description still reaches the model.
-const DESCRIPTION = `Keep the live task list the person sees above the prompt while you work. The person follows your progress on this list, not by reading your messages, so keeping it is part of doing the task; use it in place of TodoWrite, TaskCreate and TaskUpdate. Every request that edits files or runs more than one command gets one; only a single-command answer or pure conversation does not.
-
-Never spend a message on this tool alone: send it in the same message as another tool call (in parallel), so it costs no extra round trip.
-- First call: with the very first tool call of the turn, even one that only reads or lists files: {"items": [...]}, the whole plan in order, short imperative phrases (at most ~7 words, no numbering), the step you are starting "in_progress", the rest "pending". If you must look around first, make "Look at how X is set up" step one and refine the list once you know.
-- Next step: {"advance": true} alongside the call that begins it (completes the in_progress step, starts the next pending one). After the last step, send {"advance": true} once more with your final tool call so every step ends checked.
+const DESCRIPTION = `Live task list shown above the prompt; the person follows progress here, not by reading your messages. Use it in place of TodoWrite, TaskCreate and TaskUpdate for any task that edits files or runs 2+ commands. Always send it alongside another tool call, never alone.
+- Start: with the turn's first tool call (even a read), {"items": [...]}: whole plan, short imperative steps (≤7 words, no numbering), first "in_progress", rest "pending". If you must explore first, make that step one and refine later.
+- Next step: {"advance": true} with the call that begins it; once more with the final call so all end checked.
 - Out of order: {"done": [2], "start": 4} (1-based).
-- Plan changed, including right after the user interrupts or sends a new instruction mid-task: {"items": [...]} again, the new whole list, so the list never shows an abandoned plan.
-Keep exactly one step in_progress while working and none when everything is done. Do not also write the plan as a numbered list in your message: the live list is the plan.`
+- Plan changed or user redirected: resend the full {"items": [...]}.
+Keep exactly one step in_progress while working, none when done. Don't repeat the plan in your message.`
 
 const INPUT_SCHEMA = {
   type: 'object',
   properties: {
     items: {
       type: 'array',
-      description: 'The whole plan, in order (1-12 steps); replaces the previous list.',
       minItems: 1,
       maxItems: 12,
       items: {
