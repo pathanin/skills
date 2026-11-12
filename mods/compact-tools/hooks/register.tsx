@@ -401,10 +401,13 @@ export const register: Register = on => {
   // A blank line above and below reply text, so it stands apart from the compact tool rows.
   on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
     if (e.surface !== 'terminal') return next(e)
-    const { Box } = $.ui.resolve(e)
+    // Explicit blank rows: the transcript drops an outer margin on its rows.
+    const { Box, Text } = $.ui.resolve(e)
     return (
-      <Box flexDirection="column" marginY={1}>
+      <Box flexDirection="column">
+        <Text> </Text>
         {await next(e)}
+        <Text> </Text>
       </Box>
     )
   })

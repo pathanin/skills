@@ -1,6 +1,6 @@
 {
   "name": "compact-tools",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Tool calls draw as one compact line each, same-kind runs merge, and a \"Thought for Xs\" line sits above them; reminders appended to a prompt are hidden from its row; ctrl+o shows the full rows.",
   "types": "./types/index.d.ts",
   "author": {

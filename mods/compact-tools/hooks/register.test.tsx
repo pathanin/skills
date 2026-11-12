@@ -249,7 +249,9 @@ test('reply text gets a blank line above and below it', async ($, on) => {
     props: { text: 'Done.', isFirstOfReply: true },
     surface: 'terminal',
   })
-  expect(await ui.drawn()).toMatchObject({ type: 'Box', props: { marginY: 1 } })
+  const drawn = (await ui.drawn()) as { children: Array<{ type: string; children?: unknown[] }> }
+  expect(drawn.children[0]).toMatchObject({ type: 'Text', children: [' '] })
+  expect(drawn.children.at(-1)).toMatchObject({ type: 'Text', children: [' '] })
   expect(await ui.find({ type: 'Text', text: /engine/ })).toBeDefined()
   await ui.unmount()
 })
