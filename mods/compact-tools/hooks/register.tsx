@@ -386,6 +386,17 @@ export const register: Register = on => {
     )
   })
 
+  // A blank line above and below reply text, so it stands apart from the compact tool rows.
+  on('ui.render', { component: 'AssistantMessage' }, async ($, e, next) => {
+    if (e.surface !== 'terminal') return next(e)
+    const { Box } = $.ui.resolve(e)
+    return (
+      <Box flexDirection="column" marginY={1}>
+        {await next(e)}
+      </Box>
+    )
+  })
+
   on('ui.render', { component: 'ToolResult' }, ($, e, next) => {
     if (e.surface !== 'terminal' || e.props.isExpanded === true || PASS_THROUGH.has(e.props.tool)) {
       return next(e)

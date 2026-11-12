@@ -240,3 +240,16 @@ test('an expanded row in a run passes through', async ($, on) => {
   expect((await ui.find({ type: 'Text', text: /engine/ }))?.text).toBe('engine')
   await ui.unmount()
 })
+
+test('reply text gets a blank line above and below it', async ($, on) => {
+  engine(on)
+  const ui = await $.ui.mount({
+    plugin: 'compact-tools',
+    component: 'AssistantMessage',
+    props: { text: 'Done.', isFirstOfReply: true },
+    surface: 'terminal',
+  })
+  expect(await ui.drawn()).toMatchObject({ type: 'Box', props: { marginY: 1 } })
+  expect(await ui.find({ type: 'Text', text: /engine/ })).toBeDefined()
+  await ui.unmount()
+})
