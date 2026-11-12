@@ -391,16 +391,21 @@ export const register: Register = on => {
   })
 
   // Reminders a mod appends to the person's prompt are for the model; the row shows the prompt alone.
-  on('ui.render', { component: 'UserMessage' }, ($, e, next) => {
+  // A blank row under the prompt on the terminal, so the reply below stands apart from it.
+  on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
     if (e.props.isExpanded) return next(e)
     const text = stripReminders(e.props.text)
-    if (text === e.props.text) return next(e)
+    const { Box, Text } = $.ui.resolve(e)
     // A block that was nothing but reminders draws no row at all.
-    if (text === '') {
-      const { Box } = $.ui.resolve(e)
-      return <Box />
-    }
-    return next({ ...e, props: { ...e.props, text } })
+    if (text === '') return <Box />
+    const row = await next(text === e.props.text ? e : { ...e, props: { ...e.props, text } })
+    if (e.surface !== 'terminal') return row
+    return (
+      <Box flexDirection="column">
+        {row}
+        <Text> </Text>
+      </Box>
+    )
   })
 
   // A blank line above and below reply text, so it stands apart from the compact tool rows.

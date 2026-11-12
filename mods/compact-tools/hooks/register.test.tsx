@@ -279,6 +279,19 @@ test('a prompt row hides the system-reminder a mod appended', async ($, on) => {
   await full.unmount()
 })
 
+test('a prompt row gets a blank line under it', async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>{`row:${(e.props as { text: string }).text}`}</Text>
+  })
+  const props = { text: 'hello', origin: { kind: 'composer' }, isExpanded: false }
+  const ui = await $.ui.mount({ plugin: 'compact-tools', component: 'UserMessage', props, surface: 'terminal' } as never)
+  const drawn = (await ui.drawn()) as { children: Array<{ type: string; children?: unknown[] }> }
+  expect(drawn.children.at(-1)).toMatchObject({ type: 'Text', children: [' '] })
+  expect(await ui.find({ type: 'Text', text: 'row:hello' })).toBeDefined()
+  await ui.unmount()
+})
+
 test('a prompt block that is only a system-reminder draws no row', async ($, on) => {
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
