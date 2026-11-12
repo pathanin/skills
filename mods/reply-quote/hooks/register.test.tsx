@@ -331,4 +331,13 @@ describe('fullscreen', () => {
       await ui.unmount()
     }
   })
+
+  test('a reply gets a blank row above and below it', async ($, on) => {
+    fakeEngine(on)
+    const ui = await mountMessage($)
+    const drawn = (await ui.drawn()) as { children: Array<{ type: string; children?: unknown[] }> }
+    expect(drawn.children[0]).toMatchObject({ type: 'Text', children: [' '] })
+    expect(drawn.children.at(-1)).toMatchObject({ type: 'Text', children: [' '] })
+    await ui.unmount()
+  })
 })

@@ -255,7 +255,11 @@ export const register: Register = on => {
     const selectedHere = selection !== null && selection.requestId === messageId ? selection : null
     const selectionAt = selectedHere === null ? -1 : paragraphOfSelection(paragraphs, selectedHere.text)
 
+    // A blank row above and below, as compact-tools gives reply text: this tree answers
+    // for the row, so a hook beneath it never gets to add them.
     return (
+      <Box flexDirection="column">
+      <Text> </Text>
       <Box flexDirection="row">
         <Box width={2} flexShrink={0}>
           <Text>{e.props.isFirstOfReply ? '⏺' : ' '}</Text>
@@ -305,6 +309,8 @@ export const register: Register = on => {
             </Box>
           ))}
         </Box>
+      </Box>
+      <Text> </Text>
       </Box>
     )
   })
