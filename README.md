@@ -74,6 +74,7 @@ Hook plugins that change Claude Code itself. Test with `claude plugin test mods/
 | Mod | Runs in | What it does |
 |---|---|---|
 | [clawd](mods/clawd/hooks/register.tsx) | CLI | Clawd on the prompt border: types while Claude works, idles with small animations. `/clawd` toggles him; `/clawd image` draws him as a picture (kitty, Ghostty). |
+| [compact&#8209;tools](mods/compact-tools/hooks/register.tsx) | CLI | Tool calls as one line each (`● Ran (…)`, `● Edited 2 files (…)`), same-kind runs merged, `○ Thought for Xs (…)` above them. ctrl+o shows the full rows. |
 | [limits](mods/limits/README.md) | App | 5-hour and weekly usage, reset countdowns and context fill above the prompt. From [Ryan-LT/claude-mods](https://github.com/Ryan-LT/claude-mods). |
 | [live&#8209;tasks](mods/live-tasks/hooks/register.tsx) | CLI | The app's pinned task list above the prompt, checked off as Claude works. `/live-tasks` shows, hides or clears it. |
 | [reply&#8209;quote](mods/reply-quote/hooks/register.tsx) | CLI | `/reply` quotes a paragraph of the last reply, your selection or clipboard into the prompt. Fullscreen: hover a paragraph for ↩. |

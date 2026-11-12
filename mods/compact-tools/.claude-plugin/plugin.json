@@ -1,0 +1,9 @@
+{
+  "name": "compact-tools",
+  "version": "0.1.0",
+  "description": "Tool calls draw as one compact line each, same-kind runs merge, and a \"Thought for Xs\" line sits above them; ctrl+o shows the full rows.",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "oat"
+  }
+}
