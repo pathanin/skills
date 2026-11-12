@@ -253,3 +253,26 @@ test('reply text gets a blank line above and below it', async ($, on) => {
   expect(await ui.find({ type: 'Text', text: /engine/ })).toBeDefined()
   await ui.unmount()
 })
+
+test('a prompt row hides the system-reminder a mod appended', async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>{`row:${(e.props as { text: string }).text}`}</Text>
+  })
+  const props = {
+    text: 'try 50%\n<system-reminder>The live task list was left unfinished.</system-reminder>',
+    origin: { kind: 'composer' },
+    isExpanded: false,
+  }
+  const ui = await $.ui.mount({ plugin: 'compact-tools', component: 'UserMessage', props, surface: 'terminal' } as never)
+  expect(await ui.find({ type: 'Text', text: 'row:try 50%' })).toBeDefined()
+  await ui.unmount()
+  const full = await $.ui.mount({
+    plugin: 'compact-tools',
+    component: 'UserMessage',
+    props: { ...props, isExpanded: true },
+    surface: 'terminal',
+  } as never)
+  expect(await full.find({ type: 'Text', text: /system-reminder/ })).toBeDefined()
+  await full.unmount()
+})

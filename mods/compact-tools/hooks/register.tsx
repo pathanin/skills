@@ -256,6 +256,10 @@ function thoughtLine(Text: Elements['terminal']['Text'], thought: Thought) {
   )
 }
 
+export function stripReminders(text: string): string {
+  return text.replace(/\s*<system-reminder>[\s\S]*?<\/system-reminder>\s*/g, '\n').trim()
+}
+
 function formatSeconds(seconds: number): string {
   return `${seconds < 10 ? seconds.toFixed(1) : seconds.toFixed(1).replace(/\.0$/, '')}s`
 }
@@ -384,6 +388,14 @@ export const register: Register = on => {
         {row}
       </Box>
     )
+  })
+
+  // Reminders a mod appends to the person's prompt are for the model; the row shows the prompt alone.
+  on('ui.render', { component: 'UserMessage' }, ($, e, next) => {
+    if (e.props.isExpanded) return next(e)
+    const text = stripReminders(e.props.text)
+    if (text === e.props.text || text === '') return next(e)
+    return next({ ...e, props: { ...e.props, text } })
   })
 
   // A blank line above and below reply text, so it stands apart from the compact tool rows.

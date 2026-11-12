@@ -1,7 +1,7 @@
 {
   "name": "compact-tools",
-  "version": "0.1.1",
-  "description": "Tool calls draw as one compact line each, same-kind runs merge, and a \"Thought for Xs\" line sits above them; ctrl+o shows the full rows.",
+  "version": "0.1.2",
+  "description": "Tool calls draw as one compact line each, same-kind runs merge, and a \"Thought for Xs\" line sits above them; reminders appended to a prompt are hidden from its row; ctrl+o shows the full rows.",
   "types": "./types/index.d.ts",
   "author": {
     "name": "oat"

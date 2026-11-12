@@ -64,7 +64,7 @@
     },
     {
       "name": "compact-tools",
-      "description": "Mod: tool calls draw as one compact line each (Ran, Edited, Read …) with muted colors, back-to-back calls of the same kind merge into one line, and a dim \"Thought for Xs\" line sits above the call that followed the thinking. Reply text gets a blank line above and below it. ctrl+o shows the full rows.",
+      "description": "Mod: tool calls draw as one compact line each (Ran, Edited, Read …) with muted colors, back-to-back calls of the same kind merge into one line, and a dim \"Thought for Xs\" line sits above the call that followed the thinking. Reply text gets a blank line above and below it, and system reminders a mod appends to your prompt stay out of its row. ctrl+o shows the full rows.",
       "author": {
         "name": "oat"
       },
