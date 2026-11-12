@@ -399,7 +399,8 @@ export const register: Register = on => {
     // A block that was nothing but reminders draws no row at all.
     if (text === '') return <Box />
     const row = await next(text === e.props.text ? e : { ...e, props: { ...e.props, text } })
-    if (e.surface !== 'terminal') return row
+    // The host draws a prompt's image rows after this one, out of reach; a blank row here would split them off.
+    if (e.surface !== 'terminal' || /\[Image #\d+\]/.test(text)) return row
     return (
       <Box flexDirection="column">
         {row}

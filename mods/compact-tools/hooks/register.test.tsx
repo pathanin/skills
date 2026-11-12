@@ -292,6 +292,17 @@ test('a prompt row gets a blank line under it', async ($, on) => {
   await ui.unmount()
 })
 
+test('a prompt with images gets no blank line, so its image rows stay attached', async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>{`row:${(e.props as { text: string }).text}`}</Text>
+  })
+  const props = { text: 'look [Image #3]', origin: { kind: 'composer' }, isExpanded: false }
+  const ui = await $.ui.mount({ plugin: 'compact-tools', component: 'UserMessage', props, surface: 'terminal' } as never)
+  expect(await ui.drawn()).toMatchObject({ type: 'Text' })
+  await ui.unmount()
+})
+
 test('a prompt block that is only a system-reminder draws no row', async ($, on) => {
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
