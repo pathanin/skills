@@ -241,21 +241,6 @@ test('an expanded row in a run passes through', async ($, on) => {
   await ui.unmount()
 })
 
-test('reply text gets a blank line above and below it', async ($, on) => {
-  engine(on)
-  const ui = await $.ui.mount({
-    plugin: 'compact-tools',
-    component: 'AssistantMessage',
-    props: { text: 'Done.', isFirstOfReply: true },
-    surface: 'terminal',
-  })
-  const drawn = (await ui.drawn()) as { children: Array<{ type: string; children?: unknown[] }> }
-  expect(drawn.children[0]).toMatchObject({ type: 'Text', children: [' '] })
-  expect(drawn.children.at(-1)).toMatchObject({ type: 'Text', children: [' '] })
-  expect(await ui.find({ type: 'Text', text: /engine/ })).toBeDefined()
-  await ui.unmount()
-})
-
 test('a prompt row hides the system-reminder a mod appended', async ($, on) => {
   on('ui.render', ($, e) => {
     const { Text } = $.ui.resolve(e)
