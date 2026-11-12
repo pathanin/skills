@@ -394,7 +394,12 @@ export const register: Register = on => {
   on('ui.render', { component: 'UserMessage' }, ($, e, next) => {
     if (e.props.isExpanded) return next(e)
     const text = stripReminders(e.props.text)
-    if (text === e.props.text || text === '') return next(e)
+    if (text === e.props.text) return next(e)
+    // A block that was nothing but reminders draws no row at all.
+    if (text === '') {
+      const { Box } = $.ui.resolve(e)
+      return <Box />
+    }
     return next({ ...e, props: { ...e.props, text } })
   })
 

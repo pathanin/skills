@@ -278,3 +278,18 @@ test('a prompt row hides the system-reminder a mod appended', async ($, on) => {
   expect(await full.find({ type: 'Text', text: /system-reminder/ })).toBeDefined()
   await full.unmount()
 })
+
+test('a prompt block that is only a system-reminder draws no row', async ($, on) => {
+  on('ui.render', ($, e) => {
+    const { Text } = $.ui.resolve(e)
+    return <Text>{`row:${(e.props as { text: string }).text}`}</Text>
+  })
+  const props = {
+    text: '<system-reminder>The live task list was left unfinished.</system-reminder>',
+    origin: { kind: 'composer' },
+    isExpanded: false,
+  }
+  const ui = await $.ui.mount({ plugin: 'compact-tools', component: 'UserMessage', props, surface: 'terminal' } as never)
+  expect(await ui.find({ type: 'Text', text: /row:/ })).toBeUndefined()
+  await ui.unmount()
+})
