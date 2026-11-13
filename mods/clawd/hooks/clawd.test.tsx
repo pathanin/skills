@@ -315,3 +315,36 @@ describe('band', () => {
     expect(atRest).toBe(true)
   })
 })
+
+describe('beside the other rows', () => {
+  const row = (plugin: string, text: string) => ({ plugin, tree: h('Text', null, text) })
+  const LIST = {
+    plugin: 'clawd',
+    component: 'AbovePromptList',
+    props: { ...BAND.props, isCollapsed: false, rows: [row('live-tasks', 'tasks'), row('clawd', 'clawd')] },
+  } as const
+
+  async function listed($: any, props = {}) {
+    const ui = await $.ui.mount({ ...LIST, props: { ...LIST.props, ...props }, surface: 'terminal' })
+    const beside = await ui.find({ key: 'clawd-beside' })
+    const texts = (await ui.findAll({ type: 'Text' })).map((t: Node & { text?: string }) => t.text)
+    await ui.unmount()
+    return { isBeside: beside !== undefined, texts }
+  }
+
+  test('shares the task list rows instead of stacking under them', async ($, on) => {
+    await start($, on)
+    expect(await listed($)).toEqual({ isBeside: true, texts: ['tasks', 'clawd'] })
+  })
+
+  test('steps out when the rows beside it would be cut short', async ($, on) => {
+    await start($, on)
+    expect(await listed($, { bodyColumns: COLUMNS + 47 })).toEqual({ isBeside: false, texts: ['tasks'] })
+    expect((await listed($, { bodyColumns: COLUMNS + 48 })).isBeside).toBe(true)
+  })
+
+  test('alone in the band, its row is left as the engine stacks it', async ($, on) => {
+    await start($, on)
+    expect(await listed($, { rows: [row('clawd', 'clawd')] })).toEqual({ isBeside: false, texts: ['clawd'] })
+  })
+})

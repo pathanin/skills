@@ -26,6 +26,10 @@ const picture = (grid: Grid) => {
 // Clawd keeps to the right of what the band already shows, and leaves the band alone when
 // that would squeeze it under this many columns.
 const MIN_COLUMNS = 40
+// The engine stacks one row per plugin, so Clawd's own row would sit under another mod's
+// (the task list) and add its height to the band. Beside those rows instead, it hides when
+// they would keep fewer than this many columns, rather than cutting their lines short.
+const MIN_BESIDE = 48
 
 export const register: Register = on => {
   // One timer at a time: a rest, or the next frame of an animation.
@@ -152,6 +156,33 @@ export const register: Register = on => {
           ) : (
             <Raster key="clawd-cells" columns={COLUMNS} rows={ROWS} cells={encode(grid)} />
           )}
+        </Box>
+      </Box>
+    )
+  })
+
+  // With other mods' rows in the band, Clawd stands to the right of them all, sharing their
+  // rows rather than taking rows of its own under them; too narrow, it steps out of the band.
+  on('ui.render', { component: 'AbovePromptList' }, async ($, e, next) => {
+    if (e.surface !== 'terminal' || e.props.hasSurvey) return next(e)
+    const own = e.props.rows.find(r => r.plugin === 'clawd')
+    const others = e.props.rows.filter(r => r.plugin !== 'clawd')
+    if (own === undefined || others.length === 0) return next(e)
+    const rest = { ...e, props: { ...e.props, rows: others } }
+    if (e.props.bodyColumns < COLUMNS + MIN_BESIDE) return next(rest)
+    const stacked = await next(rest)
+    // Clawd's own row comes back through next too: a Raster is kept only from what it returns.
+    const beside = await next({ ...e, props: { ...e.props, rows: [own] } })
+
+    const { Box } = $.ui.resolve(e)
+    // The rows keep to the top, under the spinner; Clawd keeps its feet on the prompt's border.
+    return (
+      <Box flexDirection="row">
+        <Box key="rows" flexDirection="column" flexGrow={1} flexShrink={1}>
+          {stacked}
+        </Box>
+        <Box key="clawd-beside" flexDirection="column" justifyContent="flex-end" flexShrink={0}>
+          {beside}
         </Box>
       </Box>
     )
