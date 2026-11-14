@@ -32,6 +32,18 @@ const STORE_LATEST = 'latest'
 const STORE_PINGED = 'lastPingAt'
 const STORE_SLOT = 'lastSlot'
 
+/**
+ * The store is shared by every session on this Mac, two desktop apps on two Claude accounts
+ * included: each account keeps its own figures and slot, keyed by the account the app signed in.
+ * Sessions with no account named (a terminal `claude`) keep the plain keys.
+ */
+let account: Promise<string> | undefined
+const key = async ($: EngineInterface, name: string): Promise<string> => {
+  account ??= $.env.get('CLAUDE_CODE_ACCOUNT_UUID').then(a => a ?? '', () => '')
+  const a = await account
+  return a ? `${name}:${a}` : name
+}
+
 // ---------- formatting ----------
 
 const fmtTokens = (n: number): string => {
@@ -167,14 +179,15 @@ const apply = async ($: EngineInterface, reading: Snapshot, isShared = true) => 
   await update($, now, () => Date.now())
   await maybeAlert($, s)
   if (isShared) {
-    const latest = (await $.store.get(STORE_LATEST)) as Snapshot | undefined
-    await $.store.set(STORE_LATEST, merge(latest, reading))
+    const latestKey = await key($, STORE_LATEST)
+    const latest = (await $.store.get(latestKey)) as Snapshot | undefined
+    await $.store.set(latestKey, merge(latest, reading))
   }
 }
 
 /** Takes up a newer reading another session made. */
 const pullShared = async ($: EngineInterface) => {
-  const latest = (await $.store.get(STORE_LATEST)) as Snapshot | undefined
+  const latest = (await $.store.get(await key($, STORE_LATEST))) as Snapshot | undefined
   const mine = await read($, snapshot)
   if (latest?.limits?.length && (!mine || JSON.stringify(merge(mine, latest).limits) !== JSON.stringify(mine.limits) || mine.at < latest.at)) {
     await apply($, latest, false)
@@ -212,15 +225,15 @@ const refresh = async ($: EngineInterface, why: 'press' | 'auto') => {
   if (await read($, refreshing)) return
   const at = await $.clock.now()
   if (why === 'press') {
-    const lastPing = Number((await $.store.get(STORE_PINGED)) ?? 0)
+    const lastPing = Number((await $.store.get(await key($, STORE_PINGED))) ?? 0)
     if (at - lastPing < PRESS_GAP) return void (await pullShared($))
   } else {
     // One ask per clock slot across every session: the first to reach the slot takes it.
     const slot = Math.floor(at / SLOT)
-    if (Number((await $.store.get(STORE_SLOT)) ?? -1) >= slot) return void (await pullShared($))
-    await $.store.set(STORE_SLOT, slot)
+    if (Number((await $.store.get(await key($, STORE_SLOT))) ?? -1) >= slot) return void (await pullShared($))
+    await $.store.set(await key($, STORE_SLOT), slot)
   }
-  await $.store.set(STORE_PINGED, at)
+  await $.store.set(await key($, STORE_PINGED), at)
   await update($, refreshing, () => true)
   try {
     await applyContext($, (await $.session.usage()).context)
@@ -272,6 +285,8 @@ type Meter = {
   runsOut?: string
   /** Plain grey text after the percent, no icon (the context's token count). */
   detail?: string
+  /** Shown in place of the percent while there is none yet. */
+  pctText?: string
   alt: string
 }
 
@@ -284,8 +299,18 @@ const HEX: Record<string, string> = {
 const GREY = '#8c959f'
 const FONT = 12.5
 const CH = FONT * 0.62 // monospace advance; every run is pinned to it with textLength
-const BAR_W = 56
-const BAR_H = 4
+const BAR_H = 8
+const TEXT_H = 18
+/** The bar's drawing: as tall as the text beside it, so the row lines up however the surface aligns it. */
+const BAR_BOX_H = TEXT_H
+/** The text's visual middle (between its cap height and baseline), where the bar is centred. */
+const BAR_CY = 8.5
+/** How far the "now" tick reaches above and below the bar's middle. */
+const TICK_R = 7
+/** Each rounded end, drawn apart from the stretching middle so its curve keeps its shape. */
+const CAP_W = BAR_H / 2
+/** Bar units across; the drawing stretches to its box, so this is only its resolution. */
+const BAR_UNITS = 1000
 const GAP = 22
 const ICON = 11
 
@@ -331,50 +356,76 @@ const clockIcon = (x: number, cy: number, color: string) => {
   )
 }
 
-const bandSvg = (meters: Meter[]) => {
-  const H = 18
-  const y = 13
-  const by = (H - BAR_H) / 2
-  let x = 0
-  let body = ''
-  meters.forEach((m, i) => {
-    if (i > 0) x += GAP
-    const color = HEX[m.color] ?? GREY
-    body += run(x, y, m.label, GREY)
-    x += m.label.length * CH + 6
-    const fill = Math.min(1, Math.max(0, m.pct / 100)) * BAR_W
-    body += `<rect x="${x.toFixed(1)}" y="${by}" width="${BAR_W}" height="${BAR_H}" rx="${BAR_H / 2}" fill="${GREY}" fill-opacity=".25"/>`
-    if (fill > 0) {
-      body += `<rect x="${x.toFixed(1)}" y="${by}" width="${Math.max(BAR_H, fill).toFixed(1)}" height="${BAR_H}" rx="${BAR_H / 2}" fill="${color}"/>`
-    }
-    if (m.elapsed !== undefined) {
-      const tx = x + Math.min(BAR_W - 1, Math.max(0, m.elapsed * BAR_W))
-      body += `<rect x="${tx.toFixed(1)}" y="${by - 2}" width="1" height="${BAR_H + 4}" fill="${GREY}"/>`
-    }
-    x += BAR_W + 6
-    const pct = fmtPct(m.pct)
-    body += run(x, y, pct, color, true)
-    x += pct.length * CH
-    if (m.detail) {
-      body += run(x + CH, y, m.detail, GREY)
-      x += (m.detail.length + 1) * CH
-    }
-    if (m.reset) {
-      x += 8
-      body += clockIcon(x, H / 2, GREY)
-      x += ICON + 4
-      body += run(x, y, m.reset, GREY)
-      x += m.reset.length * CH
-    }
-  })
-  const width = Math.ceil(x + 2)
+/** A run of text pieces as one drawing of its own width. */
+const textSvg = (body: string, width: number) => {
+  const w = Math.ceil(width)
   return {
     source:
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${H}" viewBox="0 0 ${width} ${H}">` +
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${TEXT_H}" viewBox="0 0 ${w} ${TEXT_H}">` +
       `<style>text{font-size:${FONT}px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre}</style>${body}</svg>`,
-    width,
-    height: H,
+    width: w,
+    height: TEXT_H,
   }
+}
+
+const labelSvg = (m: Meter) => textSvg(run(0, 13, m.label, GREY), m.label.length * CH)
+
+/** The percent, detail and reset after a bar; `pad` leaves the gap before the next meter. */
+const tailSvg = (m: Meter, pad: number) => {
+  const color = HEX[m.color] ?? GREY
+  const pct = m.pctText ?? fmtPct(m.pct)
+  let body = run(0, 13, pct, color, true)
+  let x = pct.length * CH
+  if (m.detail) {
+    body += run(x + CH, 13, m.detail, GREY)
+    x += (m.detail.length + 1) * CH
+  }
+  if (m.reset) {
+    x += 8
+    body += clockIcon(x, TEXT_H / 2, GREY)
+    x += ICON + 4
+    body += run(x, 13, m.reset, GREY)
+    x += m.reset.length * CH
+  }
+  return textSvg(body, x + pad)
+}
+
+/**
+ * The bar's middle, drawn to stretch over whatever width its box has (no aspect kept), so the
+ * fill's end is square and reads exactly against the "now" tick, which keeps its width as it stretches.
+ */
+const barSvg = (m: Meter) => {
+  const color = HEX[m.color] ?? GREY
+  const by = BAR_CY - BAR_H / 2
+  const fill = Math.min(1, Math.max(0, m.pct / 100)) * BAR_UNITS
+  let body = `<rect x="0" y="${by}" width="${BAR_UNITS}" height="${BAR_H}" fill="${GREY}" fill-opacity=".25"/>`
+  if (fill > 0) body += `<rect x="0" y="${by}" width="${fill.toFixed(1)}" height="${BAR_H}" fill="${color}"/>`
+  if (m.elapsed !== undefined) {
+    const tx = Math.min(BAR_UNITS, Math.max(0, m.elapsed * BAR_UNITS))
+    body +=
+      `<line x1="${tx.toFixed(1)}" y1="${BAR_CY - TICK_R}" x2="${tx.toFixed(1)}" y2="${BAR_CY + TICK_R}" stroke="${GREY}" ` +
+      `stroke-width="1" vector-effect="non-scaling-stroke"/>`
+  }
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${BAR_UNITS}" height="${BAR_BOX_H}" ` +
+    `viewBox="0 0 ${BAR_UNITS} ${BAR_BOX_H}" preserveAspectRatio="none">${body}</svg>`
+  )
+}
+
+/** A rounded end of the bar: filled once the fill reaches it, else the track. */
+const capSvg = (m: Meter, side: 'left' | 'right') => {
+  const isFilled = side === 'left' ? m.pct > 0 : m.pct >= 100
+  const paint = isFilled ? `fill="${HEX[m.color] ?? GREY}"` : `fill="${GREY}" fill-opacity=".25"`
+  const r = BAR_H / 2
+  const cy = BAR_CY
+  const d =
+    side === 'left'
+      ? `M${CAP_W} ${cy - r}A${r} ${r} 0 0 0 ${CAP_W} ${cy + r}Z`
+      : `M0 ${cy - r}A${r} ${r} 0 0 1 0 ${cy + r}Z`
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${CAP_W}" height="${BAR_BOX_H}" ` +
+    `viewBox="0 0 ${CAP_W} ${BAR_BOX_H}"><path d="${d}" ${paint}/></svg>`
+  )
 }
 
 /** What the refresh button and the gap before it take, in px on the desktop and in cells in the terminal. */
@@ -382,21 +433,25 @@ const REFRESH_PX = 70
 const REFRESH_CELLS = 10
 /** Band px per desktop cell, measured in the app: the band at full window width, 85 cells, is about 750 band px. */
 const DESKTOP_CELL_PX = 8.8
+/** The narrowest a desktop bar may shrink before a meter is dropped instead. */
+const MIN_BAR_PX = 40
 
-/** Cells one terminal meter takes: label, bar, percent, detail, reset. */
+/** Cells one terminal meter takes at the narrowest bar (8): label, bar, percent, detail, reset. */
 const meterCells = (m: Meter) =>
-  m.label.length + 1 + 8 + 1 + fmtPct(m.pct).length + (m.detail ? m.detail.length + 1 : 0) + (m.reset ? m.reset.length + 3 : 0)
+  m.label.length + 1 + 8 + 1 + (m.pctText ?? fmtPct(m.pct)).length + (m.detail ? m.detail.length + 1 : 0) + (m.reset ? m.reset.length + 3 : 0)
 
-/**
- * As many meters as fit on one line with the refresh button: every one, then without the context,
- * then the 5-hour limit alone. The desktop reports its width in cells of DESKTOP_CELL_PX band px each.
- */
+/** Desktop px a row of meters takes with each bar at MIN_BAR_PX: label, bar with its ends, tail, and the gaps between. */
+const rowPx = (ms: Meter[]) =>
+  ms.reduce((n, m, i) => n + labelSvg(m).width + 2 * CAP_W + MIN_BAR_PX + tailSvg(m, i < ms.length - 1 ? GAP - 8 : 0).width, 0) +
+  // columnGap 1 between the label, bar and tail of each meter, and before the refresh button.
+  3 * ms.length * DESKTOP_CELL_PX
+
 const fitMeters = (meters: Meter[], columns: number, isTerminal: boolean): Meter[] => {
   const fits = (ms: Meter[]) =>
     columns >=
     (isTerminal
       ? ms.reduce((n, m) => n + meterCells(m), 0) + 3 * ms.length + REFRESH_CELLS
-      : Math.ceil((bandSvg(ms).width + REFRESH_PX) / DESKTOP_CELL_PX))
+      : Math.ceil((rowPx(ms) + REFRESH_PX) / DESKTOP_CELL_PX))
   const limits = meters.filter(m => m.kind !== 'context')
   const short = meters.filter(m => m.kind === 'five_hour')
   for (const ms of [meters, limits]) if (fits(ms)) return ms
@@ -522,6 +577,17 @@ export const register: Register = (on, options) => {
         detail,
         alt: `Context ${detail} tokens, ${fmtPct(ctx.percent)} of the window`,
       })
+    } else if (ctx) {
+      // Just compacted (or fresh): the count comes back with the next reply, so hold the bar's place.
+      meters.push({
+        kind: 'context',
+        label: 'context',
+        pct: 0,
+        pctText: '–',
+        color: 'inactive',
+        detail: `–/${fmtTokens(ctx.window)}`,
+        alt: 'Context: the token count shows after the next reply',
+      })
     }
     const isRefreshing = await read($, refreshing)
     const age = s?.at ? at - s.at : undefined
@@ -533,19 +599,32 @@ export const register: Register = (on, options) => {
 
     // A narrow band shows the 5-hour limit alone; the alt text still names every limit.
     const shown = fitMeters(meters, e.props.bodyColumns, e.surface === 'terminal')
+    // The last bar's alt also names the meters left out, so the alt text still covers every limit.
+    const leftOut = meters.filter(m => !shown.includes(m)).map(m => m.alt)
+    const altOf = (m: Meter, i: number) => (i === shown.length - 1 && leftOut.length ? [m.alt, ...leftOut].join('; ') : m.alt)
 
     if (e.surface !== 'terminal') {
       const { Box, Button, Svg, Text } = $.ui.resolve(e)
       if (meters.length === 0) return withBelow(<Text dimColor>Limits show after the first reply</Text>)
-      const band = bandSvg(shown)
+      // Each bar's box grows from nothing, so the bars share whatever width the text leaves, equally.
       return withBelow(
-        <Box flexDirection="row" flexWrap="nowrap" alignItems="center" columnGap={2}>
-          <Svg
-            source={band.source}
-            width={band.width}
-            height={band.height}
-            alt={meters.map(m => m.alt).join('; ')}
-          />
+        <Box flexDirection="row" flexWrap="nowrap" alignItems="center" columnGap={1}>
+          {shown.flatMap((m, i) => {
+            const label = labelSvg(m)
+            const tail = tailSvg(m, i < shown.length - 1 ? GAP - 8 : 0)
+            return [
+              <Svg source={label.source} width={label.width} height={label.height} alt={m.label} />,
+              // The surface refuses an Svg with an empty alt, so each end names itself.
+              <Box flexDirection="row" alignItems="center" flexGrow={1} width={0} minWidth={0}>
+                <Svg source={capSvg(m, 'left')} width={CAP_W} height={BAR_BOX_H} alt="bar start" />
+                <Box flexDirection="row" alignItems="center" flexGrow={1} width={0} minWidth={0}>
+                  <Svg source={barSvg(m)} height={BAR_BOX_H} alt={altOf(m, i)} />
+                </Box>
+                <Svg source={capSvg(m, 'right')} width={CAP_W} height={BAR_BOX_H} alt="bar end" />
+              </Box>,
+              <Svg source={tail.source} width={tail.width} height={tail.height} alt={m.pctText ?? fmtPct(m.pct)} />,
+            ]
+          })}
           {refreshButton(Button)}
         </Box>,
       )
@@ -553,16 +632,25 @@ export const register: Register = (on, options) => {
 
     const { Box, Button, Text } = $.ui.resolve(e)
     if (meters.length === 0) return withBelow(<Text dimColor>Limits show after the first reply</Text>)
+    // The bars share what the text, the gaps and the button leave of the row.
+    const textCols = shown.reduce(
+      (n, m) =>
+        n + m.label.length + 1 + 1 + (m.pctText ?? fmtPct(m.pct)).length +
+        (m.detail ? m.detail.length + 1 : 0) + (m.reset ? m.reset.length + 3 : 0),
+      0,
+    )
+    const spare = e.props.bodyColumns - textCols - 3 * shown.length - (ageText.length + 6)
+    const barWidth = Math.min(40, Math.max(8, Math.floor(spare / shown.length)))
 
     return withBelow(
       <Box flexDirection="row" flexWrap="wrap" columnGap={3}>
         {shown.map(m => (
           <Box flexDirection="row">
             <Text dimColor>{m.label} </Text>
-            {barRuns(m).map(r => (
+            {barRuns(m, barWidth).map(r => (
               <Text color={r.color}>{r.text}</Text>
             ))}
-            <Text color={m.color} bold> {fmtPct(m.pct)}</Text>
+            <Text color={m.color} bold> {m.pctText ?? fmtPct(m.pct)}</Text>
             {m.detail ? <Text dimColor> {m.detail}</Text> : null}
             {m.reset ? <Text dimColor> ◷ {m.reset}</Text> : null}
           </Box>
