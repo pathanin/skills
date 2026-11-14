@@ -73,7 +73,11 @@ test('one compact line: limit, bar, percent, reset or run-out', EVERYWHERE, asyn
   await term.unmount()
 
   const desk = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await desk.findAll({ type: 'Svg' })).toHaveLength(1)
+  // A label, a bar (two round caps around a stretching middle) and a tail per meter: 5hr, wk, ctx.
+  const svgs = (await desk.findAll({ type: 'Svg' })) as unknown as { props: { alt: string } }[]
+  expect(svgs).toHaveLength(15)
+  // The desktop drops an Svg whose alt is blank.
+  for (const svg of svgs) expect(svg.props.alt.trim()).not.toBe('')
   await desk.unmount()
 })
 
@@ -321,7 +325,7 @@ test('app only: the desktop app draws the band; a terminal attached to it does n
   await $.session.measure({ context: { window: 200_000 }, rateLimits: [{ kind: 'five_hour', percentUsed: 30, resetsAt: inHours(2) }], changed: ['rateLimits'] })
 
   const desk = await $.ui.mount({ ...BAND, surface: 'desktop' })
-  expect(await desk.findAll({ type: 'Svg' })).toHaveLength(1)
+  expect((await desk.findAll({ type: 'Svg' })).length).toBeGreaterThan(0)
   expect(await desk.find({ key: 'refresh' })).toBeDefined()
   await desk.unmount()
 
@@ -375,8 +379,11 @@ const screenshotBand = async (
   return $.ui.mount({ ...BAND, surface, props: { ...BAND.props, bodyColumns } })
 }
 
-const svgOf = async (ui: Awaited<ReturnType<typeof screenshotBand>>) =>
-  ((await ui.findAll({ type: 'Svg' }))[0] as unknown as { props: { source: string; alt: string } }).props
+/** Every desktop drawing's source and alt text, joined: each meter is several drawings now. */
+const svgOf = async (ui: Awaited<ReturnType<typeof screenshotBand>>) => {
+  const all = (await ui.findAll({ type: 'Svg' })) as unknown as { props: { source: string; alt: string } }[]
+  return { source: all.map(s => s.props.source).join('\n'), alt: all.map(s => s.props.alt).join('; ') }
+}
 
 test('a narrow desktop band drops the context first and keeps both limits', EVERYWHERE, async ($, on) => {
   const ui = await screenshotBand($, on, 'desktop', 62, true)
@@ -413,4 +420,29 @@ test('a narrow terminal band shows the 5-hour limit alone', EVERYWHERE, async ($
   expect(await ui.find({ type: 'Text', text: 'week ' })).toBeUndefined()
   expect(await ui.find({ type: 'Text', text: 'context ' })).toBeUndefined()
   await ui.unmount()
+})
+
+test("two desktop apps on two accounts never show each other's figures", EVERYWHERE, async ($, on) => {
+  on('ui.render', () => ({ type: 'engine', ref: 0 }))
+  const at = Date.now()
+  // The other account's fresh reading sits in the shared store, under its own key and the old
+  // unkeyed one, asked just now, with this slot already taken.
+  const other = { limits: [{ kind: 'seven_day', percentUsed: 77, resetsAt: inHours(30) }], at }
+  const slot = Math.floor(at / 30_000)
+  mock.store(on, {
+    ...{ latest: other, lastSlot: slot, lastPingAt: at },
+    ...{ 'latest:other-account': other, 'lastSlot:other-account': slot, 'lastPingAt:other-account': at },
+  })
+  on('env.get', (_$, e) => ({ value: e.name === 'CLAUDE_CODE_ACCOUNT_UUID' ? 'this-account' : undefined }) as never)
+  const asks = usageApi(on, () => ({ seven_day: { utilization: 12, resets_at: inHours(30) } }))
+  mock.clock(on, { now: at })
+  on('ui.toast', () => ({ value: undefined }) as never)
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  await ui.unmount()
+  const again = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  // This account asks for its own figures and shows them, not the other account's 77%.
+  expect(asks.n).toBe(1)
+  expect(await again.find({ type: 'Text', text: ' 12%' })).toBeDefined()
+  expect(await again.find({ type: 'Text', text: ' 77%' })).toBeUndefined()
+  await again.unmount()
 })
