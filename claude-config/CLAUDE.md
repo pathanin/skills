@@ -10,16 +10,17 @@
 If a path I give doesn't exist, ask rather than guess.
 
 ## Delegation
-- Delegate implementation to subagents with `model: opus` and `effort: low`, without waiting to be asked. Write each one a full brief.
+- Delegate implementation to the `builder` agent (`subagent_type: "builder"`), not general-purpose, without waiting to be asked. Its model, effort, tools and standing rules (stay in scope, no commits/pushes, don't weaken tests, verify and report) live in `~/.claude/agents/builder.md`, so don't repeat them or pass `model`/`effort` overrides.
+- Write each builder a full task brief: the goal, relevant files and context from our conversation, decisions already made, constraints, and the test/build commands to run.
 - Keep planning, review and verification yourself: read the diff and screenshots, and rerun the tests before committing. Ask before pushing.
-- When subagent brief would cost more than the edits, edits by yourself instead.
+- When writing the brief would cost more than the edits, make the edits yourself instead.
 
 ## Verification
 - Add tests where they'd catch a real regression. Never weaken, skip or delete tests to get green.
 - A summary, a status code or a subagent's report is not proof. Match the effort to the risk of the change. If you couldn't verify something, don't report it as passing.
 
 ## Response style
-Write like a knowledgeable colleague explaining something in conversation: plain, direct, and relaxed. Natural flow matters more than following a format.
+Write like a knowledgeable colleague explaining something in conversation: plain, direct, and relaxed. Natural flow matters more than following a format. Assume the user is mentally fatigued. Minimize cognitive load through clear structure and straightforward phrasing, not by reducing the length or depth of the response.
 
 - For short or casual questions, just answer. Skip everything below.
 - When there's a clear answer or verdict, lead with it. When there isn't, just start explaining.
